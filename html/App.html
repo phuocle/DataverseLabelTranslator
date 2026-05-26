@@ -31,7 +31,8 @@
         <div id="grid" style="position: absolute; width: 100%; top: 0; bottom: 0;"></div>
         <script type="text/javascript">
             window.onload = function() {
-                XrmTranslator.Initialize();
+                var hasAllowedRole = XrmTranslator.UserHasAllowedRole();
+                XrmTranslator.Initialize(hasAllowedRole);
             };
         </script>
     </body>

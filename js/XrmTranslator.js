@@ -14,6 +14,7 @@
     XrmTranslator.userSettings = null;
     XrmTranslator.installedLanguages = null;
     XrmTranslator.baseLanguage = null;
+    XrmTranslator.hasAllowedRole = null;
 
     XrmTranslator.columnRestoreNeeded = false;
 
@@ -61,6 +62,10 @@
         "type:sitemap",
         "type:globalOptionSets"
     ];
+    var ALLOWED_ROLE_NAMES = {
+        "system administrator": true,
+        "system customizer": true
+    };
     RegExp.escape= function(s) {
         return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     };
@@ -230,6 +235,87 @@
             }
         }
     }
+
+    function DisableAllToolbarItems() {
+        var toolbar = GetToolbar();
+        if (!toolbar || !toolbar.items) {
+            return;
+        }
+
+        for (var i = 0; i < toolbar.items.length; i++) {
+            var item = toolbar.items[i];
+            if (item && item.id) {
+                toolbar.disable(item.id);
+            }
+        }
+
+        toolbar.refresh();
+    }
+
+    function GetRoleItems(roles) {
+        var items = [];
+
+        if (!roles) {
+            return items;
+        }
+
+        if (typeof roles.getAll === "function") {
+            return roles.getAll() || [];
+        }
+
+        if (Array.isArray(roles)) {
+            return roles;
+        }
+
+        if (typeof roles.forEach === "function") {
+            roles.forEach(function(role) {
+                items.push(role);
+            });
+            return items;
+        }
+
+        if (typeof roles.getLength === "function" && typeof roles.get === "function") {
+            for (var i = 0; i < roles.getLength(); i++) {
+                items.push(roles.get(i));
+            }
+            return items;
+        }
+
+        if (typeof roles.get === "function") {
+            var allRoles = roles.get();
+            if (Array.isArray(allRoles)) {
+                return allRoles;
+            }
+        }
+
+        return items;
+    }
+
+    function GetRoleName(role) {
+        if (!role) {
+            return "";
+        }
+
+        return String(role.name || role.Name || "").trim().toLowerCase();
+    }
+
+    XrmTranslator.UserHasAllowedRole = function () {
+        try {
+            var context = typeof GetGlobalContext === "function" ? GetGlobalContext() : null;
+            var userSettings = context && context.userSettings ? context.userSettings : null;
+            var roles = GetRoleItems(userSettings && userSettings.roles);
+
+            for (var i = 0; i < roles.length; i++) {
+                if (ALLOWED_ROLE_NAMES[GetRoleName(roles[i])]) {
+                    return true;
+                }
+            }
+        }
+        catch (e) {
+        }
+
+        return false;
+    };
 
     function ApplyTypeVisibilityForEntity(entityTarget) {
         if (entityTarget === "entitySelect:none" || entityTarget === "none") {
@@ -1742,6 +1828,10 @@
     }
 
     function LoadHandler () {
+        if (XrmTranslator.hasAllowedRole === false) {
+            return;
+        }
+
         var entity = XrmTranslator.GetEntity();
 
         if (!HasSelectedSolution()) {
@@ -1961,12 +2051,12 @@
     }
 
     function ShowAbout () {
-        var html = '<div style="padding: 25px 30px; font-size: 15px; line-height: 1.6; text-align: center;">' +
-            '<h2 style="margin: 0 0 10px 0; font-size: 24px; font-weight: 600;">Dataverse Label Translator</h2>' +
-            '<p style="margin: 0 0 10px 0; color: #777; font-size: 13px;">Version: x.xx.xx.xx</p>' +
-            '<p style="margin: 0 0 15px 0; color: #777; font-size: 14px;">Complete Translation Management UI for Dynamics 365 / Dataverse</p>' +
+        var html = '<div style="padding: 25px 30px; font-size: 16px; line-height: 1.6; text-align: center;">' +
+            '<h2 style="margin: 0 0 10px 0; font-size: 26px; font-weight: 600;">Dataverse Label Translator</h2>' +
+            '<p style="margin: 0 0 10px 0; color: #777; font-size: 15px;">Version: 1.0.0.0</p>' +
+            '<p style="margin: 0 0 15px 0; color: #777; font-size: 15px;">Complete Translation Management UI for Dynamics 365 / Dataverse</p>' +
             '<hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">' +
-            '<p style="text-align: justify; text-align-last: center; font-size: 14px; margin: 0; color: #444;">Developed by ' +
+            '<p style="text-align: justify; text-align-last: center; font-size: 15px; margin: 0; color: #444;">Developed by ' +
             '<a href="https://github.com/phuocle" target="_blank" rel="noopener noreferrer" style="font-weight: 500; text-decoration: none;">Phuoc Le</a>, ' +
             'featuring AI-powered translation, intelligent dictionary management, All-In-One bulk translation mode, ' +
             'and a beautifully optimized workflow.</p>' +
@@ -2081,6 +2171,10 @@
     }
 
     function HandleToolbarClick(event) {
+        if (XrmTranslator.hasAllowedRole === false) {
+            return;
+        }
+
         var target = String(event.target || "");
 
         if (target === "about") {
@@ -2268,6 +2362,10 @@
                 { field: 'schemaName', text: 'Schema Name', size: XrmTranslator.defaultSchemaNameSize, sortable: true, resizable: true, frozen: true }
             ],
             onSave: function (event) {
+                if (XrmTranslator.hasAllowedRole === false) {
+                    return;
+                }
+
                 var grid = XrmTranslator.GetGrid();
                 var normalizedRecords = XrmTranslator.NormalizeGridChanges();
                 for (var i = 0; i < normalizedRecords.length; i++) {
@@ -2531,7 +2629,16 @@
         records.push(summary);
     };
 
-    XrmTranslator.Initialize = function() {
+    XrmTranslator.Initialize = function(hasAllowedRole) {
+        XrmTranslator.hasAllowedRole = hasAllowedRole === true;
+
+        if (XrmTranslator.hasAllowedRole === false) {
+            InitializeGrid();
+            XrmTranslator.UnlockGrid();
+            DisableAllToolbarItems();
+            return;
+        }
+
         XrmTranslator.GetBaseLanguage()
         .then(function() {
             InitializeGrid();
@@ -2594,5 +2701,3 @@
         });
     }
 } (window.XrmTranslator = window.XrmTranslator || {}));
-
-

@@ -7,7 +7,7 @@
     1. Removes elements with languagecode attribute != BaseLanguageCode.
     2. Removes elements with LCID attribute != BaseLanguageCode.
     3. Keeps only BaseLanguageCode in <Languages>.
-    4. Replaces the About dialog placeholder with the provided Version.
+    4. Replaces the About dialog placeholder with the provided Version, or verifies it is already stamped.
 
     The version is intentionally passed in by the export workflow. Do not read it from Solution.xml.
 #>
@@ -83,20 +83,33 @@ Write-Host ""
 Write-Host "Done. Cleaned $totalCleaned file(s). Only base language ($baseLanguageCodeText) remains."
 
 $versionPlaceholder = "Version: x.xx.xx.xx"
+$versionText = "Version: $Version"
 $webResourcesPath = Join-Path $Path "WebResources"
-$versionFiles = Get-ChildItem -LiteralPath $webResourcesPath -Recurse -Filter "*.js" |
-    Where-Object {
-        $content = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
-        $content.Contains($versionPlaceholder)
-    }
+$jsFiles = Get-ChildItem -LiteralPath $webResourcesPath -Recurse -Filter "*.js"
+$versionFiles = @()
+$alreadyStampedFiles = @()
 
-if (-not $versionFiles -or $versionFiles.Count -eq 0) {
-    throw "About dialog version placeholder '$versionPlaceholder' not found under: $webResourcesPath"
+foreach ($file in $jsFiles) {
+    $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
+    if ($content.Contains($versionPlaceholder)) {
+        $versionFiles += $file
+    }
+    elseif ($content.Contains($versionText)) {
+        $alreadyStampedFiles += $file
+    }
+}
+
+if ($versionFiles.Count -eq 0 -and $alreadyStampedFiles.Count -eq 0) {
+    throw "About dialog version '$versionPlaceholder' or '$versionText' not found under: $webResourcesPath"
 }
 
 foreach ($file in $versionFiles) {
     $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
-    $content = $content.Replace($versionPlaceholder, "Version: $Version")
+    $content = $content.Replace($versionPlaceholder, $versionText)
     [System.IO.File]::WriteAllText($file.FullName, $content, (New-Object System.Text.UTF8Encoding($false)))
     Write-Host "  Stamped version $Version in: $($file.FullName)"
+}
+
+foreach ($file in $alreadyStampedFiles) {
+    Write-Host "  Version $Version already stamped in: $($file.FullName)"
 }

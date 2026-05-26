@@ -21,6 +21,8 @@ CLAUDE.md
 .github/copilot-instructions.md
 .github/instructions/
 .github/prompts/
+AGENTS.md
+.agents/
 
 # Solution export working folders
 solutions/1.before/
