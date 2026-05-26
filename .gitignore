@@ -1,0 +1,29 @@
+node_modules/
+Publish/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+.mcp.json
+*.local
+*.local.*
+
+# AI assistant workspace files
+CLAUDE.md
+.claude/
+.codex/
+.cursor/
+.cursorrules
+.continue/
+.aider*
+.windsurf/
+.github/copilot-instructions.md
+.github/instructions/
+.github/prompts/
+
+# Solution export working folders
+solutions/1.before/
+solutions/2.unpack/
+solutions/3.after/
+release/*/unpack/

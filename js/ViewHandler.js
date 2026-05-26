@@ -1,0 +1,199 @@
+(function (ViewHandler, undefined) {
+    "use strict";
+
+    function ApplyChanges(changes, labels) {
+        for (var change in changes) {
+            if (!changes.hasOwnProperty(change)) {
+                continue;
+            }
+
+            // Skip empty labels
+            if (!changes[change]) {
+                continue;
+            }
+
+            for (var i = 0; i < labels.length; i++) {
+                var label = labels[i];
+
+                if (label.LanguageCode == change) {
+                    label.Label = changes[change];
+                    label.HasChanged = true;
+
+                    break;
+                }
+
+                // Did not find label for this language
+                if (i === labels.length - 1) {
+                    labels.push({ LanguageCode: change, Label: changes[change] })
+                }
+            }
+        }
+    }
+
+    function GetUpdates() {
+        var records = XrmTranslator.GetGrid().records;
+
+        var updates = [];
+
+        for (var i = 0; i < records.length; i++) {
+            var record = records[i];
+
+            if (record.w2ui && record.w2ui.changes) {
+                var view = XrmTranslator.GetAttributeByProperty("recid", record.recid);
+                var labels = view.labels.Label.LocalizedLabels;
+
+                var changes = record.w2ui.changes;
+
+                ApplyChanges(changes, labels);
+                updates.push(view);
+            }
+        }
+
+        return updates;
+    }
+
+    var viewTypeMap = {
+        0: "Public",
+        1: "Advanced Find",
+        2: "Associated",
+        4: "Quick Find",
+        16: "Address Book",
+        32: "Sub Grid",
+        64: "Lookup",
+        128: "Offline Filters",
+        256: "Offline Template",
+        1024: "Saved Filters",
+        2048: "Multi-entity Lookup",
+        4096: "Custom Defined",
+        8192: "Outlook",
+        32768: "Service Appointment Book",
+        131072: "Power BI",
+        262144: "Modern Search",
+        1048576: "Copilot"
+    };
+
+    function FillTable () {
+        var grid = XrmTranslator.GetGrid();
+        grid.clear();
+
+        var records = [];
+
+        for (var i = 0; i < XrmTranslator.metadata.length; i++) {
+            var view = XrmTranslator.metadata[i];
+
+            var displayNames = view.labels.Label.LocalizedLabels;
+
+            if (!displayNames || displayNames.length === 0) {
+                continue;
+            }
+
+            var record = {
+               recid: view.recid,
+               schemaName: viewTypeMap[view.querytype] || ("Type " + view.querytype)
+            };
+
+            for (var j = 0; j < displayNames.length; j++) {
+                var displayName = displayNames[j];
+
+                record[displayName.LanguageCode.toString()] = displayName.Label;
+            }
+
+            records.push(record);
+        }
+
+        XrmTranslator.AddSummary(records);
+        grid.add(records);
+        grid.unlock();
+    }
+
+    ViewHandler.Load = function() {
+        var entityName = XrmTranslator.GetEntity();
+
+        var entityMetadataId = XrmTranslator.entityMetadata[entityName];
+
+        var queryRequest = {
+            entityName: "savedquery",
+            queryParams: "?$filter=returnedtypecode eq '" + entityName.toLowerCase() + "' and iscustomizable/Value eq true&$orderby=savedqueryid asc"
+        };
+
+        var languages = XrmTranslator.installedLanguages.LocaleIds;
+        var initialLanguage = XrmTranslator.userSettings.uilanguageid;
+
+        return WebApiClient.Retrieve(queryRequest)
+            .then(function(response) {
+                var views = response.value;
+                var requests = [];
+
+                for (var i = 0; i < views.length; i++) {
+                    var view = views[i];
+
+                    var retrieveLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
+                        .with({
+                            urlParams: {
+                                EntityMoniker: "{'@odata.id':'savedqueries(" + view.savedqueryid + ")'}",
+                                AttributeName: "'name'",
+                                IncludeUnpublished: true
+                            }
+                        })
+
+                    var prop = WebApiClient.Promise.props({
+                        recid: view.savedqueryid,
+                        querytype: view.querytype,
+                        labels: WebApiClient.Execute(retrieveLabelsRequest)
+                    });
+
+                    requests.push(prop);
+                }
+
+                return WebApiClient.Promise.all(requests);
+            })
+            .then(function(responses) {
+                    var views = responses;
+                    XrmTranslator.metadata = views;
+
+                    FillTable();
+            })
+            .catch(XrmTranslator.errorHandler);
+    }
+
+    ViewHandler.SaveOnly = function() {
+        var updates = GetUpdates();
+        return XrmTranslator.ExecuteChangeSetBatches(updates, {
+            progressLabel: "Saving view batches",
+            batchNamePrefix: "batch_setviewlabels",
+            changeSetNamePrefix: "changeset_setviewlabels",
+            buildRequest: function(update) {
+                return new WebApiClient.BatchRequest({
+                    method: "POST",
+                    url: WebApiClient.GetApiUrl() + "SetLocLabels",
+                    payload: {
+                        Labels: update.labels.Label.LocalizedLabels,
+                        EntityMoniker: {
+                            "@odata.type": "Microsoft.Dynamics.CRM.savedquery",
+                            savedqueryid: update.recid
+                        },
+                        AttributeName: "name"
+                    }
+                });
+            }
+        })
+            .then(function () {
+                return XrmTranslator.AddToSolution(updates.map(function(u) { return u.recid; }), XrmTranslator.ComponentType.SavedQuery);
+            });
+    }
+
+    ViewHandler.Save = function() {
+        XrmTranslator.LockGrid("Saving");
+
+        return ViewHandler.SaveOnly()
+            .then(function () {
+                XrmTranslator.LockGrid("Publishing");
+                return XrmTranslator.Publish();
+            })
+            .then(function () {
+                XrmTranslator.LockGrid("Reloading");
+                return ViewHandler.Load();
+            })
+            .catch(XrmTranslator.errorHandler);
+    }
+} (window.ViewHandler = window.ViewHandler || {}));
