@@ -61,3 +61,20 @@ Always trust the selected `release/<version>/dataverse/solutions/DataverseLabelT
 Do not export the Dataverse solution.
 Output must be `release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`.
 Do not upload to Azure.
+
+### /test-package-deployer
+Prepare the local Package Deployer cache for manual `pac tool pd` testing.
+Run `scripts/test-package-deployer.ps1`; if the user mentions a version, pass `-SolutionVersion <version>`.
+The script must find the active `%LOCALAPPDATA%\Microsoft\PowerPlatform\PD\<version>\tools` folder itself, copy `release/<version>/appsource/src/DataverseLabelTranslatorPackage` into that folder, and verify `PackageDeployer.exe` exists before copying.
+Do not export the Dataverse solution.
+Do not launch Package Deployer.
+After the script succeeds, tell the user to run `pac tool pd`.
+
+### /deploy-azure
+Upload the final AppSource all-in-one ZIP to Azure Blob Storage and generate the Partner Center SAS details.
+Run `scripts/deploy-azure.ps1`; if the user mentions a version, pass `-SolutionVersion <version>`.
+The script must verify Azure CLI is logged in as `sales@d365iconsandtooltips.com`, verify storage account `ple` exists in resource group `SHARED`, create private container `dataverselabeltranslator` if missing, upload only `release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`, and write sensitive Partner Center details to `release/<version>/appsource/zip/release.md`.
+Do not export the Dataverse solution.
+Do not run Release AppSource unless the user separately asks.
+Do not paste the SAS URL into chat.
+Do not commit `release.md`.

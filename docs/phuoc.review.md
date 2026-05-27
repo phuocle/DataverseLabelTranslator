@@ -6,16 +6,16 @@ File nay tach rieng cac viec anh Phuoc can tu review truoc khi upload final ZIP 
 
 ## 1. Final ZIP
 
-- [ ] Xac nhan final ZIP ton tai:
+- [x] Xac nhan final ZIP ton tai:
 
 ```text
 D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
 
-- [ ] Chi upload file ZIP all-in-one nay len Azure Blob.
-- [ ] Khong upload `release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip`.
-- [ ] Khong upload nested `DataverseLabelTranslatorPackage.zip`.
-- [ ] Mo final ZIP va kiem tra root co dung 5 file:
+- [x] Chi upload file ZIP all-in-one nay len Azure Blob.
+- [x] Khong upload `release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip`.
+- [x] Khong upload nested `DataverseLabelTranslatorPackage.zip`.
+- [x] Mo final ZIP va kiem tra root co dung 5 file:
 
 ```text
 DataverseLabelTranslatorPackage.zip
@@ -25,26 +25,26 @@ TermsOfUse.html
 logo32x32.png
 ```
 
-- [ ] Mo nested `DataverseLabelTranslatorPackage.zip` va kiem tra co `PkgFolder`.
-- [ ] Kiem tra `PkgFolder\ImportConfig.xml` tro dung `DataverseLabelTranslator_managed.zip`.
-- [ ] Kiem tra wizard install page: `PkgFolder\Content\en-us\WelcomeHtml\HTML\Default.htm`.
-- [ ] Kiem tra wizard finish page: `PkgFolder\Content\en-us\EndHtml\HTML\Default.htm`.
-- [ ] Wizard pages khong con text `Template Package Title Here`.
-- [ ] Wizard pages khong con text `Icons and Tooltips`.
+- [x] Mo nested `DataverseLabelTranslatorPackage.zip` va kiem tra co `PkgFolder`.
+- [x] Kiem tra `PkgFolder\ImportConfig.xml` tro dung `DataverseLabelTranslator_managed.zip`.
+- [x] Kiem tra wizard install page: `PkgFolder\Content\en-us\WelcomeHtml\HTML\Default.htm`.
+- [x] Kiem tra wizard finish page: `PkgFolder\Content\en-us\EndHtml\HTML\Default.htm`.
+- [x] Wizard pages khong con text `Template Package Title Here`.
+- [x] Wizard pages khong con text `Icons and Tooltips`.
 
 ## 2. Managed Solution Source
 
-- [ ] Xac nhan file managed solution do anh Phuoc control la latest:
+- [x] Xac nhan file managed solution do anh Phuoc control la latest:
 
 ```text
 D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
-- [ ] Xac nhan khong can export lai solution trong luong `Release AppSource`.
-- [ ] Xac nhan version `1.0.0.0` la version muon submit.
-- [ ] Xac nhan solution khong chua PropertyEditor resources.
-- [ ] Test install package vao clean/test environment.
-- [ ] Xac nhan model-driven app `Dataverse Label Translator` mo duoc sau install.
+- [x] Xac nhan khong can export lai solution trong luong `Release AppSource`.
+- [x] Xac nhan version `1.0.0.0` la version muon submit.
+- [x] Xac nhan solution khong chua PropertyEditor resources.
+- [x] Test install package vao clean/test environment.
+- [x] Xac nhan model-driven app `Dataverse Label Translator` mo duoc sau install.
 
 ## 3. Listing Decisions
 

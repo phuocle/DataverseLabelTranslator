@@ -423,6 +423,7 @@ function Build-PackageDeployerDll {
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CrmSdk.XrmTooling.PackageDeployment.Wpf" Version="$PackageDeployerNuGetVersion" PrivateAssets="all" />
+    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="Microsoft.Xrm.Tooling.PackageDeployment.CrmPackageExtentionBase">
       <HintPath>`$(NuGetPackageRoot)\microsoft.crmsdk.xrmtooling.packagedeployment.wpf\$PackageDeployerNuGetVersion\tools\Microsoft.Xrm.Tooling.PackageDeployment.CrmPackageExtentionBase.dll</HintPath>
       <Private>false</Private>
@@ -440,11 +441,13 @@ function Build-PackageDeployerDll {
 </Project>
 "@
 
-    $class = @'
+$class = @'
+using System.ComponentModel.Composition;
 using Microsoft.Xrm.Tooling.PackageDeployment.CrmPackageExtentionBase;
 
 namespace PL.DataverseLabelTranslator.PackageDeployment
 {
+    [Export(typeof(IImportExtensions))]
     public class PackageImportExtension : ImportExtension
     {
         public override bool BeforeImportStage()

@@ -1,7 +1,9 @@
+using System.ComponentModel.Composition;
 using Microsoft.Xrm.Tooling.PackageDeployment.CrmPackageExtentionBase;
 
 namespace PL.DataverseLabelTranslator.PackageDeployment
 {
+    [Export(typeof(IImportExtensions))]
     public class PackageImportExtension : ImportExtension
     {
         public override bool BeforeImportStage()

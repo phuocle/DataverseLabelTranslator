@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CrmSdk.XrmTooling.PackageDeployment.Wpf" Version="9.1.0.182" PrivateAssets="all" />
+    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="Microsoft.Xrm.Tooling.PackageDeployment.CrmPackageExtentionBase">
       <HintPath>$(NuGetPackageRoot)\microsoft.crmsdk.xrmtooling.packagedeployment.wpf\9.1.0.182\tools\Microsoft.Xrm.Tooling.PackageDeployment.CrmPackageExtentionBase.dll</HintPath>
       <Private>false</Private>

@@ -30,5 +30,6 @@ solutions/2.unpack/
 solutions/3.after/
 release/*/dataverse/unpack/
 release/*/appsource/zip/url.txt
+release/*/appsource/zip/release.md
 release/*/appsource/package-project/**/bin/
 release/*/appsource/package-project/**/obj/
