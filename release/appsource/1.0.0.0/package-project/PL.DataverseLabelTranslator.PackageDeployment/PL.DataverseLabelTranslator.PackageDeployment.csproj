@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>PL.DataverseLabelTranslator.PackageDeployment</AssemblyName>
+    <RootNamespace>PL.DataverseLabelTranslator.PackageDeployment</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CrmSdk.XrmTooling.PackageDeployment.Wpf" Version="9.1.0.182" PrivateAssets="all" />
+    <Reference Include="Microsoft.Xrm.Tooling.PackageDeployment.CrmPackageExtentionBase">
+      <HintPath>$(NuGetPackageRoot)\microsoft.crmsdk.xrmtooling.packagedeployment.wpf\9.1.0.182\tools\Microsoft.Xrm.Tooling.PackageDeployment.CrmPackageExtentionBase.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xrm.Tooling.Connector">
+      <HintPath>$(NuGetPackageRoot)\microsoft.crmsdk.xrmtooling.packagedeployment.wpf\9.1.0.182\tools\Microsoft.Xrm.Tooling.Connector.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xrm.Sdk">
+      <HintPath>$(NuGetPackageRoot)\microsoft.crmsdk.xrmtooling.packagedeployment.wpf\9.1.0.182\tools\Microsoft.Xrm.Sdk.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+</Project>

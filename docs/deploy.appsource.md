@@ -18,6 +18,8 @@ Repo hiện đã có release solution:
 
 Những file trên **chưa đủ để submit AppSource**. Microsoft yêu cầu tạo **Marketplace package** bọc managed solution bằng Package Deployer package, kèm `input.xml`, license terms HTML, icon PNG và content-type metadata. Kết quả cuối cùng phải là **một file ZIP all-in-one** chứa toàn bộ các artifact Marketplace package; file này mới là file pick để upload lên Azure Blob Storage và lấy SAS URL cho Partner Center.
 
+Versioning rule cho `Release AppSource`: nếu user mention version rõ, ví dụ `1.1.0.0`, workflow dùng đúng `release\1.1.0.0\DataverseLabelTranslator_managed.zip` và tạo output mới dưới `release\appsource\1.1.0.0\`. Nếu user không mention version, script tự chọn latest bằng cách scan `release\<version>\DataverseLabelTranslator_managed.zip` và lấy version số lớn nhất. Nếu chưa có release folder nào, fallback là `1.0.0.0`. Mỗi AppSource version là folder riêng; build version mới không được sửa/xóa `release\appsource\1.0.0.0` hoặc bất kỳ version cũ nào.
+
 Quyết định đã chốt: publish dạng **Get it now (free)**. Không dùng `Contact me`, không bán paid plan, không bật ISV app license management trong giai đoạn AppSource này. App sẽ được định vị là free admin utility; mọi nội dung listing, package, certification notes và support flow phải nhất quán với hướng này.
 
 Baseline đã có: dùng lại Partner Center account/publisher hiện có của bạn. Publisher `PhuocLe` đã có offer public/certified trên Microsoft Marketplace là [Icons and Tooltips with D365](https://marketplace.microsoft.com/en-us/product/dynamics365/phuocle.d365-icons-and-tooltips), và bạn đã có trạng thái ISV/certification thành công. Điều này thay đổi trọng tâm kế hoạch: không cần coi Partner Center enrollment, publisher verification hay việc hiểu certification flow là blocker ban đầu nữa. Cần tái sử dụng playbook, contact profile, support/legal URLs, package/certification notes pattern và kinh nghiệm xử lý certification từ offer đã thành công đó. Dataverse Label Translator đã chốt 100% là **Get it now (free)**; không có nhánh paid/contact/license-managed trong kế hoạch này.
@@ -56,7 +58,7 @@ Hai file này nên được xem là source document hiện tại cho AppSource d
 2. Listing option đã chốt: **Get it now (free)**.
 3. Các hướng `Contact me`, `Buy now`, `Get it now with license management`, paid plan, trial conversion và marketplace purchase test đều nằm ngoài phạm vi kế hoạch này.
 4. Chọn applicable products: tối thiểu nên có **Power Apps**; có thể thêm Sales/Customer Service/Field Service nếu marketing định vị rõ app dùng cho các Dynamics 365 app đó.
-5. AI-assisted translation là **core feature** của listing, không ghi như optional/advanced feature. App cần được định vị là công cụ dịch label/metadata có AI-assisted translation, dictionary và manual review trước khi save. Trong Partner Center nên đánh giá chọn category/tag **AI Apps and Agents** nếu form offer cho phép, vì AI là một phần chính của value proposition.
+5. AI-assisted translation là **core feature** của listing, không ghi như optional/advanced feature. App cần được định vị là công cụ dịch label/metadata có AI-assisted translation, dictionary và manual review trước khi save. Trong Partner Center nên đánh giá chọn category/tag **AI Apps and Agents** nếu form offer cho phép, vì AI là một phần chính của value proposition. Khi tạo offer thật, cần verify taxonomy thực tế trên tab Properties vì offer type "Dynamics 365 apps on Dataverse and Power Apps" có thể không hiện cùng category như Azure Marketplace.
 6. Vì AI là core feature, certification package phải làm cho reviewer test được AI path:
    - Cung cấp rõ provider được dùng để test certification, ưu tiên Azure Foundry hoặc OpenAI-compatible endpoint do publisher kiểm soát.
    - Cung cấp endpoint/model/API key test ngắn hạn trong **Notes for certification** hoặc kênh Microsoft yêu cầu, không hard-code trong solution.
@@ -91,7 +93,7 @@ Quyết định cố định cho offer mới:
 
 ## Giai đoạn 2 - Product readiness trong solution
 
-Microsoft yêu cầu managed solution cho app. Repo đã có managed solution `release/1.0.0.0/DataverseLabelTranslator_managed.zip`, nhưng trước khi đóng gói nên lặp lại release từ dev environment mới nhất bằng quy trình `/export-solution`.
+Microsoft yêu cầu managed solution cho app. Repo đã có managed solution `release/1.0.0.0/DataverseLabelTranslator_managed.zip`. Trong workflow `Release AppSource`, file managed ZIP trong `release\<version>\` là source of truth do anh Phước/AP kiểm soát; không chạy export lại và không kiểm freshness với Dataverse. Khi muốn release version mới, ví dụ `1.1.0.0`, trước tiên đặt managed solution mới vào `release\1.1.0.0\DataverseLabelTranslator_managed.zip`, sau đó chạy `Release AppSource` cho version đó.
 
 Checklist riêng cho project này:
 
@@ -132,6 +134,12 @@ Partner Center yêu cầu hoặc nên có:
 - Screenshots: ít nhất 1, tối đa 5, kích thước 1280 x 720 PNG, có caption.
 - Optional video demo: tối đa 4 video URL + thumbnail PNG 1280 x 720. Có thể reuse cách tổ chức `Videos/` từ app Icons, nhưng video phải quay workflow dịch label/AI/dictionary của app mới.
 - Supplemental content PDF: key usage scenarios/E2E functional journey cho certification team.
+
+Phân loại ảnh cần làm:
+
+- AI/tool có thể tạo các asset không phải screenshot thật: `logo32x32.png`, `logo-large.png`, homepage hero, AppSource package flow, AI privacy flow, Package Deployer wizard visual, video thumbnail và các GIF trang trí cho wizard CSS.
+- Anh Phước phải tự chụp screenshot thật từ environment sạch: main translation grid, AI Settings, Auto Translate proposal/review, Dictionary, Save/result, Package Deployer install nếu dùng làm evidence. Không dùng ảnh generated để giả lập product screenshot.
+- Screenshot đưa lên Partner Center nên là PNG 1280 x 720, không lộ API key, SAS URL, tenant/internal URL, user email hoặc secret.
 
 Nội dung E2E functional document nên gồm:
 
@@ -229,11 +237,11 @@ Marketplace package staging root:
 
 Final upload artifact:
 
-- `release/appsource/1.0.0.0/zip/DataverseLabelTranslator.v.1.0.0.zip`
+- `release/appsource/<solution-version>/zip/DataverseLabelTranslator.v.<package-version>.zip`
 - Đây là **file ZIP all-in-one duy nhất** cần upload lên Azure Blob Storage.
 - File này phải chứa trực tiếp các file `DataverseLabelTranslatorPackage.zip`, `[Content_Types].xml`, `input.xml`, `logo32x32.png`, `TermsOfUse.html` ở root của ZIP. Không để thêm một folder cha như `DataverseLabelTranslator.v.1.0.0/` bên trong ZIP, vì Microsoft validate package structure rất chặt.
 - `DataverseLabelTranslatorPackage.zip` bên trong final ZIP là artifact trung gian Package Deployer, không phải file upload trực tiếp lên Azure Blob.
-- Lưu SAS URL sau upload vào `release/appsource/1.0.0.0/zip/url.txt` để tracking giống app Icons, nhưng không commit file này nếu nó chứa query string SAS thật.
+- Lưu SAS URL sau upload vào `release/appsource/<solution-version>/zip/url.txt` để tracking giống app Icons, nhưng không commit file này nếu nó chứa query string SAS thật.
 
 `input.xml` cần có những trường chính:
 
@@ -470,6 +478,7 @@ Không upload các file sau lên Azure Blob thay cho final ZIP:
 - `release/1.0.0.0/DataverseLabelTranslator_managed.zip`: chỉ là managed solution.
 - `release/appsource/1.0.0.0/src/DataverseLabelTranslator.v.1.0.0/DataverseLabelTranslatorPackage.zip`: chỉ là Package Deployer package nested bên trong final ZIP.
 - Folder `release/appsource/1.0.0.0/src/DataverseLabelTranslator.v.1.0.0/`: chỉ là staging folder dùng để zip ra final artifact.
+- `release/appsource/1.0.0.0/assets/terms.html`: chỉ là draft/review copy của `TermsOfUse.html`, không đưa vào final Marketplace ZIP.
 
 ## Câu hỏi còn cần bạn review/chốt
 

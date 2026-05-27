@@ -6,26 +6,27 @@ Publish/
 .env.*
 !.env.example
 .mcp.json
+.mcp.*.json
 *.local
 *.local.*
 
-# AI assistant workspace files
-CLAUDE.md
-.claude/
-.codex/
-.cursor/
-.cursorrules
-.continue/
-.aider*
-.windsurf/
-.github/copilot-instructions.md
-.github/instructions/
-.github/prompts/
-AGENTS.md
-.agents/
+# Track assistant folders, but never track local credentials/secrets
+.codex/config.toml
+.codex/config.local.toml
+.codex/secrets.*
+.claude/settings.local.json
+.claude/*.local
+.claude/*.local.*
+.agents/**/*.local
+.agents/**/*.local.*
+.github/**/*.local
+.github/**/*.local.*
 
 # Solution export working folders
 solutions/1.before/
 solutions/2.unpack/
 solutions/3.after/
 release/*/unpack/
+release/appsource/*/zip/url.txt
+release/appsource/*/package-project/**/bin/
+release/appsource/*/package-project/**/obj/

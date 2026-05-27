@@ -1,0 +1,12 @@
+[mcp_servers.devkit-quick-edit]
+args = [
+    "mcp",
+    "devkit-claude-quick-edit",
+]
+command = "devkit"
+
+[mcp_servers.devkit-quick-edit.env]
+DEVKIT_AUTH_TYPE = "ClientSecret"
+DEVKIT_CLIENT_ID = "<client-id>"
+DEVKIT_CLIENT_SECRET = "<client-secret>"
+DEVKIT_URL = "https://<environment>.crm.dynamics.com"

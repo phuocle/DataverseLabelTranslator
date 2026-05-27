@@ -1,0 +1,33 @@
+body {
+  margin: 0;
+  color: #182033;
+  background: #f4f7fb;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+.page {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 34px 42px;
+}
+.panel {
+  max-width: 820px;
+  padding: 28px 32px;
+  background: #fff;
+  border: 1px solid #d6e2ef;
+}
+h1 {
+  margin: 0 0 16px;
+  color: #173b73;
+  font-size: 28px;
+  font-weight: 600;
+}
+p, li {
+  font-size: 15px;
+  line-height: 1.55;
+}
+.notice {
+  margin-top: 22px;
+  padding: 14px 16px;
+  border-left: 4px solid #1c75bc;
+  background: #eaf6ff;
+}

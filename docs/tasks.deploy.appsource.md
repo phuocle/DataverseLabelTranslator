@@ -2,11 +2,20 @@
 
 Ngày 2026-05-27. File này là backlog triển khai AppSource theo thứ tự để AI có thể làm từng task. File kế hoạch nền: `docs/deploy.appsource.md`.
 
-Mục tiêu cuối: tạo được file ZIP all-in-one up to date với file managed solution do user kiểm soát và sẵn sàng upload lên Azure Blob:
+Mục tiêu cuối: tạo được file ZIP all-in-one up to date với file managed solution do user kiểm soát và sẵn sàng upload lên Azure Blob. Với version hiện tại, output là:
 
 ```text
 D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
+
+Version rule cho các release sau:
+
+- Nếu user/prompt mention version rõ, ví dụ `1.1.0.0`, `Release AppSource` phải dùng đúng version đó.
+- Nếu user không mention version, script phải tự chọn latest bằng cách scan folder `release\<version>\DataverseLabelTranslator_managed.zip` và lấy version số lớn nhất.
+- Nếu không tìm được managed release folder nào, default/fallback là `1.0.0.0`.
+- Marketplace package version lấy 3 số đầu của solution version: `1.0.0.0 -> 1.0.0`, `1.1.0.0 -> 1.1.0`.
+- Mỗi version AppSource nằm trong folder riêng: `release\appsource\<solution-version>\`.
+- Khi build `1.1.0.0`, không xóa/sửa `release\appsource\1.0.0.0`; script chỉ clean `src` và `zip` của selected version.
 
 Quyết định đã chốt, không hỏi lại:
 
@@ -20,7 +29,7 @@ Quyết định đã chốt, không hỏi lại:
 
 Nguyên tắc an toàn:
 
-- Với `Release AppSource`, luôn trust file managed solution hiện có tại `D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_managed.zip` là bản latest/newest do user kiểm soát. Không kiểm Dataverse freshness, không đọc version từ Dataverse, không chạy PAC export, không gợi ý chạy export.
+- Với `Release AppSource`, luôn trust file managed solution của selected version tại `D:\github\DataverseLabelTranslator\release\<version>\DataverseLabelTranslator_managed.zip` là bản latest/newest do user kiểm soát. Không kiểm Dataverse freshness, không đọc version từ Dataverse, không chạy PAC export, không gợi ý chạy export.
 - Không chạy `/export-solution` hoặc skill `export-solution` trong bất kỳ bước `release-appsource` nào.
 - Không upload Azure Blob trong repo task trừ khi user yêu cầu rõ.
 - Không commit SAS URL thật. `zip/url.txt` chỉ được tạo local/private và phải bị ignore hoặc không stage.
@@ -136,31 +145,31 @@ Mục tiêu: mỗi lần gọi `Release AppSource`, output cuối luôn là fina
 Nội dung cần có trong `SKILL.md`:
 
 ```text
-Current Release Version: 1.0.0.0
-Current Marketplace Package Version: 1.0.0
+Selected Release Version: inferred latest or explicit user version, default fallback `1.0.0.0`
+Selected Marketplace Package Version: first three parts of selected release version, e.g. `1.1.0.0 -> 1.1.0`
 Final upload ZIP:
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+D:\github\DataverseLabelTranslator\release\appsource\<solution-version>\zip\DataverseLabelTranslator.v.<package-version>.zip
 ```
 
 Skill phải cam kết:
 
-1. Consume existing managed solution as the source of truth. Treat this exact file as latest/newest without checking Dataverse:
+1. Consume existing managed solution for the selected version as the source of truth. Treat this exact file as latest/newest without checking Dataverse:
 
 ```text
-D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\release\<solution-version>\DataverseLabelTranslator_managed.zip
 ```
 
 2. Rebuild all AppSource staging folders for that version.
 3. Rebuild nested Package Deployer ZIP:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslator.v.1.0.0\DataverseLabelTranslatorPackage.zip
+release\appsource\<solution-version>\src\DataverseLabelTranslator.v.<package-version>\DataverseLabelTranslatorPackage.zip
 ```
 
 4. Rebuild final all-in-one upload ZIP:
 
 ```text
-release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+release\appsource\<solution-version>\zip\DataverseLabelTranslator.v.<package-version>.zip
 ```
 
 5. Verify final ZIP structure.
@@ -172,7 +181,8 @@ Acceptance criteria:
 - `SKILL.md` has an explicit output contract.
 - It states that final ZIP is the file to upload to Azure Storage.
 - It states that `DataverseLabelTranslatorPackage.zip` is nested and must not be uploaded directly.
-- It states that `release\1.0.0.0\DataverseLabelTranslator_managed.zip` is trusted blindly as latest by design.
+- It states that `release\<solution-version>\DataverseLabelTranslator_managed.zip` is trusted blindly as latest by design.
+- It states that old AppSource version folders must not be changed when a newer version is selected.
 
 ### Task 1.3 - Viết command workflow trong skill
 
@@ -192,12 +202,12 @@ Expected:
 D:\github\DataverseLabelTranslator
 ```
 
-2. Set hard-coded version variables:
+2. Resolve version variables. If the user mentioned a version, pass it to the script. If not, let the script infer latest from `release\<version>\DataverseLabelTranslator_managed.zip`.
 
 ```powershell
 $RepoRoot = "D:\github\DataverseLabelTranslator"
-$SolutionVersion = "1.0.0.0"
-$PackageVersion = "1.0.0"
+$SolutionVersion = "<explicit version, inferred latest, or fallback 1.0.0.0>"
+$PackageVersion = "<first three parts of SolutionVersion>"
 $ManagedSolutionZip = Join-Path $RepoRoot "release\$SolutionVersion\DataverseLabelTranslator_managed.zip"
 $AppSourceRoot = Join-Path $RepoRoot "release\appsource\$SolutionVersion"
 $PackageProjectDir = Join-Path $AppSourceRoot "src\DataverseLabelTranslatorPackage"
@@ -207,25 +217,31 @@ $NestedPackageZip = Join-Path $MarketplaceRoot "DataverseLabelTranslatorPackage.
 $FinalZip = Join-Path $ZipDir "DataverseLabelTranslator.v.$PackageVersion.zip"
 ```
 
-3. Validate source managed solution exists. If missing, stop with message:
+3. Validate source managed solution exists. If missing, stop with message using the selected version:
 
 ```text
 Missing managed solution source:
-D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\release\<solution-version>\DataverseLabelTranslator_managed.zip
 Release AppSource cannot continue without this user-controlled file.
 ```
 
-4. Recreate only:
+4. Recreate only selected-version staging folders:
 
 ```text
-release\appsource\1.0.0.0\src
-release\appsource\1.0.0.0\zip
+release\appsource\<solution-version>\src
+release\appsource\<solution-version>\zip
 ```
 
-Do not delete:
+Do not delete old AppSource version folders, for example when selected version is `1.1.0.0`, do not modify:
 
 ```text
-release\1.0.0.0
+release\appsource\1.0.0.0
+```
+
+Also do not delete:
+
+```text
+release\<solution-version>
 docs
 js
 css
@@ -286,11 +302,19 @@ D:\github\DataverseLabelTranslator\scripts\release-appsource.ps1
 ```powershell
 param(
     [string]$RepoRoot = "D:\github\DataverseLabelTranslator",
-    [string]$SolutionVersion = "1.0.0.0",
-    [string]$PackageVersion = "1.0.0",
+    [string]$SolutionVersion = "",
+    [string]$PackageVersion = "",
     [switch]$SkipPackageDeployerBuild
 )
 ```
+
+Version behavior:
+
+- Empty `$SolutionVersion` means infer latest from `release\<version>\DataverseLabelTranslator_managed.zip`.
+- Explicit `$SolutionVersion` means use that exact version and fail if its managed solution is missing.
+- Empty `$PackageVersion` means derive from `$SolutionVersion` by dropping the fourth part.
+- Script must only clean `release\appsource\$SolutionVersion\src` and `release\appsource\$SolutionVersion\zip`.
+- Script must never clean or rewrite `release\appsource\<other-version>`.
 
 3. Derived paths:
 
@@ -509,6 +533,8 @@ Missing Package Deployer DLL. Build PL.DataverseLabelTranslator.PackageDeploymen
 
 2. Stop before final ZIP if DLL is missing.
 
+Build `PL.DataverseLabelTranslator.PackageDeployment.dll` yêu cầu .NET SDK, .NET Framework 4.6.2 reference assemblies, và NuGet package `Microsoft.CrmSdk.XrmTooling.PackageDeployment.Wpf`. `scripts\release-appsource.ps1` phải build DLL tối thiểu nếu project chưa có sẵn; nếu build tooling thiếu thì fail rõ trước khi tạo final ZIP.
+
 Acceptance criteria:
 
 - DLL exists at:
@@ -725,6 +751,7 @@ PkgFolder/Content/en-us/EndHtml/Images/content_back.gif
 PkgFolder/Content/en-us/EndHtml/Images/footer_back.gif
 PkgFolder/Content/en-us/EndHtml/Images/header_back.gif
 ```
+Nếu `common.css` tham chiếu wizard images, phải include đủ 10 file GIF trong cả `WelcomeHtml\Images` và `EndHtml\Images`: `body_back.gif`, `content_back.gif`, `content_back_orig.gif`, `contentarea_back.gif`, `contentArea_back_home.gif`, `footer_back.gif`, `header_back.gif`, `nav_back.gif`, `nav_list_back.gif`, `top_item_selected_bg.gif`.
 
 Acceptance criteria:
 
@@ -949,7 +976,7 @@ Acceptance criteria:
 
 ### Task 4.1 - Capture screenshots
 
-Mục tiêu: create AppSource screenshots with correct dimensions.
+Mục tiêu: anh Phước chụp screenshot thật từ app/environment thật để dùng cho AppSource listing và certification evidence. AI/tool không được tạo ảnh generated để thay thế các screenshot này.
 
 Outputs:
 
@@ -973,6 +1000,60 @@ Acceptance criteria:
 - Screenshots exist.
 - Dimensions are correct.
 - No credentials shown.
+
+### Task 4.1b - Generate non-screenshot image assets
+
+Mục tiêu: tạo các ảnh mà AI/tool có thể tạo hợp lệ, không giả làm screenshot sản phẩm thật.
+
+Outputs:
+
+```text
+release\appsource\1.0.0.0\assets\logo32x32.png
+release\appsource\1.0.0.0\assets\logo-large.png
+release\appsource\1.0.0.0\assets\homepage-hero.png
+release\appsource\1.0.0.0\assets\appsource-package-flow.png
+release\appsource\1.0.0.0\assets\ai-privacy-flow.png
+release\appsource\1.0.0.0\assets\install-wizard-visual.png
+release\appsource\1.0.0.0\Videos\video-01-thumbnail.png
+```
+
+Wizard CSS/image assets generated inside nested Package Deployer package:
+
+```text
+PkgFolder\Content\en-us\WelcomeHtml\Images\body_back.gif
+PkgFolder\Content\en-us\WelcomeHtml\Images\content_back.gif
+PkgFolder\Content\en-us\WelcomeHtml\Images\content_back_orig.gif
+PkgFolder\Content\en-us\WelcomeHtml\Images\contentarea_back.gif
+PkgFolder\Content\en-us\WelcomeHtml\Images\contentArea_back_home.gif
+PkgFolder\Content\en-us\WelcomeHtml\Images\footer_back.gif
+PkgFolder\Content\en-us\WelcomeHtml\Images\header_back.gif
+PkgFolder\Content\en-us\WelcomeHtml\Images\nav_back.gif
+PkgFolder\Content\en-us\WelcomeHtml\Images\nav_list_back.gif
+PkgFolder\Content\en-us\WelcomeHtml\Images\top_item_selected_bg.gif
+PkgFolder\Content\en-us\EndHtml\Images\body_back.gif
+PkgFolder\Content\en-us\EndHtml\Images\content_back.gif
+PkgFolder\Content\en-us\EndHtml\Images\content_back_orig.gif
+PkgFolder\Content\en-us\EndHtml\Images\contentarea_back.gif
+PkgFolder\Content\en-us\EndHtml\Images\contentArea_back_home.gif
+PkgFolder\Content\en-us\EndHtml\Images\footer_back.gif
+PkgFolder\Content\en-us\EndHtml\Images\header_back.gif
+PkgFolder\Content\en-us\EndHtml\Images\nav_back.gif
+PkgFolder\Content\en-us\EndHtml\Images\nav_list_back.gif
+PkgFolder\Content\en-us\EndHtml\Images\top_item_selected_bg.gif
+```
+
+Rules:
+
+- Generated images may be used for homepage, diagrams, package flow, privacy explanation, logos, and optional video thumbnails.
+- Generated images must not be submitted as product screenshots if Partner Center expects real app screenshots.
+- Screenshots named `screenshot-01-*` through `screenshot-05-*` are owned by anh Phước and must come from the real app.
+- `scripts\release-appsource.ps1` should regenerate these non-screenshot assets every release.
+
+Acceptance criteria:
+
+- Generated image files exist after `Release AppSource`.
+- `Images\README.md` clearly says real screenshots must be captured by anh Phước.
+- No generated image contains secrets, SAS URLs, tenant IDs, or API keys.
 
 ### Task 4.2 - Create large logo
 
@@ -1212,6 +1293,7 @@ Current behavior:
 
 - Dictionary data is stored as `pl_/DataverseLabelTranslator/data/TranslationDictionary.xml`.
 - Data solution/resource may be customer-owned and remain after uninstall.
+Cần xác nhận rõ cơ chế lưu: nếu `TranslationDictionary.xml` được tạo như một Dataverse web resource nằm ngoài managed solution gốc do app tự tạo lúc runtime, nó có thể không bị xóa khi uninstall managed solution. Reviewer Microsoft có thể flag đây là residual data sau uninstall nếu không có hướng dẫn cleanup. Phải xác nhận bằng uninstall test trên clean environment trước khi submit.
 
 Options:
 
@@ -1462,6 +1544,8 @@ PkgFolder\Content\en-us\EndHtml\Images\
 - `input.xml` `LearnMoreLink` references `https://phuocle.github.io/DataverseLabelTranslator/`.
 - `release\appsource\1.0.0.0\assets\license.md` exists.
 - `release\appsource\1.0.0.0\assets\term.md` exists.
+- Generated non-screenshot images exist under `release\appsource\1.0.0.0\assets\`: `logo32x32.png`, `logo-large.png`, `homepage-hero.png`, `appsource-package-flow.png`, `ai-privacy-flow.png`, `install-wizard-visual.png`.
+- Real screenshot placeholders are documented under `release\appsource\1.0.0.0\Images\README.md`.
 - `TermsOfUse.html` says free and discloses AI/external provider usage.
 - `TermsOfUse.html` says the app does not send data to PhuocLe/publisher server.
 - `TermsOfUse.html` says AI settings may be stored in browser `localStorage`.
@@ -1477,6 +1561,8 @@ PkgFolder\Content\en-us\EndHtml\Images\
 ## Phase 9 - Checklist Cho Anh Phước Review Trước Khi Upload/Submit
 
 Mục tiêu: tách các việc AI có thể build/validate khỏi các quyết định và kiểm tra cuối cần anh Phước tự review. Không upload Azure Blob hoặc submit Partner Center trước khi checklist này được review.
+
+Standalone checklist ngắn hơn cho anh Phước review nằm ở `docs/phuoc.review.md`.
 
 ### 9.1 - Review final ZIP artifact
 
@@ -1559,6 +1645,11 @@ D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_mana
 - [ ] Review video demo nếu dùng, đảm bảo không lộ secrets.
 - [ ] Review logo `logo32x32.png` nhìn rõ ở 32 x 32.
 - [ ] Review large logo/listing logo không bị mờ.
+- [ ] Review generated homepage hero `assets\homepage-hero.png`.
+- [ ] Review generated package flow diagram `assets\appsource-package-flow.png`.
+- [ ] Review generated AI privacy flow diagram `assets\ai-privacy-flow.png`.
+- [ ] Review generated wizard visual `assets\install-wizard-visual.png`.
+- [ ] Confirm các ảnh generated này không được dùng để thay screenshot thật của app.
 
 ### 9.6 - Review documents
 
