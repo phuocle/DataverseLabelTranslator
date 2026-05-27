@@ -488,9 +488,10 @@ def build_e2e_document():
     create_test_table(doc, "TEST05", persona_5, problem_5, pain_points_5, user_goals_5, business_goals_5, steps_5, metrics_5)
     
     # Save E2E Document
-    output_dir = r"d:\github\DataverseLabelTranslator\appsource\Documents"
+    version = "1.0.0.0"
+    output_dir = rf"d:\github\DataverseLabelTranslator\release\{version}\appsource\Test"
     os.makedirs(output_dir, exist_ok=True)
-    file_path = os.path.join(output_dir, "E2E User Scenario.1.0.0.0.docx")
+    file_path = os.path.join(output_dir, f"E2E User Scenario.{version}.docx")
     doc.save(file_path)
     print(f"Document saved successfully at: {file_path}")
 

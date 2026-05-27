@@ -8,8 +8,8 @@ App này phù hợp nhất với offer type **Dynamics 365 apps on Dataverse and
 
 Repo hiện đã có release solution:
 
-- Managed solution: `release/1.0.0.0/DataverseLabelTranslator_managed.zip`
-- Unmanaged solution: `release/1.0.0.0/DataverseLabelTranslator.zip`
+- Managed solution: `release/1.0.0.0/dataverse/solutions/DataverseLabelTranslator_managed.zip`
+- Unmanaged solution: `release/1.0.0.0/dataverse/solutions/DataverseLabelTranslator.zip`
 - Solution unique name: `DataverseLabelTranslator`
 - Version: `1.0.0.0`
 - Publisher prefix: `pl`
@@ -18,7 +18,7 @@ Repo hiện đã có release solution:
 
 Những file trên **chưa đủ để submit AppSource**. Microsoft yêu cầu tạo **Marketplace package** bọc managed solution bằng Package Deployer package, kèm `input.xml`, license terms HTML, icon PNG và content-type metadata. Kết quả cuối cùng phải là **một file ZIP all-in-one** chứa toàn bộ các artifact Marketplace package; file này mới là file pick để upload lên Azure Blob Storage và lấy SAS URL cho Partner Center.
 
-Versioning rule cho `Release AppSource`: nếu user mention version rõ, ví dụ `1.1.0.0`, workflow dùng đúng `release\1.1.0.0\DataverseLabelTranslator_managed.zip` và tạo output mới dưới `release\appsource\1.1.0.0\`. Nếu user không mention version, script tự chọn latest bằng cách scan `release\<version>\DataverseLabelTranslator_managed.zip` và lấy version số lớn nhất. Nếu chưa có release folder nào, fallback là `1.0.0.0`. Mỗi AppSource version là folder riêng; build version mới không được sửa/xóa `release\appsource\1.0.0.0` hoặc bất kỳ version cũ nào.
+Versioning rule cho `Release AppSource`: nếu user mention version rõ, ví dụ `1.1.0.0`, workflow dùng đúng `release\1.1.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip` và tạo output mới dưới `release\1.1.0.0\appsource\`. Nếu user không mention version, script tự chọn latest bằng cách scan `release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip` và lấy version số lớn nhất. Nếu chưa có release folder nào, fallback là `1.0.0.0`. Mỗi version là một folder self-contained dưới `release\<version>`; version folder cũ là read-only theo quy ước release, nên build version mới không được sửa/xóa `release\1.0.0.0` hoặc bất kỳ version cũ nào.
 
 Quyết định đã chốt: publish dạng **Get it now (free)**. Không dùng `Contact me`, không bán paid plan, không bật ISV app license management trong giai đoạn AppSource này. App sẽ được định vị là free admin utility; mọi nội dung listing, package, certification notes và support flow phải nhất quán với hướng này.
 
@@ -26,12 +26,12 @@ Baseline đã có: dùng lại Partner Center account/publisher hiện có của
 
 Tham chiếu local đã đọc: `D:\azure\phuocle\d365icons\D365Icons\src2\AppSource`. Folder này cho thấy pattern đã pass certification cho app Icons: mỗi version có `src/` chứa package source, `zip/` chứa final upload ZIP và `url.txt`, `Documents/` chứa User Guide, `Test/` chứa E2E scenario PDF/DOCX và screenshots, `Videos/`/`Images/` cho listing media, và `DeployError/` lưu log/screenshot khi certification/deployment lỗi. Kế hoạch bên dưới đã được chỉnh theo pattern thực tế đó.
 
-Tham chiếu local hiện có của app này: `D:\github\DataverseLabelTranslator\appsource\Documents`. Folder này đang có hai draft document thật cho version `1.0.0.0`:
+Tài liệu AppSource của app này được giữ trực tiếp trong release folder theo version, không dùng folder `appsource\Documents` riêng nữa. Với version hiện tại, source/review documents nằm ở:
 
-- `UserGuide.1.0.0.0.docx`
-- `E2E User Scenario.1.0.0.0.docx`
+- `D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.docx`
+- `D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.docx`
 
-Hai file này nên được xem là source document hiện tại cho AppSource documentation. Luồng release nên copy/stage chúng vào `release\appsource\1.0.0.0\Documents\` và `release\appsource\1.0.0.0\Test\`, review placeholder hình ảnh, rồi render PDF cùng version. Không tạo lại User Guide/E2E từ trắng nếu không có lý do rõ ràng.
+Khi tạo version mới, ví dụ `1.0.1.0`, copy nguyên folder `release\1.0.0.0` thành `release\1.0.1.0`, thay managed solution trong `release\1.0.1.0\dataverse\solutions\`, rồi chạy `Release AppSource -SolutionVersion 1.0.1.0`. Script chỉ clean `appsource\src` và `appsource\zip` của selected version, giữ lại `appsource\Documents`, `appsource\Test`, `appsource\Images`, `appsource\Videos`, `appsource\assets`, và tự đổi tên các file review DOCX/PDF versioned trong selected folder nếu chưa có file đúng version.
 
 ## Nguồn Microsoft đã đối chiếu
 
@@ -93,7 +93,7 @@ Quyết định cố định cho offer mới:
 
 ## Giai đoạn 2 - Product readiness trong solution
 
-Microsoft yêu cầu managed solution cho app. Repo đã có managed solution `release/1.0.0.0/DataverseLabelTranslator_managed.zip`. Trong workflow `Release AppSource`, file managed ZIP trong `release\<version>\` là source of truth do anh Phước/AP kiểm soát; không chạy export lại và không kiểm freshness với Dataverse. Khi muốn release version mới, ví dụ `1.1.0.0`, trước tiên đặt managed solution mới vào `release\1.1.0.0\DataverseLabelTranslator_managed.zip`, sau đó chạy `Release AppSource` cho version đó.
+Microsoft yêu cầu managed solution cho app. Repo đã có managed solution `release/1.0.0.0/dataverse/solutions/DataverseLabelTranslator_managed.zip`. Trong workflow `Release AppSource`, file managed ZIP trong `release\<version>\dataverse\solutions\` là source of truth do anh Phước/AP kiểm soát; không chạy export lại và không kiểm freshness với Dataverse. Khi muốn release version mới, ví dụ `1.1.0.0`, trước tiên copy folder version cũ thành `release\1.1.0.0`, thay managed solution mới vào `release\1.1.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip`, sau đó chạy `Release AppSource` cho version đó.
 
 Checklist riêng cho project này:
 
@@ -155,72 +155,52 @@ Nội dung E2E functional document nên gồm:
 
 Microsoft không nhận trực tiếp `DataverseLabelTranslator_managed.zip` trên tab technical configuration. Cần tạo package theo cấu trúc Marketplace.
 
-Đề xuất thư mục build trong repo:
+Đề xuất thư mục build trong repo. Toàn bộ artifact của một version nằm trong `release/<version>/`; khi có version mới thì copy cả folder version cũ rồi đổi tên:
 
 ```text
-release/appsource/1.0.0.0/
-  src/
-    DataverseLabelTranslatorPackage/
-      [Content_Types].xml
-      PL.DataverseLabelTranslator.PackageDeployment.dll
-      PkgFolder/
-        ImportConfig.xml
-        DataverseLabelTranslator_managed.zip
-        Content/
-          en-us/
-            WelcomeHtml/
-              HTML/Default.htm
-              CSS/common.css
-              Images/
-                body_back.gif
-                content_back.gif
-                content_back_orig.gif
-                contentarea_back.gif
-                contentArea_back_home.gif
-                footer_back.gif
-                header_back.gif
-                nav_back.gif
-                nav_list_back.gif
-                top_item_selected_bg.gif
-            EndHtml/
-              HTML/Default.htm
-              CSS/common.css
-              Images/
-                body_back.gif
-                content_back.gif
-                content_back_orig.gif
-                contentarea_back.gif
-                contentArea_back_home.gif
-                footer_back.gif
-                header_back.gif
-                nav_back.gif
-                nav_list_back.gif
-                top_item_selected_bg.gif
-    DataverseLabelTranslator.v.1.0.0/
-      [Content_Types].xml
-      input.xml
-      TermsOfUse.html
-      logo32x32.png
-      DataverseLabelTranslatorPackage.zip
-  zip/
-    DataverseLabelTranslator.v.1.0.0.zip   <- FINAL UPLOAD ARTIFACT
-    url.txt                                <- SAS URL record, keep private/do not commit if it contains query string
-  Documents/
-    UserGuide.1.0.0.0.docx
-    UserGuide.1.0.0.0.pdf
-  Test/
-    E2E User Scenario.1.0.0.0.docx
-    E2E User Scenario.1.0.0.0.pdf
-    screenshots...
-  Images/
-  Videos/
-  DeployError/
+release/1.0.0.0/
+  dataverse/
+    solutions/
+      DataverseLabelTranslator.zip
+      DataverseLabelTranslator_managed.zip
+    unpack/
+  appsource/
+    src/
+      DataverseLabelTranslatorPackage/
+        [Content_Types].xml
+        PL.DataverseLabelTranslator.PackageDeployment.dll
+        PkgFolder/
+          ImportConfig.xml
+          DataverseLabelTranslator_managed.zip
+          Content/
+            en-us/
+              WelcomeHtml/
+              EndHtml/
+      DataverseLabelTranslator.v.1.0.0/
+        [Content_Types].xml
+        input.xml
+        TermsOfUse.html
+        logo32x32.png
+        DataverseLabelTranslatorPackage.zip
+    zip/
+      DataverseLabelTranslator.v.1.0.0.zip   <- FINAL UPLOAD ARTIFACT
+      url.txt                                <- SAS URL record, keep private
+    Documents/
+      UserGuide.1.0.0.0.docx
+      UserGuide.1.0.0.0.pdf
+    Test/
+      E2E User Scenario.1.0.0.0.docx
+      E2E User Scenario.1.0.0.0.pdf
+      screenshots...
+    Images/
+    Videos/
+    DeployError/
 ```
 
 Package Deployer package:
 
 1. Tạo Package Deployer project bằng Power Platform CLI hoặc Visual Studio/Power Platform Tools.
-2. Add `release/1.0.0.0/DataverseLabelTranslator_managed.zip` vào package.
+2. Add `release/1.0.0.0/dataverse/solutions/DataverseLabelTranslator_managed.zip` vào package.
 3. Tạo `PkgFolder/ImportConfig.xml` trỏ đúng tới `DataverseLabelTranslator_managed.zip`.
 4. Thêm `PkgFolder\Content\en-us\WelcomeHtml` và `PkgFolder\Content\en-us\EndHtml` cho Package Deployer wizard install UI, giống pattern app Icons. Đây là màn hình user/reviewer thấy khi install package, không phải web resource của Dataverse app.
 5. Không thêm Package Deployer custom code nếu không cần, để giảm surface security review.
@@ -237,11 +217,11 @@ Marketplace package staging root:
 
 Final upload artifact:
 
-- `release/appsource/<solution-version>/zip/DataverseLabelTranslator.v.<package-version>.zip`
+- `release/<solution-version>/appsource/zip/DataverseLabelTranslator.v.<package-version>.zip`
 - Đây là **file ZIP all-in-one duy nhất** cần upload lên Azure Blob Storage.
 - File này phải chứa trực tiếp các file `DataverseLabelTranslatorPackage.zip`, `[Content_Types].xml`, `input.xml`, `logo32x32.png`, `TermsOfUse.html` ở root của ZIP. Không để thêm một folder cha như `DataverseLabelTranslator.v.1.0.0/` bên trong ZIP, vì Microsoft validate package structure rất chặt.
 - `DataverseLabelTranslatorPackage.zip` bên trong final ZIP là artifact trung gian Package Deployer, không phải file upload trực tiếp lên Azure Blob.
-- Lưu SAS URL sau upload vào `release/appsource/<solution-version>/zip/url.txt` để tracking giống app Icons, nhưng không commit file này nếu nó chứa query string SAS thật.
+- Lưu SAS URL sau upload vào `release/<solution-version>/appsource/zip/url.txt` để tracking giống app Icons, nhưng không commit file này nếu nó chứa query string SAS thật.
 
 `input.xml` cần có những trường chính:
 
@@ -270,10 +250,10 @@ Các convention rút ra từ package AppSource cũ đã pass:
 ## Giai đoạn 5 - Upload Azure Blob và SAS URL
 
 1. Dùng Azure Storage account/container đã dùng cho offer trước nếu vẫn phù hợp quyền truy cập và lifecycle, hoặc tạo container riêng cho app này.
-2. Upload **file ZIP all-in-one cuối cùng**: `release/appsource/1.0.0.0/zip/DataverseLabelTranslator.v.1.0.0.zip`.
+2. Upload **file ZIP all-in-one cuối cùng**: `release/1.0.0.0/appsource/zip/DataverseLabelTranslator.v.1.0.0.zip`.
 3. Tạo read-only SAS URL cho blob.
 4. SAS expiry nên còn ít nhất 1 tháng trong tương lai để tránh publishing block.
-5. Lưu URL vào `release/appsource/1.0.0.0/zip/url.txt` để tracking local, giống workflow app Icons. Không commit SAS URL thật.
+5. Lưu URL vào `release/1.0.0.0/appsource/zip/url.txt` để tracking local, giống workflow app Icons. Không commit SAS URL thật.
 6. Test URL bằng browser/incognito hoặc `Invoke-WebRequest` để đảm bảo Microsoft có thể download package.
 
 URL này sẽ được nhập vào Partner Center ở **Technical configuration -> CRM package -> URL of your package location**.
@@ -355,21 +335,21 @@ Microsoft certification cho Dataverse/Power Apps app sẽ kiểm:
 
 ## Việc cần làm tiếp trong repo
 
-1. Tạo script/build folder cho AppSource package, ví dụ `release/appsource/1.0.0.0`.
+1. Tạo script/build folder cho AppSource package, ví dụ `release/1.0.0.0/appsource`.
 2. Generate PNG logos:
    - `logo32x32.png` cho package.
    - Large logo PNG cho Partner Center.
 3. Tạo public homepage trong `site/`, publish bằng GitHub Pages/GitHub Actions, expected URL `https://phuocle.github.io/DataverseLabelTranslator/`.
 4. Viết `license.md`, `term.md`, generate `TermsOfUse.html`, và chuẩn bị public privacy/support/help URLs.
 5. Reuse template/process từ offer `Icons and Tooltips with D365` cho Partner Center listing fields, support contacts, E2E PDF structure, package upload và certification notes.
-6. Review hai source documents trong `appsource\Documents`: `UserGuide.1.0.0.0.docx` và `E2E User Scenario.1.0.0.0.docx`; thay placeholder hình ảnh bằng screenshot thật nếu cần.
+6. Review hai documents trong release folder: `release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.docx` và `release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.docx`; thay placeholder hình ảnh bằng screenshot thật nếu cần.
 7. Render PDF từ hai file DOCX versioned này cho release AppSource.
 8. Tạo marketing PDF cho Dataverse Label Translator nếu dùng.
 9. Chạy Solution Checker và lưu report.
 10. Tạo Package Deployer package từ managed solution.
 11. Test package deploy vào clean environment.
 12. Test uninstall và cleanup dictionary data story.
-13. Upload final all-in-one ZIP `release/appsource/1.0.0.0/zip/DataverseLabelTranslator.v.1.0.0.zip` lên Azure Blob, tạo SAS URL.
+13. Upload final all-in-one ZIP `release/1.0.0.0/appsource/zip/DataverseLabelTranslator.v.1.0.0.zip` lên Azure Blob, tạo SAS URL.
 14. Tạo Partner Center offer mới dưới publisher đã certified và submit preview.
 
 ## Đề xuất nội dung certification notes
@@ -392,10 +372,12 @@ Main validation path:
 ```text
 release/
   1.0.0.0/
-    DataverseLabelTranslator.zip
-    DataverseLabelTranslator_managed.zip
-  appsource/
-    1.0.0.0/
+    dataverse/
+      solutions/
+        DataverseLabelTranslator.zip
+        DataverseLabelTranslator_managed.zip
+      unpack/
+    appsource/
       src/
         DataverseLabelTranslatorPackage/
           [Content_Types].xml
@@ -475,10 +457,10 @@ logo32x32.png
 
 Không upload các file sau lên Azure Blob thay cho final ZIP:
 
-- `release/1.0.0.0/DataverseLabelTranslator_managed.zip`: chỉ là managed solution.
-- `release/appsource/1.0.0.0/src/DataverseLabelTranslator.v.1.0.0/DataverseLabelTranslatorPackage.zip`: chỉ là Package Deployer package nested bên trong final ZIP.
-- Folder `release/appsource/1.0.0.0/src/DataverseLabelTranslator.v.1.0.0/`: chỉ là staging folder dùng để zip ra final artifact.
-- `release/appsource/1.0.0.0/assets/terms.html`: chỉ là draft/review copy của `TermsOfUse.html`, không đưa vào final Marketplace ZIP.
+- `release/1.0.0.0/dataverse/solutions/DataverseLabelTranslator_managed.zip`: chỉ là managed solution.
+- `release/1.0.0.0/appsource/src/DataverseLabelTranslator.v.1.0.0/DataverseLabelTranslatorPackage.zip`: chỉ là Package Deployer package nested bên trong final ZIP.
+- Folder `release/1.0.0.0/appsource/src/DataverseLabelTranslator.v.1.0.0/`: chỉ là staging folder dùng để zip ra final artifact.
+- `release/1.0.0.0/appsource/assets/terms.html`: chỉ là draft/review copy của `TermsOfUse.html`, không đưa vào final Marketplace ZIP.
 
 ## Câu hỏi còn cần bạn review/chốt
 

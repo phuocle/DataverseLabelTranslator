@@ -18,7 +18,7 @@ powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scri
 If the user does not mention a version, run the script without `-SolutionVersion`. The script must infer the latest version by scanning:
 
 ```text
-D:\github\DataverseLabelTranslator\release\<version>\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
 The highest four-part numeric version wins. If no managed release folders exist, the script falls back to `1.0.0.0` and then fails clearly if the managed solution source is missing.
@@ -30,12 +30,20 @@ Marketplace package version is derived from the first three solution version par
 1.1.0.0 -> 1.1.0
 ```
 
+Each version is self-contained under:
+
+```text
+D:\github\DataverseLabelTranslator\release\<solution-version>
+```
+
+For a new version, copy the whole previous version folder, for example `release\1.0.0.0` to `release\1.0.1.0`, replace the managed solution under `dataverse\solutions`, then run this skill with `-SolutionVersion 1.0.1.0`. The script only rebuilds `appsource\src` and `appsource\zip` for the selected version and must not touch older version folders.
+
 ## Output Contract
 
 Every successful run must leave the final all-in-one upload ZIP in the selected version folder:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\<solution-version>\zip\DataverseLabelTranslator.v.<package-version>.zip
+D:\github\DataverseLabelTranslator\release\<solution-version>\appsource\zip\DataverseLabelTranslator.v.<package-version>.zip
 ```
 
 This is the file to upload to Azure Blob Storage for Partner Center.
@@ -43,7 +51,7 @@ This is the file to upload to Azure Blob Storage for Partner Center.
 The nested Package Deployer ZIP must also be rebuilt under the selected version:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\<solution-version>\src\DataverseLabelTranslator.v.<package-version>\DataverseLabelTranslatorPackage.zip
+D:\github\DataverseLabelTranslator\release\<solution-version>\appsource\src\DataverseLabelTranslator.v.<package-version>\DataverseLabelTranslatorPackage.zip
 ```
 
 Do not upload the nested Package Deployer ZIP directly. It belongs inside the final all-in-one Marketplace ZIP.
@@ -53,7 +61,7 @@ Do not upload the nested Package Deployer ZIP directly. It belongs inside the fi
 Always trust the selected existing managed solution as latest/newest:
 
 ```text
-D:\github\DataverseLabelTranslator\release\<solution-version>\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\release\<solution-version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
 Do not run `/export-solution`.
@@ -113,8 +121,8 @@ logo32x32.png
 The script generates non-screenshot assets such as logos, homepage hero, AppSource package flow, AI privacy flow, wizard visual, and video thumbnail under:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\assets
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\Videos
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\assets
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Videos
 ```
 
 For newer versions, replace `1.0.0.0` with the selected solution version.
@@ -122,8 +130,8 @@ For newer versions, replace `1.0.0.0` with the selected solution version.
 Real product screenshots are not generated. They are left for anh Phuoc to capture under:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\Images
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\Test\screenshots
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Images
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Test\screenshots
 ```
 
 For newer versions, replace `1.0.0.0` with the selected solution version.
@@ -136,3 +144,4 @@ For newer versions, replace `1.0.0.0` with the selected solution version.
 - Do not upload to Azure.
 - Do not write a real SAS URL into git.
 - Do not deploy to Dataverse.
+- Do not modify older version folders. Treat existing version folders such as `release\1.0.0.0` as read-only unless the user explicitly selected that version.

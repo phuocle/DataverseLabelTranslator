@@ -1,5 +1,7 @@
 node_modules/
 Publish/
+__pycache__/
+*.pyc
 
 # Local environment and secrets
 .env
@@ -26,7 +28,7 @@ Publish/
 solutions/1.before/
 solutions/2.unpack/
 solutions/3.after/
-release/*/unpack/
-release/appsource/*/zip/url.txt
-release/appsource/*/package-project/**/bin/
-release/appsource/*/package-project/**/obj/
+release/*/dataverse/unpack/
+release/*/appsource/zip/url.txt
+release/*/appsource/package-project/**/bin/
+release/*/appsource/package-project/**/obj/

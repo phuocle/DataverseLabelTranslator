@@ -26,8 +26,8 @@ Do not read the version from Dataverse or from `Solution.xml`. When a new versio
 Each run must leave exactly these two ZIP files in the versioned release folder:
 
 ```text
-D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator.zip
-D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator.zip
+D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
 Temporary raw export files must be created outside the release folder and removed after the final ZIPs are packed.
@@ -35,7 +35,7 @@ Temporary raw export files must be created outside the release folder and remove
 The cleaned unpacked solution must remain available for review at:
 
 ```text
-D:\github\DataverseLabelTranslator\release\1.0.0.0\unpack
+D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\unpack
 ```
 
 After packing, do not stage anything. Leave the generated ZIP files as normal git changes. The `/commit` command is responsible for staging and committing when needed. Do not commit and do not push.
@@ -86,28 +86,30 @@ If this fails, show the error and stop.
 
 ### Step 4: Prepare Paths
 
-Use the hard-coded version and reset only that version folder:
+Use the hard-coded version and reset only that version's `dataverse` folder. Do not delete or rewrite `release\$Version\appsource`.
 
 ```powershell
 $RepoRoot = "D:\github\DataverseLabelTranslator"
 $Version = "1.0.0.0"
 $BaseLanguageCode = 1033
 $ReleaseDir = Join-Path $RepoRoot "release\$Version"
-$ReleaseUnpackDir = Join-Path $ReleaseDir "unpack"
+$DataverseDir = Join-Path $ReleaseDir "dataverse"
+$SolutionsDir = Join-Path $DataverseDir "solutions"
+$ReleaseUnpackDir = Join-Path $DataverseDir "unpack"
 $TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) "DataverseLabelTranslator-export-$Version"
 $TempRawDir = Join-Path $TempRoot "raw"
 $TempUnpackDir = Join-Path $TempRoot "unpack"
 $CleanLanguageScript = Join-Path $RepoRoot "scripts\clean-language.ps1"
 
-if (Test-Path -LiteralPath $ReleaseDir) {
-    Remove-Item -LiteralPath $ReleaseDir -Recurse -Force
+if (Test-Path -LiteralPath $DataverseDir) {
+    Remove-Item -LiteralPath $DataverseDir -Recurse -Force
 }
 
 if (Test-Path -LiteralPath $TempRoot) {
     Remove-Item -LiteralPath $TempRoot -Recurse -Force
 }
 
-New-Item -ItemType Directory -Path $ReleaseDir | Out-Null
+New-Item -ItemType Directory -Path $SolutionsDir -Force | Out-Null
 New-Item -ItemType Directory -Path $TempRawDir | Out-Null
 ```
 
@@ -149,11 +151,11 @@ If cleanup fails, show the full error output and stop.
 
 ### Step 8: Pack Final Release ZIPs
 
-Pack only these two final ZIPs into the release folder:
+Pack only these two final ZIPs into the versioned `dataverse\solutions` folder:
 
 ```powershell
-$UnmanagedZip = Join-Path $ReleaseDir "DataverseLabelTranslator.zip"
-$ManagedZip = Join-Path $ReleaseDir "DataverseLabelTranslator_managed.zip"
+$UnmanagedZip = Join-Path $SolutionsDir "DataverseLabelTranslator.zip"
+$ManagedZip = Join-Path $SolutionsDir "DataverseLabelTranslator_managed.zip"
 
 pac solution pack --zipfile $UnmanagedZip --folder $TempUnpackDir --packagetype Unmanaged
 pac solution pack --zipfile $ManagedZip --folder $TempUnpackDir --packagetype Managed
@@ -163,13 +165,13 @@ If either pack fails, show the full error output and stop.
 
 ### Step 9: Keep Review Copy And Remove Temp Files
 
-Copy the cleaned unpacked solution into the release folder:
+Copy the cleaned unpacked solution into `dataverse\unpack`:
 
 ```powershell
 Copy-Item -LiteralPath $TempUnpackDir -Destination $ReleaseUnpackDir -Recurse -Force
 ```
 
-Then remove only the temp root. The review copy under the release folder must remain:
+Then remove only the temp root. The review copy under the `dataverse` folder must remain:
 
 ```powershell
 Remove-Item -LiteralPath $TempRoot -Recurse -Force
@@ -177,12 +179,12 @@ Remove-Item -LiteralPath $TempRoot -Recurse -Force
 
 ### Step 10: Verify Output Contract
 
-Ensure the release folder contains exactly two ZIP files:
+Ensure the `dataverse\solutions` folder contains exactly two ZIP files:
 
 ```powershell
-$zipFiles = Get-ChildItem -LiteralPath $ReleaseDir -File -Filter *.zip
+$zipFiles = Get-ChildItem -LiteralPath $SolutionsDir -File -Filter *.zip
 if ($zipFiles.Count -ne 2) {
-    throw "Expected exactly 2 ZIP files in $ReleaseDir, found $($zipFiles.Count)."
+    throw "Expected exactly 2 ZIP files in $SolutionsDir, found $($zipFiles.Count)."
 }
 ```
 
@@ -215,11 +217,11 @@ Do not run `git push`.
 Leave these files as normal uncommitted git changes:
 
 ```text
-release\$Version\DataverseLabelTranslator.zip
-release\$Version\DataverseLabelTranslator_managed.zip
+release\$Version\dataverse\solutions\DataverseLabelTranslator.zip
+release\$Version\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
-The `release\$Version\unpack` folder is for manual review only and should be ignored by git.
+The `release\$Version\dataverse\unpack` folder is for manual review only and should be ignored by git.
 
 ### Step 12: Report Result
 
@@ -227,7 +229,7 @@ Report:
 
 - Release version: `1.0.0.0`
 - Release folder: `D:\github\DataverseLabelTranslator\release\1.0.0.0`
-- Unpacked review folder: `D:\github\DataverseLabelTranslator\release\1.0.0.0\unpack`
+- Unpacked review folder: `D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\unpack`
 - Exported files: `DataverseLabelTranslator.zip`, `DataverseLabelTranslator_managed.zip`
 - Confirm the ZIP files were generated but not staged.
-- Confirm `release\1.0.0.0\unpack` is present for review and ignored by git.
+- Confirm `release\1.0.0.0\dataverse\unpack` is present for review and ignored by git.

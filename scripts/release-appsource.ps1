@@ -24,7 +24,7 @@ function Resolve-LatestSolutionVersion {
     $candidates = @(
         Get-ChildItem -LiteralPath $releaseRoot -Directory |
             Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
-            Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName "DataverseLabelTranslator_managed.zip") } |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName "dataverse\solutions\DataverseLabelTranslator_managed.zip") } |
             ForEach-Object {
                 [pscustomobject]@{
                     Name = $_.Name
@@ -65,8 +65,8 @@ if ([string]::IsNullOrWhiteSpace($PackageVersion)) {
     Write-Host "No PackageVersion provided. Using marketplace package version: $PackageVersion"
 }
 
-$ManagedSolutionZip = Join-Path $RepoRoot "release\$SolutionVersion\DataverseLabelTranslator_managed.zip"
-$AppSourceRoot = Join-Path $RepoRoot "release\appsource\$SolutionVersion"
+$ManagedSolutionZip = Join-Path $RepoRoot "release\$SolutionVersion\dataverse\solutions\DataverseLabelTranslator_managed.zip"
+$AppSourceRoot = Join-Path $RepoRoot "release\$SolutionVersion\appsource"
 $SrcRoot = Join-Path $AppSourceRoot "src"
 $PackageProjectDir = Join-Path $SrcRoot "DataverseLabelTranslatorPackage"
 $PkgFolder = Join-Path $PackageProjectDir "PkgFolder"
@@ -502,15 +502,34 @@ namespace PL.DataverseLabelTranslator.PackageDeployment
     Copy-Item -LiteralPath $builtDll -Destination $PackageDll -Force
 }
 
-function Copy-ExistingDocuments {
-    $sourceUserGuide = Join-Path $RepoRoot "appsource\Documents\UserGuide.$SolutionVersion.docx"
-    $sourceE2E = Join-Path $RepoRoot "appsource\Documents\E2E User Scenario.$SolutionVersion.docx"
-    if (Test-Path -LiteralPath $sourceUserGuide) {
-        Copy-Item -LiteralPath $sourceUserGuide -Destination (Join-Path $DocumentsDir "UserGuide.$SolutionVersion.docx") -Force
+function Ensure-VersionedReviewFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Directory,
+        [Parameter(Mandatory = $true)][string]$Pattern,
+        [Parameter(Mandatory = $true)][string]$TargetName
+    )
+
+    $target = Join-Path $Directory $TargetName
+    if (Test-Path -LiteralPath $target -PathType Leaf) {
+        return
     }
-    if (Test-Path -LiteralPath $sourceE2E) {
-        Copy-Item -LiteralPath $sourceE2E -Destination (Join-Path $TestDir "E2E User Scenario.$SolutionVersion.docx") -Force
+
+    $candidates = @(Get-ChildItem -LiteralPath $Directory -File -Filter $Pattern -ErrorAction SilentlyContinue)
+    if ($candidates.Count -eq 1) {
+        Move-Item -LiteralPath $candidates[0].FullName -Destination $target -Force
+        Write-Host "Renamed review file to selected version: $target"
     }
+    elseif ($candidates.Count -gt 1) {
+        Write-Host "Multiple review files match '$Pattern' in $Directory. Leaving them unchanged."
+    }
+}
+
+function Sync-ReviewDocuments {
+    Ensure-VersionedReviewFile -Directory $DocumentsDir -Pattern "UserGuide.*.docx" -TargetName "UserGuide.$SolutionVersion.docx"
+    Ensure-VersionedReviewFile -Directory $DocumentsDir -Pattern "UserGuide.*.pdf" -TargetName "UserGuide.$SolutionVersion.pdf"
+    Ensure-VersionedReviewFile -Directory $TestDir -Pattern "E2E User Scenario.*.docx" -TargetName "E2E User Scenario.$SolutionVersion.docx"
+    Ensure-VersionedReviewFile -Directory $TestDir -Pattern "E2E User Scenario.*.pdf" -TargetName "E2E User Scenario.$SolutionVersion.pdf"
+
     $readme = @"
 # Screenshot Tasks
 
@@ -755,7 +774,7 @@ Write-AppSourceFiles
 Copy-Item -LiteralPath $ManagedSolutionZip -Destination (Join-Path $PkgFolder "DataverseLabelTranslator_managed.zip") -Force
 New-WizardImageAssets
 New-GeneratedImages
-Copy-ExistingDocuments
+Sync-ReviewDocuments
 Build-PackageDeployerDll
 
 Assert-FileExists $PackageDll "Missing Package Deployer DLL: $PackageDll"

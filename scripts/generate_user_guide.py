@@ -419,9 +419,10 @@ def build_document():
     
     add_callout(doc, "It is highly recommended to export a backup solution containing the target entity forms before executing the 'Remove Overridden Attribute Labels' command.", "💡 BEST PRACTICE: EXPORT BACKUP", "E8F8F5")
     
-    output_dir = r"d:\github\DataverseLabelTranslator\appsource\Documents"
+    version = "1.0.0.0"
+    output_dir = rf"d:\github\DataverseLabelTranslator\release\{version}\appsource\Documents"
     os.makedirs(output_dir, exist_ok=True)
-    file_path = os.path.join(output_dir, "UserGuide.1.0.0.0.docx")
+    file_path = os.path.join(output_dir, f"UserGuide.{version}.docx")
     doc.save(file_path)
     print(f"Document saved successfully at: {file_path}")
 

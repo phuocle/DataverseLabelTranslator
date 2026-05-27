@@ -9,11 +9,11 @@ File nay tach rieng cac viec anh Phuoc can tu review truoc khi upload final ZIP 
 - [ ] Xac nhan final ZIP ton tai:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
 
 - [ ] Chi upload file ZIP all-in-one nay len Azure Blob.
-- [ ] Khong upload `release\1.0.0.0\DataverseLabelTranslator_managed.zip`.
+- [ ] Khong upload `release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip`.
 - [ ] Khong upload nested `DataverseLabelTranslatorPackage.zip`.
 - [ ] Mo final ZIP va kiem tra root co dung 5 file:
 
@@ -37,7 +37,7 @@ logo32x32.png
 - [ ] Xac nhan file managed solution do anh Phuoc control la latest:
 
 ```text
-D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
 - [ ] Xac nhan khong can export lai solution trong luong `Release AppSource`.
@@ -90,10 +90,10 @@ D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_mana
 - [ ] Review video demo neu dung, dam bao khong lo secrets.
 - [ ] Review `logo32x32.png` nhin ro o 32 x 32.
 - [ ] Review large logo/listing logo khong bi mo.
-- [ ] Review generated homepage hero: `release\appsource\1.0.0.0\assets\homepage-hero.png`.
-- [ ] Review generated package flow diagram: `release\appsource\1.0.0.0\assets\appsource-package-flow.png`.
-- [ ] Review generated AI privacy flow diagram: `release\appsource\1.0.0.0\assets\ai-privacy-flow.png`.
-- [ ] Review generated wizard visual: `release\appsource\1.0.0.0\assets\install-wizard-visual.png`.
+- [ ] Review generated homepage hero: `release\1.0.0.0\appsource\assets\homepage-hero.png`.
+- [ ] Review generated package flow diagram: `release\1.0.0.0\appsource\assets\appsource-package-flow.png`.
+- [ ] Review generated AI privacy flow diagram: `release\1.0.0.0\appsource\assets\ai-privacy-flow.png`.
+- [ ] Review generated wizard visual: `release\1.0.0.0\appsource\assets\install-wizard-visual.png`.
 - [ ] Confirm generated images khong thay the cho screenshots that cua app.
 
 ## 6. Documents
@@ -101,25 +101,25 @@ D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_mana
 - [ ] Review source User Guide:
 
 ```text
-D:\github\DataverseLabelTranslator\appsource\Documents\UserGuide.1.0.0.0.docx
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.docx
 ```
 
 - [ ] Review source E2E Scenario:
 
 ```text
-D:\github\DataverseLabelTranslator\appsource\Documents\E2E User Scenario.1.0.0.0.docx
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.docx
 ```
 
 - [ ] Review staged User Guide PDF:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\Documents\UserGuide.1.0.0.0.pdf
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.pdf
 ```
 
 - [ ] Review staged E2E Scenario PDF:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\Test\E2E User Scenario.1.0.0.0.pdf
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.pdf
 ```
 
 - [ ] Review tat ca placeholder hinh anh trong DOCX/PDF va thay bang screenshot that neu can.
@@ -140,8 +140,8 @@ D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\Test\E2E User Scena
 - [ ] Support URL/email live va thuoc quyen kiem soat cua anh Phuoc.
 - [ ] Privacy policy URL live va co AI/external provider disclosure.
 - [ ] Terms URL hoac Partner Center terms text khop voi `TermsOfUse.html`.
-- [ ] Review `release\appsource\1.0.0.0\assets\license.md`.
-- [ ] Review `release\appsource\1.0.0.0\assets\term.md`.
+- [ ] Review `release\1.0.0.0\appsource\assets\license.md`.
+- [ ] Review `release\1.0.0.0\appsource\assets\term.md`.
 - [ ] `license.md` noi ro app free, khong trial, khong paid license, deploy/install bao nhieu environment cung duoc.
 - [ ] `term.md` noi ro app khong gui data/API key/telemetry ve server cua PhuocLe/publisher.
 - [ ] `term.md` noi ro Auto Translate gui selected label/metadata truc tiep toi AI provider do user cau hinh.
@@ -174,14 +174,14 @@ D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\Test\E2E User Scena
 - [ ] Smoke test AI Auto Translate pass.
 - [ ] Smoke test Dictionary pass.
 - [ ] Uninstall test pass hoac cleanup note da ro.
-- [ ] Logs/test evidence duoc luu duoi `release\appsource\1.0.0.0\Validation\` hoac `DeployError\` neu co loi.
+- [ ] Logs/test evidence duoc luu duoi `release\1.0.0.0\appsource\Validation\` hoac `DeployError\` neu co loi.
 
 ## 10. Azure Upload
 
 - [ ] Chi upload final all-in-one ZIP:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
 
 - [ ] SAS URL la read-only.

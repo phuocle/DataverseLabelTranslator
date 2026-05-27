@@ -56,8 +56,8 @@ Export `DataverseLabelTranslator` solution via PAC CLI.
 ### /release-appsource
 Build the final AppSource all-in-one Marketplace ZIP from the existing managed release solution.
 If the user mentions a version, pass it as `-SolutionVersion <version>`.
-If the user does not mention a version, infer latest from `release/<version>/DataverseLabelTranslator_managed.zip`; if none exists, default to `1.0.0.0`.
-Always trust the selected `release/<version>/DataverseLabelTranslator_managed.zip` as the latest user-controlled source.
+If the user does not mention a version, infer latest from `release/<version>/dataverse/solutions/DataverseLabelTranslator_managed.zip`; if none exists, default to `1.0.0.0`.
+Always trust the selected `release/<version>/dataverse/solutions/DataverseLabelTranslator_managed.zip` as the latest user-controlled source.
 Do not export the Dataverse solution.
-Output must be `release/appsource/<version>/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`.
+Output must be `release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`.
 Do not upload to Azure.

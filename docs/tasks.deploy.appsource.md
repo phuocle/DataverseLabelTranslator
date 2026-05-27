@@ -5,17 +5,18 @@ Ngày 2026-05-27. File này là backlog triển khai AppSource theo thứ tự �
 Mục tiêu cuối: tạo được file ZIP all-in-one up to date với file managed solution do user kiểm soát và sẵn sàng upload lên Azure Blob. Với version hiện tại, output là:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
 
 Version rule cho các release sau:
 
 - Nếu user/prompt mention version rõ, ví dụ `1.1.0.0`, `Release AppSource` phải dùng đúng version đó.
-- Nếu user không mention version, script phải tự chọn latest bằng cách scan folder `release\<version>\DataverseLabelTranslator_managed.zip` và lấy version số lớn nhất.
+- Nếu user không mention version, script phải tự chọn latest bằng cách scan folder `release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip` và lấy version số lớn nhất.
 - Nếu không tìm được managed release folder nào, default/fallback là `1.0.0.0`.
 - Marketplace package version lấy 3 số đầu của solution version: `1.0.0.0 -> 1.0.0`, `1.1.0.0 -> 1.1.0`.
-- Mỗi version AppSource nằm trong folder riêng: `release\appsource\<solution-version>\`.
-- Khi build `1.1.0.0`, không xóa/sửa `release\appsource\1.0.0.0`; script chỉ clean `src` và `zip` của selected version.
+- Mỗi version release nằm trong folder riêng: `release\<solution-version>\`, gồm `dataverse\` và `appsource\`.
+- Version folder cũ là read-only theo quy ước release. Khi build `1.1.0.0`, không xóa/sửa `release\1.0.0.0`; script chỉ clean `appsource\src` và `appsource\zip` của selected version.
+- Nếu muốn tạo version mới, ví dụ `1.0.1.0`, anh Phước/AP copy nguyên folder `release\1.0.0.0` thành `release\1.0.1.0`, thay managed solution trong `release\1.0.1.0\dataverse\solutions\`, rồi gọi `Release AppSource` với version `1.0.1.0`. Script sẽ rebuild package cho selected version và tự đổi tên các file review DOCX/PDF trong selected folder nếu chúng vẫn còn tên version cũ.
 
 Quyết định đã chốt, không hỏi lại:
 
@@ -29,7 +30,7 @@ Quyết định đã chốt, không hỏi lại:
 
 Nguyên tắc an toàn:
 
-- Với `Release AppSource`, luôn trust file managed solution của selected version tại `D:\github\DataverseLabelTranslator\release\<version>\DataverseLabelTranslator_managed.zip` là bản latest/newest do user kiểm soát. Không kiểm Dataverse freshness, không đọc version từ Dataverse, không chạy PAC export, không gợi ý chạy export.
+- Với `Release AppSource`, luôn trust file managed solution của selected version tại `D:\github\DataverseLabelTranslator\release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip` là bản latest/newest do user kiểm soát. Không kiểm Dataverse freshness, không đọc version từ Dataverse, không chạy PAC export, không gợi ý chạy export.
 - Không chạy `/export-solution` hoặc skill `export-solution` trong bất kỳ bước `release-appsource` nào.
 - Không upload Azure Blob trong repo task trừ khi user yêu cầu rõ.
 - Không commit SAS URL thật. `zip/url.txt` chỉ được tạo local/private và phải bị ignore hoặc không stage.
@@ -52,17 +53,17 @@ Actions:
 5. Đọc cấu trúc AppSource cũ nếu có quyền:
    - `D:\azure\phuocle\d365icons\D365Icons\src2\AppSource`
    - Tập trung vào version mới nhất, hiện là `1.3.3.0`.
-6. Đọc document AppSource hiện có của app này:
-   - `D:\github\DataverseLabelTranslator\appsource\Documents\UserGuide.1.0.0.0.docx`
-   - `D:\github\DataverseLabelTranslator\appsource\Documents\E2E User Scenario.1.0.0.0.docx`
+6. Đọc document AppSource hiện có của app này trong release folder:
+   - `D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.docx`
+   - `D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.docx`
 
 Acceptance criteria:
 
 - AI có thể nói lại đúng final upload artifact của app mới.
 - AI không hỏi lại publisher/free/offer type.
 - AI không chạy PAC export.
-- AI hiểu `release\1.0.0.0\DataverseLabelTranslator_managed.zip` là nguồn sự thật tuyệt đối cho AppSource release.
-- AI hiểu `appsource\Documents` đang có draft User Guide và E2E Scenario thật, phải reuse/copy/render chúng thay vì tạo document mới từ trắng.
+- AI hiểu `release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip` là nguồn sự thật tuyệt đối cho AppSource release.
+- AI hiểu `release\<version>\appsource\Documents` và `release\<version>\appsource\Test` là nơi làm việc chính cho User Guide/E2E Scenario của version đó.
 
 ### Task 0.2 - Kiểm tra repo và generated files hiện tại
 
@@ -81,14 +82,14 @@ git status --short
 4. Kiểm tra release hiện có:
 
 ```powershell
-Get-ChildItem release\1.0.0.0 -File
+Get-ChildItem release\1.0.0.0\dataverse\solutions -File
 ```
 
 5. Xác nhận có:
 
 ```text
-release\1.0.0.0\DataverseLabelTranslator_managed.zip
-release\1.0.0.0\DataverseLabelTranslator.zip
+release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip
+release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator.zip
 ```
 
 Acceptance criteria:
@@ -148,7 +149,7 @@ Nội dung cần có trong `SKILL.md`:
 Selected Release Version: inferred latest or explicit user version, default fallback `1.0.0.0`
 Selected Marketplace Package Version: first three parts of selected release version, e.g. `1.1.0.0 -> 1.1.0`
 Final upload ZIP:
-D:\github\DataverseLabelTranslator\release\appsource\<solution-version>\zip\DataverseLabelTranslator.v.<package-version>.zip
+D:\github\DataverseLabelTranslator\release\<solution-version>\appsource\zip\DataverseLabelTranslator.v.<package-version>.zip
 ```
 
 Skill phải cam kết:
@@ -156,20 +157,20 @@ Skill phải cam kết:
 1. Consume existing managed solution for the selected version as the source of truth. Treat this exact file as latest/newest without checking Dataverse:
 
 ```text
-D:\github\DataverseLabelTranslator\release\<solution-version>\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\release\<solution-version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
 2. Rebuild all AppSource staging folders for that version.
 3. Rebuild nested Package Deployer ZIP:
 
 ```text
-release\appsource\<solution-version>\src\DataverseLabelTranslator.v.<package-version>\DataverseLabelTranslatorPackage.zip
+release\<solution-version>\appsource\src\DataverseLabelTranslator.v.<package-version>\DataverseLabelTranslatorPackage.zip
 ```
 
 4. Rebuild final all-in-one upload ZIP:
 
 ```text
-release\appsource\<solution-version>\zip\DataverseLabelTranslator.v.<package-version>.zip
+release\<solution-version>\appsource\zip\DataverseLabelTranslator.v.<package-version>.zip
 ```
 
 5. Verify final ZIP structure.
@@ -181,7 +182,7 @@ Acceptance criteria:
 - `SKILL.md` has an explicit output contract.
 - It states that final ZIP is the file to upload to Azure Storage.
 - It states that `DataverseLabelTranslatorPackage.zip` is nested and must not be uploaded directly.
-- It states that `release\<solution-version>\DataverseLabelTranslator_managed.zip` is trusted blindly as latest by design.
+- It states that `release\<solution-version>\dataverse\solutions\DataverseLabelTranslator_managed.zip` is trusted blindly as latest by design.
 - It states that old AppSource version folders must not be changed when a newer version is selected.
 
 ### Task 1.3 - Viết command workflow trong skill
@@ -202,14 +203,14 @@ Expected:
 D:\github\DataverseLabelTranslator
 ```
 
-2. Resolve version variables. If the user mentioned a version, pass it to the script. If not, let the script infer latest from `release\<version>\DataverseLabelTranslator_managed.zip`.
+2. Resolve version variables. If the user mentioned a version, pass it to the script. If not, let the script infer latest from `release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip`.
 
 ```powershell
 $RepoRoot = "D:\github\DataverseLabelTranslator"
 $SolutionVersion = "<explicit version, inferred latest, or fallback 1.0.0.0>"
 $PackageVersion = "<first three parts of SolutionVersion>"
-$ManagedSolutionZip = Join-Path $RepoRoot "release\$SolutionVersion\DataverseLabelTranslator_managed.zip"
-$AppSourceRoot = Join-Path $RepoRoot "release\appsource\$SolutionVersion"
+$ManagedSolutionZip = Join-Path $RepoRoot "release\$SolutionVersion\dataverse\solutions\DataverseLabelTranslator_managed.zip"
+$AppSourceRoot = Join-Path $RepoRoot "release\$SolutionVersion\appsource"
 $PackageProjectDir = Join-Path $AppSourceRoot "src\DataverseLabelTranslatorPackage"
 $MarketplaceRoot = Join-Path $AppSourceRoot "src\DataverseLabelTranslator.v.$PackageVersion"
 $ZipDir = Join-Path $AppSourceRoot "zip"
@@ -221,24 +222,24 @@ $FinalZip = Join-Path $ZipDir "DataverseLabelTranslator.v.$PackageVersion.zip"
 
 ```text
 Missing managed solution source:
-D:\github\DataverseLabelTranslator\release\<solution-version>\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\release\<solution-version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
 Release AppSource cannot continue without this user-controlled file.
 ```
 
 4. Recreate only selected-version staging folders:
 
 ```text
-release\appsource\<solution-version>\src
-release\appsource\<solution-version>\zip
+release\<solution-version>\appsource\src
+release\<solution-version>\appsource\zip
 ```
 
-Do not delete old AppSource version folders, for example when selected version is `1.1.0.0`, do not modify:
+Do not delete old version folders, for example when selected version is `1.1.0.0`, do not modify:
 
 ```text
-release\appsource\1.0.0.0
+release\1.0.0.0
 ```
 
-Also do not delete:
+Also do not delete the whole selected version folder or unrelated repo folders:
 
 ```text
 release\<solution-version>
@@ -272,7 +273,7 @@ Actions:
 
 ```markdown
 ### /release-appsource
-Build the final AppSource all-in-one Marketplace ZIP from the existing managed release solution. Always trust `release/1.0.0.0/DataverseLabelTranslator_managed.zip` as the latest user-controlled source. Do not export the Dataverse solution. Output must be `release/appsource/<version>/zip/DataverseLabelTranslator.v.<package-version>.zip`. Do not upload to Azure.
+Build the final AppSource all-in-one Marketplace ZIP from the existing managed release solution. Always trust `release/1.0.0.0/dataverse/solutions/DataverseLabelTranslator_managed.zip` as the latest user-controlled source. Do not export the Dataverse solution. Output must be `release/<version>/appsource/zip/DataverseLabelTranslator.v.<package-version>.zip`. Do not upload to Azure.
 ```
 
 2. Keep `/export-solution` unchanged.
@@ -310,17 +311,17 @@ param(
 
 Version behavior:
 
-- Empty `$SolutionVersion` means infer latest from `release\<version>\DataverseLabelTranslator_managed.zip`.
+- Empty `$SolutionVersion` means infer latest from `release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip`.
 - Explicit `$SolutionVersion` means use that exact version and fail if its managed solution is missing.
 - Empty `$PackageVersion` means derive from `$SolutionVersion` by dropping the fourth part.
-- Script must only clean `release\appsource\$SolutionVersion\src` and `release\appsource\$SolutionVersion\zip`.
-- Script must never clean or rewrite `release\appsource\<other-version>`.
+- Script must only clean `release\$SolutionVersion\appsource\src` and `release\$SolutionVersion\appsource\zip`.
+- Script must never clean or rewrite `release\<other-version>`.
 
 3. Derived paths:
 
 ```powershell
-$ManagedSolutionZip = Join-Path $RepoRoot "release\$SolutionVersion\DataverseLabelTranslator_managed.zip"
-$AppSourceRoot = Join-Path $RepoRoot "release\appsource\$SolutionVersion"
+$ManagedSolutionZip = Join-Path $RepoRoot "release\$SolutionVersion\dataverse\solutions\DataverseLabelTranslator_managed.zip"
+$AppSourceRoot = Join-Path $RepoRoot "release\$SolutionVersion\appsource"
 $SrcRoot = Join-Path $AppSourceRoot "src"
 $PackageProjectDir = Join-Path $SrcRoot "DataverseLabelTranslatorPackage"
 $PkgFolder = Join-Path $PackageProjectDir "PkgFolder"
@@ -375,8 +376,8 @@ Actions:
 1. Generate same `[Content_Types].xml` into:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslatorPackage\[Content_Types].xml
-release\appsource\1.0.0.0\src\DataverseLabelTranslator.v.1.0.0\[Content_Types].xml
+release\1.0.0.0\appsource\src\DataverseLabelTranslatorPackage\[Content_Types].xml
+release\1.0.0.0\appsource\src\DataverseLabelTranslator.v.1.0.0\[Content_Types].xml
 ```
 
 2. Content template:
@@ -414,7 +415,7 @@ Actions:
 1. Create:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslatorPackage\PkgFolder\ImportConfig.xml
+release\1.0.0.0\appsource\src\DataverseLabelTranslatorPackage\PkgFolder\ImportConfig.xml
 ```
 
 2. Content:
@@ -436,7 +437,7 @@ release\appsource\1.0.0.0\src\DataverseLabelTranslatorPackage\PkgFolder\ImportCo
 3. Copy managed solution into:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslatorPackage\PkgFolder\DataverseLabelTranslator_managed.zip
+release\1.0.0.0\appsource\src\DataverseLabelTranslatorPackage\PkgFolder\DataverseLabelTranslator_managed.zip
 ```
 
 Acceptance criteria:
@@ -516,7 +517,7 @@ Preferred approach:
 2. If no project exists, create minimal Package Deployer project under:
 
 ```text
-release\appsource\1.0.0.0\package-project\PL.DataverseLabelTranslator.PackageDeployment
+release\1.0.0.0\appsource\package-project\PL.DataverseLabelTranslator.PackageDeployment
 ```
 
 3. Use Power Platform Package Deployer template/tooling where available.
@@ -540,7 +541,7 @@ Acceptance criteria:
 - DLL exists at:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslatorPackage\PL.DataverseLabelTranslator.PackageDeployment.dll
+release\1.0.0.0\appsource\src\DataverseLabelTranslatorPackage\PL.DataverseLabelTranslator.PackageDeployment.dll
 ```
 
 - Script fails clearly if the DLL cannot be built or found.
@@ -555,14 +556,14 @@ Actions:
 1. Create source/review markdown files. These files are for AppSource/legal review and Partner Center copy source; do not add them to final Marketplace ZIP root unless Microsoft explicitly asks for markdown files:
 
 ```text
-release\appsource\1.0.0.0\assets\license.md
-release\appsource\1.0.0.0\assets\term.md
+release\1.0.0.0\appsource\assets\license.md
+release\1.0.0.0\appsource\assets\term.md
 ```
 
 2. Create Marketplace package terms HTML:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslator.v.1.0.0\TermsOfUse.html
+release\1.0.0.0\appsource\src\DataverseLabelTranslator.v.1.0.0\TermsOfUse.html
 ```
 
 3. `license.md` must state:
@@ -637,7 +638,7 @@ Actions:
 1. Create:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslator.v.1.0.0\input.xml
+release\1.0.0.0\appsource\src\DataverseLabelTranslator.v.1.0.0\input.xml
 ```
 
 2. Base content:
@@ -695,8 +696,8 @@ img\app-icon.svg
 2. Output:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslator.v.1.0.0\logo32x32.png
-release\appsource\1.0.0.0\assets\logo32x32.png
+release\1.0.0.0\appsource\src\DataverseLabelTranslator.v.1.0.0\logo32x32.png
+release\1.0.0.0\appsource\assets\logo32x32.png
 ```
 
 3. Prefer a reliable converter available locally:
@@ -722,13 +723,13 @@ Actions:
 1. Zip contents of:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslatorPackage
+release\1.0.0.0\appsource\src\DataverseLabelTranslatorPackage
 ```
 
 2. Output:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslator.v.1.0.0\DataverseLabelTranslatorPackage.zip
+release\1.0.0.0\appsource\src\DataverseLabelTranslator.v.1.0.0\DataverseLabelTranslatorPackage.zip
 ```
 
 3. Required root entries inside nested ZIP:
@@ -769,13 +770,13 @@ Actions:
 1. Zip contents of:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslator.v.1.0.0
+release\1.0.0.0\appsource\src\DataverseLabelTranslator.v.1.0.0
 ```
 
 2. Output:
 
 ```text
-release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
 
 3. Required root entries:
@@ -835,26 +836,26 @@ Acceptance criteria:
 
 ```text
 Ready to upload:
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
 
 ## Phase 3 - Documentation Assets
 
-### Task 3.1 - Review and stage existing User Guide
+### Task 3.1 - Review User Guide in selected release folder
 
-Mục tiêu: dùng User Guide đã có trong repo làm nguồn, review/chỉnh nếu cần, rồi stage sang release AppSource và render PDF.
+Mục tiêu: dùng User Guide đã có trong selected release folder làm nguồn, review/chỉnh nếu cần, rồi render PDF cùng version.
 
-Source document:
+Review document:
 
 ```text
-D:\github\DataverseLabelTranslator\appsource\Documents\UserGuide.1.0.0.0.docx
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.docx
 ```
 
 Outputs:
 
 ```text
-release\appsource\1.0.0.0\Documents\UserGuide.1.0.0.0.docx
-release\appsource\1.0.0.0\Documents\UserGuide.1.0.0.0.pdf
+release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.docx
+release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.pdf
 ```
 
 Current source content already includes:
@@ -873,9 +874,8 @@ Current source content already includes:
 
 Actions:
 
-1. Do not overwrite the source file blindly.
-2. Copy the source document into `release\appsource\1.0.0.0\Documents\`.
-3. Review the document for product-specific correctness:
+1. Do not overwrite the review file blindly.
+2. Review the document for product-specific correctness:
    - no `Icons and Tooltips`,
    - free/no paid/trial wording,
    - AI is core, not optional,
@@ -884,33 +884,33 @@ Actions:
    - AI settings may use browser `localStorage`,
    - use-at-your-own-risk wording,
    - System Administrator/System Customizer permission requirement.
-4. Resolve or leave visible for anh Phước all screenshot placeholders that start with `[📷 HÌNH ẢNH`.
-5. Render/export the staged `.docx` to PDF with the same versioned filename.
+3. Resolve or leave visible for anh Phước all screenshot placeholders that start with `[📷 HÌNH ẢNH`.
+4. Render/export the `.docx` to PDF with the same versioned filename.
+5. For a new version, copy the previous version folder first. `Release AppSource` will rename `UserGuide.<old-version>.docx/pdf` to `UserGuide.<selected-version>.docx/pdf` if exact selected-version files do not exist.
 
 Acceptance criteria:
 
-- Source docx remains at `appsource\Documents\UserGuide.1.0.0.0.docx`.
-- Staged docx exists under `release\appsource\1.0.0.0\Documents\`.
+- Review docx exists under `release\1.0.0.0\appsource\Documents\`.
 - PDF opens.
 - Screenshots are app-specific or screenshot placeholders are clearly left for anh Phước review.
 - No text copied from Icons product except generic document structure.
 - User Guide has no hidden claim that the app never uses internet, because Auto Translate calls an AI provider.
 
-### Task 3.2 - Review and stage existing E2E User Scenario document
+### Task 3.2 - Review E2E User Scenario document in selected release folder
 
-Mục tiêu: dùng E2E User Scenario đã có trong repo làm nguồn certification journey, review/chỉnh nếu cần, rồi stage sang release AppSource và render PDF.
+Mục tiêu: dùng E2E User Scenario đã có trong selected release folder làm certification journey, review/chỉnh nếu cần, rồi render PDF cùng version.
 
-Source document:
+Review document:
 
 ```text
-D:\github\DataverseLabelTranslator\appsource\Documents\E2E User Scenario.1.0.0.0.docx
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.docx
 ```
 
 Outputs:
 
 ```text
-release\appsource\1.0.0.0\Test\E2E User Scenario.1.0.0.0.docx
-release\appsource\1.0.0.0\Test\E2E User Scenario.1.0.0.0.pdf
+release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.docx
+release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.pdf
 ```
 
 Current source test cases already include:
@@ -924,17 +924,17 @@ Current source test cases already include:
 
 Actions:
 
-1. Do not overwrite the source file blindly.
-2. Copy the source document into `release\appsource\1.0.0.0\Test\`.
-3. Review whether the E2E source also needs explicit steps for:
+1. Do not overwrite the review file blindly.
+2. Review whether the E2E source also needs explicit steps for:
    - installing via the Package Deployer package,
    - opening the model-driven app after install,
    - verifying installed languages,
    - review proposal before save in AI flow,
    - cleanup/uninstall/dictionary data story.
-4. Add missing steps to the staged copy or create a tracked edit task for the source document.
-5. Resolve or leave visible for anh Phước all screenshot placeholders that start with `[📷 HÌNH ẢNH`.
-6. Render/export the staged `.docx` to PDF with the same versioned filename.
+3. Add missing steps to the review document.
+4. Resolve or leave visible for anh Phước all screenshot placeholders that start with `[📷 HÌNH ẢNH`.
+5. Render/export the `.docx` to PDF with the same versioned filename.
+6. For a new version, copy the previous version folder first. `Release AppSource` will rename `E2E User Scenario.<old-version>.docx/pdf` to `E2E User Scenario.<selected-version>.docx/pdf` if exact selected-version files do not exist.
 
 Acceptance criteria:
 
@@ -943,7 +943,7 @@ Acceptance criteria:
 - It states needed role: System Administrator or equivalent.
 - It includes or explicitly references Package Deployer install path.
 - It includes or explicitly references uninstall/cleanup and dictionary data behavior.
-- Source docx remains at `appsource\Documents\E2E User Scenario.1.0.0.0.docx`.
+- Review docx exists under `release\1.0.0.0\appsource\Test\`.
 
 ### Task 3.3 - Create marketing PDF
 
@@ -952,7 +952,7 @@ Mục tiêu: listing supplemental/marketing asset.
 Outputs:
 
 ```text
-release\appsource\1.0.0.0\assets\marketing-onepager.pdf
+release\1.0.0.0\appsource\assets\marketing-onepager.pdf
 ```
 
 Content:
@@ -981,11 +981,11 @@ Mục tiêu: anh Phước chụp screenshot thật từ app/environment thật �
 Outputs:
 
 ```text
-release\appsource\1.0.0.0\Images\screenshot-01-main-grid.png
-release\appsource\1.0.0.0\Images\screenshot-02-ai-settings.png
-release\appsource\1.0.0.0\Images\screenshot-03-auto-translate-review.png
-release\appsource\1.0.0.0\Images\screenshot-04-dictionary.png
-release\appsource\1.0.0.0\Images\screenshot-05-save-result.png
+release\1.0.0.0\appsource\Images\screenshot-01-main-grid.png
+release\1.0.0.0\appsource\Images\screenshot-02-ai-settings.png
+release\1.0.0.0\appsource\Images\screenshot-03-auto-translate-review.png
+release\1.0.0.0\appsource\Images\screenshot-04-dictionary.png
+release\1.0.0.0\appsource\Images\screenshot-05-save-result.png
 ```
 
 Requirements:
@@ -1008,13 +1008,13 @@ Mục tiêu: tạo các ảnh mà AI/tool có thể tạo hợp lệ, không gi�
 Outputs:
 
 ```text
-release\appsource\1.0.0.0\assets\logo32x32.png
-release\appsource\1.0.0.0\assets\logo-large.png
-release\appsource\1.0.0.0\assets\homepage-hero.png
-release\appsource\1.0.0.0\assets\appsource-package-flow.png
-release\appsource\1.0.0.0\assets\ai-privacy-flow.png
-release\appsource\1.0.0.0\assets\install-wizard-visual.png
-release\appsource\1.0.0.0\Videos\video-01-thumbnail.png
+release\1.0.0.0\appsource\assets\logo32x32.png
+release\1.0.0.0\appsource\assets\logo-large.png
+release\1.0.0.0\appsource\assets\homepage-hero.png
+release\1.0.0.0\appsource\assets\appsource-package-flow.png
+release\1.0.0.0\appsource\assets\ai-privacy-flow.png
+release\1.0.0.0\appsource\assets\install-wizard-visual.png
+release\1.0.0.0\appsource\Videos\video-01-thumbnail.png
 ```
 
 Wizard CSS/image assets generated inside nested Package Deployer package:
@@ -1062,7 +1062,7 @@ Mục tiêu: Partner Center listing needs larger logo assets.
 Outputs:
 
 ```text
-release\appsource\1.0.0.0\assets\logo-large.png
+release\1.0.0.0\appsource\assets\logo-large.png
 ```
 
 Actions:
@@ -1084,7 +1084,7 @@ Mục tiêu: Partner Center copy is ready and consistent.
 Output:
 
 ```text
-release\appsource\1.0.0.0\assets\partner-center-listing.md
+release\1.0.0.0\appsource\assets\partner-center-listing.md
 ```
 
 Sections:
@@ -1172,8 +1172,8 @@ site/assets/style.css
 6. Add repository/homepage links to generated AppSource assets:
 
 ```text
-release\appsource\1.0.0.0\assets\partner-center-listing.md
-release\appsource\1.0.0.0\src\DataverseLabelTranslator.v.1.0.0\input.xml
+release\1.0.0.0\appsource\assets\partner-center-listing.md
+release\1.0.0.0\appsource\src\DataverseLabelTranslator.v.1.0.0\input.xml
 ```
 
 7. Use homepage URL as `LearnMoreLink` in `input.xml`:
@@ -1318,7 +1318,7 @@ Actions:
 1. Inspect:
 
 ```text
-release\1.0.0.0\unpack\Other\Solution.xml
+release\1.0.0.0\dataverse\unpack\Other\Solution.xml
 ```
 
 2. Verify:
@@ -1346,7 +1346,7 @@ Actions:
 2. Save report under:
 
 ```text
-release\appsource\1.0.0.0\Validation\solution-checker\
+release\1.0.0.0\appsource\Validation\solution-checker\
 ```
 
 3. Review high/critical issues.
@@ -1367,13 +1367,13 @@ Actions:
 2. Run Package Deployer with:
 
 ```text
-release\appsource\1.0.0.0\src\DataverseLabelTranslator.v.1.0.0\DataverseLabelTranslatorPackage.zip
+release\1.0.0.0\appsource\src\DataverseLabelTranslator.v.1.0.0\DataverseLabelTranslatorPackage.zip
 ```
 
 3. Save logs under:
 
 ```text
-release\appsource\1.0.0.0\Validation\package-deployer\
+release\1.0.0.0\appsource\Validation\package-deployer\
 ```
 
 4. Open installed model-driven app.
@@ -1427,7 +1427,7 @@ Manual/user-controlled task unless user explicitly asks AI to do it.
 Input:
 
 ```text
-release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
 
 Actions:
@@ -1438,7 +1438,7 @@ Actions:
 4. Save local/private copy to:
 
 ```text
-release\appsource\1.0.0.0\zip\url.txt
+release\1.0.0.0\appsource\zip\url.txt
 ```
 
 5. Do not commit `url.txt` with SAS query string.
@@ -1477,7 +1477,7 @@ Actions:
 1. If Microsoft reports deploy/certification failure, create:
 
 ```text
-release\appsource\1.0.0.0\DeployError\<date-or-case-id>\
+release\1.0.0.0\appsource\DeployError\<date-or-case-id>\
 ```
 
 2. Save:
@@ -1501,7 +1501,7 @@ Acceptance criteria:
 
 The AppSource release is ready for user upload when all are true:
 
-- Existing managed solution exists at `release\1.0.0.0\DataverseLabelTranslator_managed.zip`.
+- Existing managed solution exists at `release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip`.
 - Public source repository target is `https://github.com/phuocle/DataverseLabelTranslator`.
 - GitHub Pages homepage target is `https://phuocle.github.io/DataverseLabelTranslator/`.
 - `site/index.html` exists.
@@ -1511,7 +1511,7 @@ The AppSource release is ready for user upload when all are true:
 - Final ZIP exists:
 
 ```text
-release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
 
 - Final ZIP root entries are:
@@ -1542,20 +1542,20 @@ PkgFolder\Content\en-us\EndHtml\Images\
 - `input.xml` references `DataverseLabelTranslatorPackage.zip`.
 - `input.xml` references `DataverseLabelTranslator_managed.zip`.
 - `input.xml` `LearnMoreLink` references `https://phuocle.github.io/DataverseLabelTranslator/`.
-- `release\appsource\1.0.0.0\assets\license.md` exists.
-- `release\appsource\1.0.0.0\assets\term.md` exists.
-- Generated non-screenshot images exist under `release\appsource\1.0.0.0\assets\`: `logo32x32.png`, `logo-large.png`, `homepage-hero.png`, `appsource-package-flow.png`, `ai-privacy-flow.png`, `install-wizard-visual.png`.
-- Real screenshot placeholders are documented under `release\appsource\1.0.0.0\Images\README.md`.
+- `release\1.0.0.0\appsource\assets\license.md` exists.
+- `release\1.0.0.0\appsource\assets\term.md` exists.
+- Generated non-screenshot images exist under `release\1.0.0.0\appsource\assets\`: `logo32x32.png`, `logo-large.png`, `homepage-hero.png`, `appsource-package-flow.png`, `ai-privacy-flow.png`, `install-wizard-visual.png`.
+- Real screenshot placeholders are documented under `release\1.0.0.0\appsource\Images\README.md`.
 - `TermsOfUse.html` says free and discloses AI/external provider usage.
 - `TermsOfUse.html` says the app does not send data to PhuocLe/publisher server.
 - `TermsOfUse.html` says AI settings may be stored in browser `localStorage`.
 - `TermsOfUse.html` includes use-at-your-own-risk wording for AI/provider usage.
 - No generated artifact contains `Icons and Tooltips`.
 - No SAS URL/API key is committed.
-- Source User Guide exists at `appsource\Documents\UserGuide.1.0.0.0.docx`.
-- Source E2E Scenario exists at `appsource\Documents\E2E User Scenario.1.0.0.0.docx`.
-- Staged User Guide PDF exists at `release\appsource\1.0.0.0\Documents\UserGuide.1.0.0.0.pdf`.
-- Staged E2E Scenario PDF exists at `release\appsource\1.0.0.0\Test\E2E User Scenario.1.0.0.0.pdf` and includes mandatory AI path.
+- User Guide review DOCX exists at `release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.docx`.
+- E2E Scenario review DOCX exists at `release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.docx`.
+- Staged User Guide PDF exists at `release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.pdf`.
+- Staged E2E Scenario PDF exists at `release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.pdf` and includes mandatory AI path.
 - Final response from AI says exactly which ZIP to upload.
 
 ## Phase 9 - Checklist Cho Anh Phước Review Trước Khi Upload/Submit
@@ -1569,7 +1569,7 @@ Standalone checklist ngắn hơn cho anh Phước review nằm ở `docs/phuoc.r
 - [ ] Xác nhận file final tồn tại:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
 
 - [ ] Mở ZIP và kiểm tra root có đúng 5 file:
@@ -1594,7 +1594,7 @@ logo32x32.png
 - [ ] Xác nhận file managed solution do anh Phước control là latest:
 
 ```text
-D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
 - [ ] Xác nhận không cần export lại solution.
@@ -1653,10 +1653,10 @@ D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_mana
 
 ### 9.6 - Review documents
 
-- [ ] Review source document `D:\github\DataverseLabelTranslator\appsource\Documents\UserGuide.1.0.0.0.docx`.
-- [ ] Review source document `D:\github\DataverseLabelTranslator\appsource\Documents\E2E User Scenario.1.0.0.0.docx`.
-- [ ] Review staged PDF `release\appsource\1.0.0.0\Documents\UserGuide.1.0.0.0.pdf`.
-- [ ] Review staged PDF `release\appsource\1.0.0.0\Test\E2E User Scenario.1.0.0.0.pdf`.
+- [ ] Review User Guide document `D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.docx`.
+- [ ] Review E2E Scenario document `D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.docx`.
+- [ ] Review staged PDF `release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.pdf`.
+- [ ] Review staged PDF `release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.pdf`.
 - [ ] Review all `[📷 HÌNH ẢNH...]` placeholders and replace with real screenshots before final Partner Center submission if needed.
 - [ ] E2E doc có bước install package.
 - [ ] E2E doc có bước mở model-driven app.
@@ -1709,14 +1709,14 @@ D:\github\DataverseLabelTranslator\release\1.0.0.0\DataverseLabelTranslator_mana
 - [ ] Smoke test AI Auto Translate pass.
 - [ ] Smoke test Dictionary pass.
 - [ ] Uninstall test pass hoặc cleanup note đã rõ.
-- [ ] Logs/test evidence được lưu dưới `release\appsource\1.0.0.0\Validation\` hoặc `DeployError\` nếu có lỗi.
+- [ ] Logs/test evidence được lưu dưới `release\1.0.0.0\appsource\Validation\` hoặc `DeployError\` nếu có lỗi.
 
 ### 9.10 - Review Azure upload
 
 - [ ] Chỉ upload final all-in-one ZIP:
 
 ```text
-D:\github\DataverseLabelTranslator\release\appsource\1.0.0.0\zip\DataverseLabelTranslator.v.1.0.0.zip
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 ```
 
 - [ ] Không upload `DataverseLabelTranslator_managed.zip`.
