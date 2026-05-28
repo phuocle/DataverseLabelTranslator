@@ -54,7 +54,8 @@
         "type:relationships",
         "type:charts",
         "type:content",
-        "type:bpf"
+        "type:bpf",
+        "type:ribbons"
     ];
     var GLOBAL_TYPE_ITEMS = [
         "type:webresources",
@@ -70,28 +71,59 @@
         return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     };
 
-    function ExpandRecord (record) {
-        XrmTranslator.GetGrid().expand(record.recid);
+    function GetRootGridRecords(grid) {
+        return grid.records.filter(function (record) {
+            return !record.w2ui || !record.w2ui.parent_recid;
+        });
     }
 
-    function CollapseRecord (record) {
-        XrmTranslator.GetGrid().collapse(record.recid);
+    function HasChildGridRecords(record) {
+        return record.w2ui && Array.isArray(record.w2ui.children) && record.w2ui.children.length > 0;
     }
 
-    function ToggleExpandCollapse (expand) {
-        for (var i = 0; i < XrmTranslator.GetGrid().records.length; i++) {
-            var record = XrmTranslator.GetGrid().records[i];
+    function AppendRecordTree(flatRecords, record, expand) {
+        flatRecords.push(record);
 
-            if (!record.w2ui || !record.w2ui.children) {
-                continue;
+        if (!HasChildGridRecords(record)) {
+            return;
+        }
+
+        record.w2ui.expanded = !!expand;
+
+        for (var i = 0; i < record.w2ui.children.length; i++) {
+            var child = record.w2ui.children[i];
+            child.w2ui = child.w2ui || {};
+            child.w2ui.parent_recid = record.recid;
+
+            if (!Array.isArray(child.w2ui.children)) {
+                child.w2ui.children = [];
             }
 
             if (expand) {
-                ExpandRecord(record);
-            } else {
-                CollapseRecord(record);
+                AppendRecordTree(flatRecords, child, true);
             }
         }
+    }
+
+    function ToggleExpandCollapse (expand) {
+        var grid = XrmTranslator.GetGrid();
+        var rootRecords = GetRootGridRecords(grid);
+        var flatRecords = [];
+
+        for (var i = 0; i < rootRecords.length; i++) {
+            AppendRecordTree(flatRecords, rootRecords[i], expand);
+        }
+
+        grid.records = flatRecords;
+        grid.total = flatRecords.length;
+        if (grid.last) {
+            grid.last.idCache = {};
+        }
+        if (grid.searchData && grid.searchData.length > 0) {
+            grid.localSearch(true);
+        }
+        grid.refresh();
+        NormalizeGridSearchUiSoon();
     }
 
     function GetToolbar() {
@@ -128,13 +160,14 @@
         var label = nameText ? String(nameText.textContent || "").trim() : "";
         var hasValidSearchName = label && label.toLowerCase() !== "null" && label.toLowerCase() !== "undefined";
 
+        if (searchName) {
+            searchName.style.display = "none";
+        }
+        if (nameText) {
+            nameText.textContent = "";
+        }
+
         if (!hasValidSearchName) {
-            if (searchName) {
-                searchName.style.display = "none";
-            }
-            if (nameText) {
-                nameText.textContent = "";
-            }
             grid.searchSelected = null;
         }
 
@@ -322,7 +355,7 @@
             SetToolbarItemsVisible(ENTITY_DEPENDENT_TYPE_ITEMS, false);
             SetToolbarItemsVisible(GLOBAL_TYPE_ITEMS, true);
 
-            if (["allInOne", "attributes", "options", "forms", "views", "formMeta", "entityMeta", "relationships", "charts", "bpf", "content"].indexOf(GetToolbar().get("type").selected) !== -1) {
+            if (["allInOne", "attributes", "options", "forms", "views", "formMeta", "entityMeta", "relationships", "charts", "bpf", "content", "ribbons"].indexOf(GetToolbar().get("type").selected) !== -1) {
                 GetToolbar().get("type").selected = "sitemap";
                 UpdateComponentDropdown("sitemap");
             }
@@ -548,6 +581,9 @@
         }
         else if (XrmTranslator.GetType() === "bpf") {
             currentHandler = BpfHandler;
+        }
+        else if (XrmTranslator.GetType() === "ribbons") {
+            currentHandler = RibbonHandler;
         }
         else if (XrmTranslator.GetType() === "content") {
             w2ui.grid.show.selectColumn = true;
@@ -2096,6 +2132,7 @@
             '<li><b>8. Charts</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Charts &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '<li><b>9. Business Process Flows</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Process Flows &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '<li><b>14. Content Snippets</b> — Solution &rarr; Entity &rarr; Adx_contentsnippet &rarr; Type &rarr; 14. Content Snippets &rarr; Load &rarr; Translate &rarr; Save</li>' +
+            '<li><b>15. Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load. Phase 1 is read-only.</li>' +
             '</ul>' +
             '<b>Entity-independent types</b> (set Entity to None):' +
             '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
@@ -2276,6 +2313,7 @@
                     { id: 'bpf', text: '9. Business Process Flows', icon: 'icon-flow' },
                     { id: 'sitemap', text: '10. Sitemap', icon: 'icon-sitemap' },
                     { id: 'content', text: '14. Content Snippets', icon: 'icon-code' },
+                    { id: 'ribbons', text: '15. Ribbons', icon: 'icon-grid' },
                     { id: 'dashboards', text: '11. Dashboards', icon: 'icon-dashboard' },
                     { id: 'webresources', text: '12. Web Resources', icon: 'icon-file-code' },
                     { id: 'globalOptionSets', text: '13. Global Option Sets', icon: 'icon-global-options' }

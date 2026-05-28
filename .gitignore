@@ -2,6 +2,7 @@ node_modules/
 Publish/
 __pycache__/
 *.pyc
+.devkit/
 
 # Local environment and secrets
 .env
