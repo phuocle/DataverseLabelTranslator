@@ -27,7 +27,7 @@ The cleaned unpacked solution must remain available for review at:
 D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\unpack
 ```
 
-After packing, do not stage anything. Leave the generated ZIP files as normal git changes. The `/commit` command is responsible for staging and committing when needed. Do not commit and do not push.
+After packing, do not stage anything. Leave the generated ZIP files as normal git changes. The `/pl-commit` command is responsible for staging and committing when needed. Do not commit and do not push.
 
 ## Instructions
 

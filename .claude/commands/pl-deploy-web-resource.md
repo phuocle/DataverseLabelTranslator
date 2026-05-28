@@ -10,7 +10,7 @@ Deploy a local Dataverse Label Translator file as a web resource using MCP `mana
 
 **Step 1: Validate**
 
-If `$ARGUMENTS` is empty, stop with: `Usage: /deploy-web-resource <local-path>`.
+If `$ARGUMENTS` is empty, stop with: `Usage: /pl-deploy-web-resource <local-path>`.
 If the file does not exist, stop with: `File $ARGUMENTS not found.`
 
 **Step 2: Resolve Dataverse unique name**

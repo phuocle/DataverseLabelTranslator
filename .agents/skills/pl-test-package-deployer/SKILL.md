@@ -1,11 +1,11 @@
 ---
-name: "test-package-deployer"
+name: "pl-test-package-deployer"
 description: "Prepare the local Package Deployer cache with the Dataverse Label Translator package for manual pac tool pd testing."
 ---
 
 # Test Package Deployer
 
-Use this skill when the user asks to run `Test Package Deployer`, `/test-package-deployer`, test with Package Deployer, or prepare `pac tool pd`.
+Use this skill when the user asks to run `Test Package Deployer`, `/pl-test-package-deployer`, test with Package Deployer, or prepare `pac tool pd`.
 
 This workflow does not launch Package Deployer. It prepares the local PD tools folder, then tells anh Phuoc to run:
 

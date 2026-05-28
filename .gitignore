@@ -23,6 +23,10 @@ __pycache__/
 .agents/**/*.local.*
 .github/**/*.local
 .github/**/*.local.*
+.vscode/mcp.json
+.vscode/*.local
+.vscode/*.local.*
+.vscode/mcp.secrets.json
 
 # Solution export working folders
 solutions/1.before/

@@ -1,11 +1,11 @@
 ---
-name: "deploy-web-resource"
+name: "pl-deploy-web-resource"
 description: "Deploy a local Dataverse Label Translator file as a Dataverse web resource through MCP manage_webresource."
 ---
 
-# deploy-web-resource
+# pl-deploy-web-resource
 
-Use this skill when the user asks to run the migrated source command `deploy-web-resource`.
+Use this skill when the user asks to run the Dataverse Label Translator command `pl-deploy-web-resource`.
 
 ## Command Template
 
@@ -24,7 +24,7 @@ Deploy a local Dataverse Label Translator file as a web resource using MCP `mana
 If `$ARGUMENTS` is empty, stop with:
 
 ```text
-Usage: /deploy-web-resource <local-path>
+Usage: /pl-deploy-web-resource <local-path>
 ```
 
 If the file does not exist, stop with:

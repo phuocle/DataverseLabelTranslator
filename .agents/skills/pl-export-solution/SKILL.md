@@ -1,11 +1,11 @@
 ---
-name: "export-solution"
+name: "pl-export-solution"
 description: "Export the DataverseLabelTranslator solution with cleaned labels and final managed/unmanaged release ZIPs."
 ---
 
-# export-solution
+# pl-export-solution
 
-Use this skill when the user asks to run the migrated source command `export-solution`.
+Use this skill when the user asks to run the Dataverse Label Translator command `pl-export-solution`.
 
 ## Command Template
 
@@ -38,7 +38,7 @@ The cleaned unpacked solution must remain available for review at:
 D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\unpack
 ```
 
-After packing, do not stage anything. Leave the generated ZIP files as normal git changes. The `/commit` command is responsible for staging and committing when needed. Do not commit and do not push.
+After packing, do not stage anything. Leave the generated ZIP files as normal git changes. The `/pl-commit` command is responsible for staging and committing when needed. Do not commit and do not push.
 
 ## Instructions
 

@@ -1,0 +1,18 @@
+{
+  "servers": {
+    "devkitQuickEdit": {
+      "type": "stdio",
+      "command": "devkit",
+      "args": [
+        "mcp",
+        "devkit-claude-quick-edit"
+      ],
+      "env": {
+        "DEVKIT_AUTH_TYPE": "ClientSecret",
+        "DEVKIT_URL": "https://<environment>.crm.dynamics.com",
+        "DEVKIT_CLIENT_ID": "<client-id>",
+        "DEVKIT_CLIENT_SECRET": "<client-secret>"
+      }
+    }
+  }
+}

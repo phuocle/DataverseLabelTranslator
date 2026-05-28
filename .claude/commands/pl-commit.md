@@ -1,13 +1,7 @@
 ---
-name: "commit"
-description: "Stage local changes and create one high-quality local git commit. Never push."
+name: pl-commit
+description: Stage local changes and create one high-quality local git commit. Never push.
 ---
-
-# commit
-
-Use this skill when the user asks to run the migrated source command `commit`.
-
-## Command Template
 
 # Commit Skill
 
@@ -24,8 +18,8 @@ Create a local git commit for the current repository. This command is intentiona
 ## Usage
 
 ```bash
-/commit
-/commit -m "your commit message"
+/pl-commit
+/pl-commit -m "your commit message"
 ```
 
 ## Workflow Steps
@@ -93,15 +87,16 @@ Commit message rules:
 - Do not mention tools, agents, prompts, or internal assistant workflow.
 - Do not mention pushing, PRs, deployments, or remote actions.
 - Use a body only when it adds useful context.
+- Use a small amount of emoji when it improves scanning, especially in multi-line commit bodies. Keep emoji practical and sparse.
 
 Message format:
 
 ```text
 <imperative subject>
 
-- <important feature or setup change>
-- <documentation or workflow change>
-- <release artifact or packaging note, if relevant>
+- 🚀 <important feature or setup change>
+- 📝 <documentation or workflow change>
+- 📦 <release artifact or packaging note, if relevant>
 ```
 
 Use a single-line commit when the change is small:

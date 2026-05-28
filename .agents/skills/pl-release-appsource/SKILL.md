@@ -1,11 +1,11 @@
 ---
-name: "release-appsource"
+name: "pl-release-appsource"
 description: "Build the final AppSource all-in-one Marketplace ZIP for Dataverse Label Translator. Does not export Dataverse solution or upload to Azure."
 ---
 
 # Release AppSource
 
-Use this skill when the user asks to run `Release AppSource`, `/release-appsource`, or build the final AppSource package.
+Use this skill when the user asks to run `Release AppSource`, `/pl-release-appsource`, or build the final AppSource package.
 
 ## Version Resolution
 
@@ -64,8 +64,8 @@ Always trust the selected existing managed solution as latest/newest:
 D:\github\DataverseLabelTranslator\release\<solution-version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
-Do not run `/export-solution`.
-Do not run the `export-solution` skill.
+Do not run `/pl-export-solution`.
+Do not run the `pl-export-solution` skill.
 Do not check Dataverse freshness.
 Do not read the version from Dataverse.
 Do not suggest exporting in this workflow.

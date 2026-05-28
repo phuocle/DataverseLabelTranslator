@@ -1,11 +1,11 @@
 ---
-name: "deploy-azure"
+name: "pl-deploy-azure"
 description: "Upload the final Dataverse Label Translator AppSource ZIP to Azure Blob Storage and write the Partner Center SAS details to release.md."
 ---
 
 # Deploy Azure
 
-Use this skill when the user asks to run `Deploy Azure`, `/deploy-azure`, upload the final AppSource ZIP to Azure Blob, or generate the Partner Center SAS URL.
+Use this skill when the user asks to run `Deploy Azure`, `/pl-deploy-azure`, upload the final AppSource ZIP to Azure Blob, or generate the Partner Center SAS URL.
 
 This workflow uploads only the final all-in-one AppSource ZIP. It does not export a Dataverse solution and does not run Release AppSource unless the user separately asks for that first.
 
