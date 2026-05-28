@@ -1,5 +1,6 @@
 ---
 name: "pl-export-solution"
+display-name: "PL Export Solution"
 description: "Export the DataverseLabelTranslator solution with cleaned labels and final managed/unmanaged release ZIPs."
 ---
 

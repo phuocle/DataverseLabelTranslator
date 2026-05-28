@@ -1,41 +1,77 @@
 ---
 name: "PL Test Package Deployer"
-description: Prepare the local Package Deployer cache with the Dataverse Label Translator package for manual pac tool pd testing.
+description: "Prepare the local Package Deployer cache with the Dataverse Label Translator package for manual pac tool pd testing."
 argument-hint: "[solution-version]"
 disable-model-invocation: true
 ---
 
+<!-- Generated from ../../.agents/skills/pl-test-package-deployer/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+
 # Test Package Deployer
 
-Prepare the local Package Deployer cache with the Dataverse Label Translator package for manual `pac tool pd` testing.
+Use this skill when the user asks to run `Test Package Deployer`, `/pl-test-package-deployer`, test with Package Deployer, or prepare `pac tool pd`.
 
-This command does not launch Package Deployer. It copies the built package into the correct local PD tools folder and then tells anh Phuoc to run:
+This workflow does not launch Package Deployer. It prepares the local PD tools folder, then tells anh Phuoc to run:
 
 ```powershell
 pac tool pd
 ```
 
-## Input
+## Version Resolution
 
-`$ARGUMENTS` may optionally contain a solution version such as:
-
-```text
-1.1.0.0
-```
-
-If no version is provided, let the script infer the latest release version.
-
-## Instructions
-
-**Step 1: Confirm repository**
-
-Run from:
+If the user mentions a version such as `1.1.0.0`, pass it explicitly:
 
 ```powershell
-D:\github\DataverseLabelTranslator
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\test-package-deployer.ps1 -SolutionVersion 1.1.0.0
 ```
 
-Verify:
+If the user does not mention a version, run the script without `-SolutionVersion`. The script must infer the latest release version by scanning:
+
+```text
+D:\github\DataverseLabelTranslator\release\<version>\appsource\src\DataverseLabelTranslatorPackage
+```
+
+If package source does not exist yet, the script uses the versioned managed solution under:
+
+```text
+D:\github\DataverseLabelTranslator\release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
+```
+
+and runs `Release AppSource` for that selected version.
+
+## What Gets Copied
+
+The script copies the inner Package Deployer package folder:
+
+```text
+D:\github\DataverseLabelTranslator\release\<version>\appsource\src\DataverseLabelTranslatorPackage
+```
+
+into the active local Package Deployer tools folder, normally:
+
+```text
+%LOCALAPPDATA%\Microsoft\PowerPlatform\PD\<pd-version>\tools
+```
+
+The script must discover the correct PD folder itself. It should prefer `pac tool list` and fall back to the highest local folder under:
+
+```text
+%LOCALAPPDATA%\Microsoft\PowerPlatform\PD
+```
+
+Required copied items:
+
+```text
+PkgFolder
+PL.DataverseLabelTranslator.PackageDeployment.dll
+[Content_Types].xml
+```
+
+The script removes stale custom `PL.*.PackageDeployment.dll` files from the PD tools folder before copying, so Package Deployer does not accidentally load an old custom package definition.
+
+## Workflow
+
+1. Confirm repository root:
 
 ```powershell
 git rev-parse --show-toplevel
@@ -47,64 +83,33 @@ Expected:
 D:\github\DataverseLabelTranslator
 ```
 
-**Step 2: Run the preparation script**
-
-If `$ARGUMENTS` contains a version:
+2. Run the script. If user mentioned a version, pass it:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\test-package-deployer.ps1 -SolutionVersion $ARGUMENTS
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\test-package-deployer.ps1 -SolutionVersion 1.1.0.0
 ```
 
-If `$ARGUMENTS` is empty:
+If user did not mention a version:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\test-package-deployer.ps1
 ```
 
-If the user explicitly asks to rebuild the AppSource package before copying:
+If the user explicitly asks to rebuild first, pass `-BuildRelease`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\test-package-deployer.ps1 -SolutionVersion $ARGUMENTS -BuildRelease
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\test-package-deployer.ps1 -SolutionVersion 1.1.0.0 -BuildRelease
 ```
 
-**Step 3: What the script must do**
-
-The script must copy this package source:
-
-```text
-D:\github\DataverseLabelTranslator\release\<version>\appsource\src\DataverseLabelTranslatorPackage
-```
-
-into the active local Package Deployer tools folder:
-
-```text
-%LOCALAPPDATA%\Microsoft\PowerPlatform\PD\<pd-version>\tools
-```
-
-The script must find the PD folder automatically by using `pac tool list` first, then falling back to the highest local PD cache folder.
-
-Required copied items:
-
-```text
-PkgFolder
-PL.DataverseLabelTranslator.PackageDeployment.dll
-[Content_Types].xml
-```
-
-Before copying, the script removes stale custom `PL.*.PackageDeployment.dll` files from the PD tools folder so Package Deployer does not load an old custom package definition.
-
-If the package source is missing, the script may run `Release AppSource` for the selected version. It must not export the Dataverse solution.
-
-**Step 4: Final response**
-
-Report:
+3. Verify the script output includes:
 
 - selected solution version,
 - package source folder,
 - PD tools folder,
-- copied items.
+- copied package items,
+- `Ready. Ask aP to run: pac tool pd`.
 
-Then tell anh Phuoc:
+4. Final response must only tell anh Phuoc the important paths and:
 
 ```text
 Anh hãy run: pac tool pd

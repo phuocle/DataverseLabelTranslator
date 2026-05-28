@@ -1,19 +1,21 @@
 ---
 name: pl-deploy-web-resource
-description: Deploy a local Dataverse Label Translator file as a Dataverse web resource.
-argument-hint: "<local-path>"
+description: Deploy a local Dataverse Label Translator file as a Dataverse web resource through MCP manage_webresource.
+argument-hint: '<local-path>'
 agent: agent
 ---
 
-Run the Dataverse Label Translator deploy web resource workflow.
+<!-- Generated from ../../.agents/skills/pl-deploy-web-resource/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+
+Run the Dataverse Label Translator `/pl-deploy-web-resource` workflow.
 
 Before acting, read and follow [AGENTS.md](../../AGENTS.md) and the canonical workflow in [pl-deploy-web-resource skill](../../.agents/skills/pl-deploy-web-resource/SKILL.md).
 
-Use the path supplied after `/pl-deploy-web-resource` as the local file path. Validate that it exists, resolve the Dataverse unique name from `.codex/mapping.xml` or the documented naming convention, then deploy with MCP `manage_webresource`.
+Use any text supplied after `/pl-deploy-web-resource` as the command arguments. Do not proceed from memory if the canonical skill file cannot be read; stop and report that the skill file is unavailable.
 
 Hard rules:
 
-- Do not deploy PropertyEditor resources into this solution.
-- Do not use the `devkit` CLI.
-- Use MCP `manage_webresource` directly. If that MCP tool is unavailable in VS Code, stop and report that the Dataverse MCP connection is required.
-- Create only under solution `DataverseLabelTranslator`.
+- Follow the canonical skill file exactly.
+- Do not push.
+- Do not create pull requests.
+- Do not deploy, export, upload, stage, or commit unless that specific workflow explicitly requires it.

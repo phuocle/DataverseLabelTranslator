@@ -1,15 +1,17 @@
 ---
 name: "PL Deploy Azure"
-description: Upload the final Dataverse Label Translator AppSource ZIP to Azure Blob Storage and write the Partner Center SAS details to release.md.
+description: "Upload the final Dataverse Label Translator AppSource ZIP to Azure Blob Storage and write the Partner Center SAS details to release.md."
 argument-hint: "[solution-version]"
 disable-model-invocation: true
 ---
 
+<!-- Generated from ../../.agents/skills/pl-deploy-azure/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+
 # Deploy Azure
 
-Upload the final Dataverse Label Translator AppSource ZIP to Azure Blob Storage and write the Partner Center SAS details to `release.md`.
+Use this skill when the user asks to run `Deploy Azure`, `/pl-deploy-azure`, upload the final AppSource ZIP to Azure Blob, or generate the Partner Center SAS URL.
 
-This command uploads only the final all-in-one ZIP. It must not export the Dataverse solution and must not run Release AppSource unless the user separately asks for that first.
+This workflow uploads only the final all-in-one AppSource ZIP. It does not export a Dataverse solution and does not run Release AppSource unless the user separately asks for that first.
 
 ## Fixed Azure Target
 
@@ -19,7 +21,7 @@ Expected Azure login:
 sales@d365iconsandtooltips.com
 ```
 
-Storage target:
+Storage account:
 
 ```text
 Resource group: SHARED
@@ -27,29 +29,27 @@ Storage account: ple
 Container: dataverselabeltranslator
 ```
 
-The script creates the container if it does not exist. The container remains private.
+The script creates the container if it does not exist. The container stays private.
 
-## Input
+## Version Resolution
 
-`$ARGUMENTS` may optionally contain a solution version such as:
-
-```text
-1.1.0.0
-```
-
-If no version is provided, let the script infer the latest final ZIP.
-
-## Instructions
-
-**Step 1: Confirm repository**
-
-Run from:
+If the user mentions a version such as `1.1.0.0`, pass it explicitly:
 
 ```powershell
-D:\github\DataverseLabelTranslator
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\deploy-azure.ps1 -SolutionVersion 1.1.0.0
 ```
 
-Verify:
+If the user does not mention a version, run without `-SolutionVersion`. The script scans the latest final ZIP under:
+
+```text
+D:\github\DataverseLabelTranslator\release\<version>\appsource\zip\DataverseLabelTranslator.v.<major.minor.patch>.zip
+```
+
+If the final ZIP is missing, stop and tell the user to run Release AppSource first. Do not export a solution.
+
+## Workflow
+
+1. Confirm repository root:
 
 ```powershell
 git rev-parse --show-toplevel
@@ -61,53 +61,54 @@ Expected:
 D:\github\DataverseLabelTranslator
 ```
 
-**Step 2: Optional dry run**
-
-For setup validation only:
+2. Optional dry run when validating setup:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\deploy-azure.ps1 -DryRun
 ```
 
-**Step 3: Live deploy**
-
-If `$ARGUMENTS` contains a version:
+3. Run the live deploy. With explicit version:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\deploy-azure.ps1 -SolutionVersion $ARGUMENTS
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\deploy-azure.ps1 -SolutionVersion 1.1.0.0
 ```
 
-If `$ARGUMENTS` is empty:
+Without explicit version:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\deploy-azure.ps1
 ```
 
-**Step 4: Expected behavior**
+4. Verify script output includes:
 
-The script must:
-
-- verify `az account show --query user.name -o tsv` equals `sales@d365iconsandtooltips.com`,
-- verify storage account `ple` exists in resource group `SHARED`,
-- create private container `dataverselabeltranslator` if missing,
-- upload `release\<version>\appsource\zip\DataverseLabelTranslator.v.<major.minor.patch>.zip`,
-- generate a read-only HTTPS SAS URL expiring one month from creation,
-- write Partner Center details to `release\<version>\appsource\zip\release.md`.
-
-**Step 5: Final response**
-
-Do not paste the SAS URL into chat. Report:
-
-- final ZIP path,
-- storage account/container/blob,
+- Azure user `sales@d365iconsandtooltips.com`,
+- uploaded ZIP path,
+- storage account `ple`,
+- container `dataverselabeltranslator`,
 - SAS expiry UTC,
-- `release.md` path.
+- generated `release.md` path.
 
-Tell anh Phuoc to open `release.md` and paste the SAS URL into:
+5. Final response must not paste the SAS URL. Tell the user to open:
+
+```text
+D:\github\DataverseLabelTranslator\release\<version>\appsource\zip\release.md
+```
+
+and paste the SAS URL into:
 
 ```text
 Partner Center -> Technical configuration -> CRM package -> URL of your package location
 ```
+
+## Output Contract
+
+The script writes sensitive Partner Center upload details to:
+
+```text
+D:\github\DataverseLabelTranslator\release\<version>\appsource\zip\release.md
+```
+
+`release.md` contains the real read-only SAS URL and must remain local/private. It is ignored by git.
 
 ## Hard Rules
 

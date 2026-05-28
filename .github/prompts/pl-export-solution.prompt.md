@@ -1,20 +1,20 @@
 ---
 name: pl-export-solution
-description: Export the DataverseLabelTranslator solution release ZIPs.
+description: Export the DataverseLabelTranslator solution with cleaned labels and final managed/unmanaged release ZIPs.
 agent: agent
 ---
 
-Run the Dataverse Label Translator export solution workflow.
+<!-- Generated from ../../.agents/skills/pl-export-solution/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+
+Run the Dataverse Label Translator `/pl-export-solution` workflow.
 
 Before acting, read and follow [AGENTS.md](../../AGENTS.md) and the canonical workflow in [pl-export-solution skill](../../.agents/skills/pl-export-solution/SKILL.md).
 
-This workflow exports `DataverseLabelTranslator`, removes non-base-language labels, stamps the hard-coded release version from the skill, and packs final managed and unmanaged ZIPs.
+Use any text supplied after `/pl-export-solution` as the command arguments. Do not proceed from memory if the canonical skill file cannot be read; stop and report that the skill file is unavailable.
 
 Hard rules:
 
-- Use the PAC CLI profile named `DataverseLabelTranslator`.
-- Do not read or infer a version from Dataverse.
-- Do not delete or rewrite `release/<version>/appsource`.
-- Do not stage files.
-- Do not commit.
+- Follow the canonical skill file exactly.
 - Do not push.
+- Do not create pull requests.
+- Do not deploy, export, upload, stage, or commit unless that specific workflow explicitly requires it.

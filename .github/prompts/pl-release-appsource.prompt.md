@@ -1,21 +1,21 @@
 ---
 name: pl-release-appsource
-description: Build the final AppSource all-in-one Marketplace ZIP.
-argument-hint: "[solution-version]"
+description: Build the final AppSource all-in-one Marketplace ZIP for Dataverse Label Translator. Does not export Dataverse solution or upload to Azure.
+argument-hint: '[solution-version]'
 agent: agent
 ---
 
-Run the Dataverse Label Translator Release AppSource workflow.
+<!-- Generated from ../../.agents/skills/pl-release-appsource/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+
+Run the Dataverse Label Translator `/pl-release-appsource` workflow.
 
 Before acting, read and follow [AGENTS.md](../../AGENTS.md) and the canonical workflow in [pl-release-appsource skill](../../.agents/skills/pl-release-appsource/SKILL.md).
 
-Use a solution version supplied after `/pl-release-appsource` when present. If no version is supplied, run the script without `-SolutionVersion` and let it infer the latest managed release ZIP.
+Use any text supplied after `/pl-release-appsource` as the command arguments. Do not proceed from memory if the canonical skill file cannot be read; stop and report that the skill file is unavailable.
 
 Hard rules:
 
-- Trust the selected existing managed solution ZIP under `release/<version>/dataverse/solutions/DataverseLabelTranslator_managed.zip` as the source of truth.
-- Do not export a Dataverse solution.
-- Do not upload to Azure.
-- Do not deploy to Dataverse.
-- Do not stage, commit, or push.
-- Do not modify older version folders unless the user explicitly selected that version.
+- Follow the canonical skill file exactly.
+- Do not push.
+- Do not create pull requests.
+- Do not deploy, export, upload, stage, or commit unless that specific workflow explicitly requires it.

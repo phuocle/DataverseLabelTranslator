@@ -1,6 +1,8 @@
 ---
 name: "pl-deploy-web-resource"
+display-name: "PL Deploy Web Resource"
 description: "Deploy a local Dataverse Label Translator file as a Dataverse web resource through MCP manage_webresource."
+argument-hint: "<local-path>"
 ---
 
 # pl-deploy-web-resource

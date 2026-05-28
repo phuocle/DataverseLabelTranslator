@@ -1,12 +1,20 @@
 ---
 name: "PL Export Solution"
-description: Export the DataverseLabelTranslator solution with cleaned labels and final managed/unmanaged release ZIPs.
+description: "Export the DataverseLabelTranslator solution with cleaned labels and final managed/unmanaged release ZIPs."
 disable-model-invocation: true
 ---
 
+<!-- Generated from ../../.agents/skills/pl-export-solution/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+
+# pl-export-solution
+
+Use this skill when the user asks to run the Dataverse Label Translator command `pl-export-solution`.
+
+## Command Template
+
 # Export Solution
 
-Export the Dataverse Label Translator (`DataverseLabelTranslator`) solution, remove non-base-language labels, stamp a hard-coded release version, and pack the final managed/unmanaged release ZIPs.
+Export the Dataverse Label Translator (`DataverseLabelTranslator`) solution, remove non-base-language labels, stamp a hard-coded release version, and pack the final managed and unmanaged release ZIPs.
 
 ## Current Release Version
 
@@ -37,7 +45,7 @@ After packing, do not stage anything. Leave the generated ZIP files as normal gi
 
 ## Instructions
 
-**Step 1: Confirm repository**
+### Step 1: Confirm Repository
 
 Run from:
 
@@ -53,7 +61,7 @@ git rev-parse --show-toplevel
 
 If the result is not `D:\github\DataverseLabelTranslator`, stop.
 
-**Step 2: Check PAC profile `DataverseLabelTranslator`**
+### Step 2: Check PAC Profile
 
 Run:
 
@@ -69,7 +77,7 @@ If the profile does not exist, stop and ask the user to create it:
 pac auth create --name DataverseLabelTranslator --url <your-environment-url>
 ```
 
-**Step 3: Select PAC profile `DataverseLabelTranslator`**
+### Step 3: Select PAC Profile
 
 Run:
 
@@ -79,7 +87,7 @@ pac auth select --name DataverseLabelTranslator
 
 If this fails, show the error and stop.
 
-**Step 4: Prepare paths**
+### Step 4: Prepare Paths
 
 Use the hard-coded version and reset only that version's `dataverse` folder. Do not delete or rewrite `release\$Version\appsource`.
 
@@ -108,7 +116,7 @@ New-Item -ItemType Directory -Path $SolutionsDir -Force | Out-Null
 New-Item -ItemType Directory -Path $TempRawDir | Out-Null
 ```
 
-**Step 5: Export raw solution ZIPs to temp**
+### Step 5: Export Raw Solution ZIPs To Temp
 
 Run exactly these two exports:
 
@@ -122,7 +130,7 @@ pac solution export --name DataverseLabelTranslator --path $RawManagedZip --mana
 
 If either export fails, show the full error output and stop.
 
-**Step 6: Unpack**
+### Step 6: Unpack
 
 Unpack to temp only:
 
@@ -132,7 +140,7 @@ pac solution unpack --zipfile $RawUnmanagedZip --folder $TempUnpackDir --package
 
 If unpack fails, show the full error output and stop.
 
-**Step 7: Remove non-base-language entries and stamp hard-coded version**
+### Step 7: Clean Labels And Stamp Version
 
 Run:
 
@@ -144,7 +152,7 @@ This removes non-base-language entries and replaces `Version: x.xx.xx.xx` with `
 
 If cleanup fails, show the full error output and stop.
 
-**Step 8: Pack final release ZIPs**
+### Step 8: Pack Final Release ZIPs
 
 Pack only these two final ZIPs into the versioned `dataverse\solutions` folder:
 
@@ -158,7 +166,7 @@ pac solution pack --zipfile $ManagedZip --folder $TempUnpackDir --packagetype Ma
 
 If either pack fails, show the full error output and stop.
 
-**Step 9: Keep cleaned unpacked files for review and remove raw temp files**
+### Step 9: Keep Review Copy And Remove Temp Files
 
 Copy the cleaned unpacked solution into `dataverse\unpack`:
 
@@ -172,7 +180,7 @@ Then remove only the temp root. The review copy under the `dataverse` folder mus
 Remove-Item -LiteralPath $TempRoot -Recurse -Force
 ```
 
-**Step 10: Verify output contract**
+### Step 10: Verify Output Contract
 
 Ensure the `dataverse\solutions` folder contains exactly two ZIP files:
 
@@ -203,7 +211,7 @@ if (-not (Test-Path -LiteralPath $ReleaseUnpackDir)) {
 }
 ```
 
-**Step 11: Do not stage files**
+### Step 11: Do Not Stage Files
 
 Do not run `git add`.
 Do not run `git commit`.
@@ -218,15 +226,13 @@ release\$Version\dataverse\solutions\DataverseLabelTranslator_managed.zip
 
 The `release\$Version\dataverse\unpack` folder is for manual review only and should be ignored by git.
 
-**Step 12: Report result**
+### Step 12: Report Result
 
 Report:
 
 - Release version: `1.0.0.0`
 - Release folder: `D:\github\DataverseLabelTranslator\release\1.0.0.0`
 - Unpacked review folder: `D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\unpack`
-- Exported files:
-  - `DataverseLabelTranslator.zip`
-  - `DataverseLabelTranslator_managed.zip`
+- Exported files: `DataverseLabelTranslator.zip`, `DataverseLabelTranslator_managed.zip`
 - Confirm the ZIP files were generated but not staged.
 - Confirm `release\1.0.0.0\dataverse\unpack` is present for review and ignored by git.

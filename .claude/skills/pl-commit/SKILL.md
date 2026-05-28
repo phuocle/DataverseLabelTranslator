@@ -1,9 +1,17 @@
-﻿---
+---
 name: "PL Commit"
-description: Stage local changes and create one high-quality local git commit. Never push.
-argument-hint: '[-m "commit message"]'
+description: "Stage local changes and create one high-quality local git commit. Never push."
+argument-hint: "[-m "commit message"]"
 disable-model-invocation: true
 ---
+
+<!-- Generated from ../../.agents/skills/pl-commit/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+
+# pl-commit
+
+Use this skill when the user asks to run the Dataverse Label Translator command `pl-commit`.
+
+## Command Template
 
 # Commit Skill
 

@@ -1,6 +1,8 @@
 ---
 name: "pl-release-appsource"
+display-name: "PL Release AppSource"
 description: "Build the final AppSource all-in-one Marketplace ZIP for Dataverse Label Translator. Does not export Dataverse solution or upload to Azure."
+argument-hint: "[solution-version]"
 ---
 
 # Release AppSource

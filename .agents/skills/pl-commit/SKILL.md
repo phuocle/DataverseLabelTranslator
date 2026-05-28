@@ -1,6 +1,8 @@
 ---
 name: "pl-commit"
+display-name: "PL Commit"
 description: "Stage local changes and create one high-quality local git commit. Never push."
+argument-hint: '[-m "commit message"]'
 ---
 
 # pl-commit

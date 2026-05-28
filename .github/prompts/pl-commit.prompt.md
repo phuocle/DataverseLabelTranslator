@@ -1,21 +1,21 @@
 ---
 name: pl-commit
-description: Stage local changes and create one local git commit. Never push.
+description: Stage local changes and create one high-quality local git commit. Never push.
 argument-hint: '[-m "commit message"]'
 agent: agent
 ---
 
-Run the Dataverse Label Translator commit workflow.
+<!-- Generated from ../../.agents/skills/pl-commit/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+
+Run the Dataverse Label Translator `/pl-commit` workflow.
 
 Before acting, read and follow [AGENTS.md](../../AGENTS.md) and the canonical workflow in [pl-commit skill](../../.agents/skills/pl-commit/SKILL.md).
 
-Use any text supplied after `/pl-commit` as the command arguments. If a `-m` message is provided, use it unless it is empty or misleading. If no message is provided, inspect the staged diff and generate one clear commit message.
+Use any text supplied after `/pl-commit` as the command arguments. Do not proceed from memory if the canonical skill file cannot be read; stop and report that the skill file is unavailable.
 
 Hard rules:
 
-- Create exactly one local commit.
+- Follow the canonical skill file exactly.
 - Do not push.
-- Do not create a pull request.
-- Do not deploy or export.
-- Do not use `--no-verify`.
-- If there are unrelated or risky changes, stop and ask before committing.
+- Do not create pull requests.
+- Do not deploy, export, upload, stage, or commit unless that specific workflow explicitly requires it.

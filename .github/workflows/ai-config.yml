@@ -1,0 +1,23 @@
+name: AI Config
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev01
+  workflow_dispatch:
+
+jobs:
+  check-ai-config:
+    name: Check AI config drift
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check AI config
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/check-ai-config.ps1

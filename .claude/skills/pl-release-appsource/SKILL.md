@@ -1,52 +1,64 @@
 ---
 name: "PL Release AppSource"
-description: Build the final AppSource all-in-one Marketplace ZIP for Dataverse Label Translator. Does not export Dataverse solution or upload to Azure.
+description: "Build the final AppSource all-in-one Marketplace ZIP for Dataverse Label Translator. Does not export Dataverse solution or upload to Azure."
 argument-hint: "[solution-version]"
 disable-model-invocation: true
 ---
 
+<!-- Generated from ../../.agents/skills/pl-release-appsource/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+
 # Release AppSource
 
-Build the final AppSource all-in-one Marketplace ZIP for Dataverse Label Translator.
-
-This command does not export the Dataverse solution and does not upload to Azure.
-
-## Input
-
-`$ARGUMENTS` may optionally contain a solution version such as:
-
-```text
-1.1.0.0
-```
-
-If no version is provided, let the script infer the latest release version.
+Use this skill when the user asks to run `Release AppSource`, `/pl-release-appsource`, or build the final AppSource package.
 
 ## Version Resolution
 
-If `$ARGUMENTS` contains a version, pass it explicitly:
+If the user mentions a version such as `1.1.0.0`, pass it explicitly:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\release-appsource.ps1 -SolutionVersion $ARGUMENTS
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\release-appsource.ps1 -SolutionVersion 1.1.0.0
 ```
 
-If `$ARGUMENTS` is empty, run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\release-appsource.ps1
-```
-
-The script infers the latest version by scanning:
+If the user does not mention a version, run the script without `-SolutionVersion`. The script must infer the latest version by scanning:
 
 ```text
 D:\github\DataverseLabelTranslator\release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
-Marketplace package version is derived from the first three solution version parts:
+The highest four-part numeric version wins. If no managed release folders exist, the script falls back to `1.0.0.0` and then fails clearly if the managed solution source is missing.
+
+Marketplace package version is derived from the first three solution version parts unless explicitly provided:
 
 ```text
 1.0.0.0 -> 1.0.0
 1.1.0.0 -> 1.1.0
 ```
+
+Each version is self-contained under:
+
+```text
+D:\github\DataverseLabelTranslator\release\<solution-version>
+```
+
+For a new version, copy the whole previous version folder, for example `release\1.0.0.0` to `release\1.0.1.0`, replace the managed solution under `dataverse\solutions`, then run this skill with `-SolutionVersion 1.0.1.0`. The script only rebuilds `appsource\src` and `appsource\zip` for the selected version and must not touch older version folders.
+
+## Output Contract
+
+Every successful run must leave the final all-in-one upload ZIP in the selected version folder:
+
+```text
+D:\github\DataverseLabelTranslator\release\<solution-version>\appsource\zip\DataverseLabelTranslator.v.<package-version>.zip
+```
+
+This is the file to upload to Azure Blob Storage for Partner Center.
+
+The nested Package Deployer ZIP must also be rebuilt under the selected version:
+
+```text
+D:\github\DataverseLabelTranslator\release\<solution-version>\appsource\src\DataverseLabelTranslator.v.<package-version>\DataverseLabelTranslatorPackage.zip
+```
+
+Do not upload the nested Package Deployer ZIP directly. It belongs inside the final all-in-one Marketplace ZIP.
 
 ## Source Of Truth
 
@@ -66,15 +78,7 @@ If the managed solution file is missing, stop and report the missing file.
 
 ## Workflow
 
-**Step 1: Confirm repository**
-
-Run from:
-
-```powershell
-D:\github\DataverseLabelTranslator
-```
-
-Verify:
+1. Confirm repository root:
 
 ```powershell
 git rev-parse --show-toplevel
@@ -86,29 +90,19 @@ Expected:
 D:\github\DataverseLabelTranslator
 ```
 
-**Step 2: Build release package**
-
-If `$ARGUMENTS` contains a version:
+2. Run the release script. If user mentioned a version, pass it:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\release-appsource.ps1 -SolutionVersion $ARGUMENTS
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\release-appsource.ps1 -SolutionVersion 1.1.0.0
 ```
 
-If `$ARGUMENTS` is empty:
+If user did not mention a version, let the script infer latest:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\release-appsource.ps1
 ```
 
-**Step 3: Verify final ZIP**
-
-The final all-in-one upload ZIP must be:
-
-```text
-D:\github\DataverseLabelTranslator\release\<solution-version>\appsource\zip\DataverseLabelTranslator.v.<package-version>.zip
-```
-
-The final ZIP root entries must be exactly:
+3. Verify final ZIP root entries are exactly:
 
 ```text
 DataverseLabelTranslatorPackage.zip
@@ -118,23 +112,33 @@ TermsOfUse.html
 logo32x32.png
 ```
 
-The nested Package Deployer ZIP must also be rebuilt:
-
-```text
-D:\github\DataverseLabelTranslator\release\<solution-version>\appsource\src\DataverseLabelTranslator.v.<package-version>\DataverseLabelTranslatorPackage.zip
-```
-
-Do not upload the nested ZIP directly.
-
-**Step 4: Final response**
-
-Report:
+4. Report:
 
 - final ZIP path,
 - final ZIP size,
 - nested Package Deployer ZIP path,
 - confirmation that the existing managed solution was used as source,
 - confirmation that nothing was uploaded.
+
+## Generated Assets
+
+The script generates non-screenshot assets such as logos, homepage hero, AppSource package flow, AI privacy flow, wizard visual, and video thumbnail under:
+
+```text
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\assets
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Videos
+```
+
+For newer versions, replace `1.0.0.0` with the selected solution version.
+
+Real product screenshots are not generated. They are left for anh Phuoc to capture under:
+
+```text
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Images
+D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Test\screenshots
+```
+
+For newer versions, replace `1.0.0.0` with the selected solution version.
 
 ## Hard Rules
 

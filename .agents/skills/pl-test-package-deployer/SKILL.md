@@ -1,6 +1,8 @@
 ---
 name: "pl-test-package-deployer"
+display-name: "PL Test Package Deployer"
 description: "Prepare the local Package Deployer cache with the Dataverse Label Translator package for manual pac tool pd testing."
+argument-hint: "[solution-version]"
 ---
 
 # Test Package Deployer
