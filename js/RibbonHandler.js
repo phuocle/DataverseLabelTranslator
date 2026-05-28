@@ -480,7 +480,8 @@
                 commandId: commandId,
                 property: property,
                 locLabelId: locLabelId,
-                locLabelExists: !!existingLocLabelId
+                locLabelExists: !!existingLocLabelId,
+                _isRibbonLabelRow: true
             };
 
             var labels = locLabels[locLabelId] || {};
@@ -552,9 +553,343 @@
             .then(function (customizationsXml) {
                 return {
                     zip: zip,
-                    customizationsXml: customizationsXml
+                    customizationsXml: customizationsXml,
+                    solutionZipBase64: exportResponse.ExportSolutionFile
                 };
             });
+        });
+    }
+
+    function normalizeSavedLabelValue(value) {
+        return value == null ? "" : String(value);
+    }
+
+    function createGuid() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+            return window.crypto.randomUUID();
+        }
+
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0;
+            var v = c === "x" ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    function collectRibbonChanges() {
+        var records = XrmTranslator.GetAllRecords();
+        var languageIds = XrmTranslator.installedLanguages.LocaleIds.map(function(language) {
+            return language.toString();
+        });
+        var changes = [];
+
+        for (var i = 0; i < records.length; i++) {
+            var record = records[i];
+            if (!record || !record.property || !record.controlId || !record.w2ui || !record.w2ui.changes) {
+                continue;
+            }
+
+            for (var l = 0; l < languageIds.length; l++) {
+                var language = languageIds[l];
+                if (!Object.prototype.hasOwnProperty.call(record.w2ui.changes, language)) {
+                    continue;
+                }
+
+                changes.push({
+                    record: record,
+                    entityLogicalName: record.entityLogicalName,
+                    component: record.component,
+                    surface: record.surface,
+                    controlId: record.controlId,
+                    property: record.property,
+                    locLabelId: record.locLabelId || getDefaultLocLabelId(record.controlId, record.property),
+                    language: language,
+                    value: normalizeSavedLabelValue(record.w2ui.changes[language])
+                });
+            }
+        }
+
+        return changes;
+    }
+
+    function findControlNodeByChange(ribbonDiffXml, change) {
+        var nodes = ribbonDiffXml ? ribbonDiffXml.getElementsByTagName(change.component || "*") : [];
+
+        for (var i = 0; i < nodes.length; i++) {
+            if (!isControlNode(nodes[i])) {
+                continue;
+            }
+
+            if ((nodes[i].getAttribute("Id") || "") !== change.controlId) {
+                continue;
+            }
+
+            if (change.surface && detectSurface(nodes[i]) !== change.surface) {
+                continue;
+            }
+
+            return nodes[i];
+        }
+
+        var allNodes = ribbonDiffXml ? ribbonDiffXml.getElementsByTagName("*") : [];
+        for (var a = 0; a < allNodes.length; a++) {
+            if (isControlNode(allNodes[a]) && (allNodes[a].getAttribute("Id") || "") === change.controlId) {
+                return allNodes[a];
+            }
+        }
+
+        return null;
+    }
+
+    function getOrCreateDirectChild(doc, parent, tagName) {
+        var child = getDirectChild(parent, tagName);
+        if (child) {
+            return child;
+        }
+
+        child = doc.createElement(tagName);
+        parent.appendChild(child);
+        return child;
+    }
+
+    function getOrCreateLocLabelsNode(doc, ribbonDiffXml) {
+        return getOrCreateDirectChild(doc, ribbonDiffXml, "LocLabels");
+    }
+
+    function getOrCreateLocLabel(doc, locLabelsNode, locLabelId) {
+        var labels = locLabelsNode.getElementsByTagName("LocLabel");
+
+        for (var i = 0; i < labels.length; i++) {
+            if (labels[i].getAttribute("Id") === locLabelId) {
+                return labels[i];
+            }
+        }
+
+        var locLabel = doc.createElement("LocLabel");
+        locLabel.setAttribute("Id", locLabelId);
+        locLabelsNode.appendChild(locLabel);
+        return locLabel;
+    }
+
+    function getOrCreateTitle(doc, titlesNode, language) {
+        var titles = titlesNode.getElementsByTagName("Title");
+
+        for (var i = 0; i < titles.length; i++) {
+            if (String(getAttributeInsensitive(titles[i], "languagecode")) === String(language)) {
+                return titles[i];
+            }
+        }
+
+        var title = doc.createElement("Title");
+        title.setAttribute("languagecode", language);
+        titlesNode.appendChild(title);
+        return title;
+    }
+
+    function applyRibbonXmlChanges(customizationsXml, changes) {
+        var customizationsDoc = parseXml(customizationsXml);
+        var entityLogicalName = ribbonState.entityInfo.logicalName;
+        var entityNode = findEntityNode(customizationsDoc, entityLogicalName);
+        if (!entityNode) {
+            throw new Error("Entity " + entityLogicalName + " was not found in customizations.xml.");
+        }
+
+        var ribbonDiffXml = getDirectChild(entityNode, "RibbonDiffXml");
+        if (!ribbonDiffXml) {
+            throw new Error("RibbonDiffXml was not found for entity " + entityLogicalName + ".");
+        }
+
+        var locLabelsNode = getOrCreateLocLabelsNode(customizationsDoc, ribbonDiffXml);
+
+        for (var i = 0; i < changes.length; i++) {
+            var change = changes[i];
+            var controlNode = findControlNodeByChange(ribbonDiffXml, change);
+            if (!controlNode) {
+                throw new Error("Ribbon control " + change.controlId + " was not found in customizations.xml.");
+            }
+
+            if (getLocLabelId(controlNode, change.property) !== change.locLabelId) {
+                controlNode.setAttribute(change.property, "$LocLabels:" + change.locLabelId);
+            }
+
+            var locLabel = getOrCreateLocLabel(customizationsDoc, locLabelsNode, change.locLabelId);
+            var titlesNode = getOrCreateDirectChild(customizationsDoc, locLabel, "Titles");
+            var title = getOrCreateTitle(customizationsDoc, titlesNode, change.language);
+            title.setAttribute("description", change.value);
+        }
+
+        return new XMLSerializer().serializeToString(customizationsDoc);
+    }
+
+    function getBackupFileName(entityLogicalName) {
+        var stamp = new Date().toISOString()
+            .replace(/[-:]/g, "")
+            .replace(/\..+$/, "")
+            .replace("T", "-");
+
+        return "ribbon-backup-" + entityLogicalName + "-" + stamp + ".zip";
+    }
+
+    function prepareBackupArtifact(changes) {
+        var backupZip = new JSZip();
+        var fileName = getBackupFileName(ribbonState.entityInfo.logicalName);
+        var changedLocLabels = {};
+
+        for (var i = 0; i < changes.length; i++) {
+            changedLocLabels[changes[i].locLabelId] = true;
+        }
+
+        backupZip.file(HELPER_SOLUTION_UNIQUE_NAME + "-original.zip", ribbonState.solutionZipBase64, { base64: true });
+        backupZip.file("customizations.xml", ribbonState.customizationsXml);
+        backupZip.file("backup-info.json", JSON.stringify({
+            entityLogicalName: ribbonState.entityInfo.logicalName,
+            entitySchemaName: ribbonState.entityInfo.schemaName,
+            timestamp: new Date().toISOString(),
+            changedCellCount: changes.length,
+            locLabelIds: Object.keys(changedLocLabels)
+        }, null, 2));
+
+        return backupZip.generateAsync({ type: "blob" })
+        .then(function(blob) {
+            return {
+                fileName: fileName,
+                blob: blob
+            };
+        });
+    }
+
+    function downloadBackupArtifact(backupArtifact) {
+        if (!backupArtifact || !backupArtifact.blob || !backupArtifact.fileName || !window.URL || !URL.createObjectURL) {
+            throw new Error("Ribbon backup download could not be prepared.");
+        }
+
+        var url = URL.createObjectURL(backupArtifact.blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = backupArtifact.fileName;
+        link.style.display = "none";
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(function() {
+            URL.revokeObjectURL(url);
+        }, 0);
+    }
+
+    function createImportSolutionBase64(updatedCustomizationsXml) {
+        return JSZip.loadAsync(ribbonState.solutionZipBase64, { base64: true })
+        .then(function(zip) {
+            zip.file("customizations.xml", updatedCustomizationsXml);
+            return zip.generateAsync({ type: "base64" })
+            .then(function(importZipBase64) {
+                return {
+                    zip: zip,
+                    base64: importZipBase64
+                };
+            });
+        });
+    }
+
+    function importRibbonSolution(importZipBase64) {
+        XrmTranslator.LockGrid("Importing ribbon solution");
+
+        return XrmTranslator.RunAsBaseLanguage(function () {
+            return WebApiClient.SendRequest("POST", WebApiClient.GetApiUrl({ apiVersion: "9.2" }) + "ImportSolution()", {
+                CustomizationFile: importZipBase64,
+                ImportJobId: createGuid(),
+                OverwriteUnmanagedCustomizations: true,
+                PublishWorkflows: false
+            });
+        });
+    }
+
+    function extractPublishJobId(response) {
+        if (!response) {
+            return null;
+        }
+
+        if (typeof response === "string") {
+            var stringMatch = response.match(/[0-9a-fA-F-]{36}/);
+            return stringMatch ? stringMatch[0] : null;
+        }
+
+        var candidates = [
+            response.AsyncOperationId,
+            response.asyncoperationid,
+            response.AsyncOperationID
+        ];
+
+        for (var i = 0; i < candidates.length; i++) {
+            if (candidates[i]) {
+                return String(candidates[i]).replace(/[{}]/g, "");
+            }
+        }
+
+        var text = JSON.stringify(response);
+        var match = text.match(/[0-9a-fA-F-]{36}/);
+        return match ? match[0] : null;
+    }
+
+    function publishAllXmlAsync() {
+        XrmTranslator.LockGrid("Starting Publish XML");
+
+        return XrmTranslator.RunAsBaseLanguage(function () {
+            return WebApiClient.SendRequest("POST", WebApiClient.GetApiUrl({ apiVersion: "9.2" }) + "PublishAllXmlAsync()", null);
+        })
+        .then(function(response) {
+            var jobId = extractPublishJobId(response);
+            if (!jobId) {
+                throw new Error("PublishAllXmlAsync did not return AsyncOperationId.");
+            }
+
+            return XrmTranslator.StorePublishXmlJob({
+                jobId: jobId,
+                operation: "PublishAllXmlAsync",
+                type: "ribbons",
+                entityLogicalName: ribbonState.entityInfo.logicalName
+            });
+        });
+    }
+
+    function commitRibbonGridChanges(changes) {
+        var refreshed = {};
+
+        for (var i = 0; i < changes.length; i++) {
+            var change = changes[i];
+            change.record[change.language] = change.value;
+
+            if (change.record.w2ui && change.record.w2ui.changes) {
+                delete change.record.w2ui.changes[change.language];
+                if (Object.keys(change.record.w2ui.changes).length === 0) {
+                    delete change.record.w2ui.changes;
+                }
+            }
+
+            refreshed[change.record.recid] = true;
+        }
+
+        var grid = XrmTranslator.GetGrid();
+        Object.keys(refreshed).forEach(function(recid) {
+            grid.refreshRow(recid);
+        });
+        XrmTranslator.SetSaveButtonDisabled(true);
+    }
+
+    function showPublishStartedMessage(job) {
+        XrmTranslator.UnlockGrid();
+        XrmTranslator.ShowPublishXmlStatus(job);
+
+        return DialogHelper.alert(
+            "Publish XML is running.\n\n" +
+            "Job ID: " + job.jobId + "\n\n" +
+            "Please wait a few minutes before loading, saving, or updating ribbon customizations again. Save and Load will check this publish job and block while it is still running.",
+            { title: "Publish XML running", width: 560, height: 280 }
+        )
+        .then(function() {
+            XrmTranslator.UnlockGrid();
+            XrmTranslator.ShowPublishXmlStatus(job);
         });
     }
 
@@ -601,6 +936,7 @@
                 entityInfo: entityInfo,
                 zip: exported.zip,
                 customizationsXml: exported.customizationsXml,
+                solutionZipBase64: exported.solutionZipBase64,
                 recordCount: records.length
             };
             XrmTranslator.metadata = records;
@@ -613,8 +949,87 @@
     };
 
     RibbonHandler.Save = function () {
-        return DialogHelper.alert("Ribbon save is not implemented in phase 1. This phase is read-only.", {
-            title: "Ribbons"
+        if (!ribbonState || !ribbonState.customizationsXml || !ribbonState.solutionZipBase64) {
+            return DialogHelper.alert("Please load ribbon labels before saving.", {
+                title: "Ribbons"
+            });
+        }
+
+        var changes = collectRibbonChanges();
+        if (changes.length === 0) {
+            XrmTranslator.SetSaveButtonDisabled(true);
+            return DialogHelper.alert("There are no ribbon changes to save.", {
+                title: "Ribbons"
+            });
+        }
+
+        var backupArtifact = null;
+        var updatedCustomizationsXml = null;
+        var importData = null;
+
+        XrmTranslator.LockGrid("Preparing ribbon backup");
+
+        return prepareBackupArtifact(changes)
+        .then(function(preparedBackup) {
+            backupArtifact = preparedBackup;
+            XrmTranslator.UnlockGrid();
+
+            return DialogHelper.confirm(
+                "Before saving ribbon labels, Dataverse Label Translator will download a backup of the current entity ribbon.\n\n" +
+                "Backup file: " + backupArtifact.fileName + "\n\n" +
+                "Click Yes to download the backup and continue Save. Click No to cancel Save.",
+                {
+                    title: "Download ribbon backup",
+                    yesText: "Yes",
+                    noText: "No",
+                    width: 620,
+                    height: 300
+                }
+            );
+        })
+        .then(function(confirmed) {
+            if (!confirmed) {
+                XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                return false;
+            }
+
+            downloadBackupArtifact(backupArtifact);
+            XrmTranslator.LockGrid("Updating ribbon XML");
+            updatedCustomizationsXml = applyRibbonXmlChanges(ribbonState.customizationsXml, changes);
+            return createImportSolutionBase64(updatedCustomizationsXml);
+        })
+        .then(function(createdImportData) {
+            if (!createdImportData) {
+                XrmTranslator.UnlockGrid();
+                XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                return null;
+            }
+
+            importData = createdImportData;
+            return importRibbonSolution(importData.base64);
+        })
+        .then(function() {
+            if (!importData) {
+                return null;
+            }
+
+            return publishAllXmlAsync();
+        })
+        .then(function(job) {
+            if (!job) {
+                return null;
+            }
+
+            ribbonState.customizationsXml = updatedCustomizationsXml;
+            ribbonState.solutionZipBase64 = importData.base64;
+            ribbonState.zip = importData.zip;
+
+            commitRibbonGridChanges(changes);
+            return showPublishStartedMessage(job);
+        })
+        .catch(function(error) {
+            XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+            XrmTranslator.errorHandler(error);
         });
     };
 

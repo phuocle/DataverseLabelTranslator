@@ -5,6 +5,61 @@
     pointer-events: none;
 }
 
+.xqt-publish-status-visible #grid {
+    top: 34px !important;
+}
+
+.xqt-grid-locked #grid .w2ui-grid-records,
+.xqt-grid-locked #grid .w2ui-grid-frecords,
+.xqt-grid-locked #grid .w2ui-grid-summary,
+.xqt-publish-status-visible #grid .w2ui-grid-records,
+.xqt-publish-status-visible #grid .w2ui-grid-frecords,
+.xqt-publish-status-visible #grid .w2ui-grid-summary {
+    pointer-events: none;
+}
+
+.xqt-publish-status-banner {
+    align-items: center;
+    background: #fff4ce;
+    border-bottom: 1px solid #f0c36d;
+    box-sizing: border-box;
+    color: #3b3a39;
+    display: none;
+    font-size: 13px;
+    gap: 10px;
+    height: 34px;
+    left: 0;
+    line-height: 1.3;
+    overflow: hidden;
+    padding: 0 14px;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 1000;
+}
+
+.xqt-publish-status-visible .xqt-publish-status-banner {
+    display: flex;
+}
+
+.xqt-publish-status-banner-icon {
+    color: #8a6100;
+    flex: 0 0 auto;
+    font-weight: 700;
+}
+
+.xqt-publish-status-banner-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.xqt-publish-status-banner-code {
+    color: #605e5c;
+    font-family: Consolas, "Courier New", monospace;
+}
+
 #grid .w2ui-grid-toolbar,
 #grid .w2ui-grid-toolbar .w2ui-toolbar,
 #grid .w2ui-grid-toolbar .w2ui-tb-line,

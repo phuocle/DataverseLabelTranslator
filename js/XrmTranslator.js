@@ -42,6 +42,8 @@
     var baseLanguageRestoreLcid = null;
     var unfilteredRecords = null;
     var recordSelectorContext = null;
+    var PUBLISH_XML_JOB_STORAGE_KEY = "DataverseLabelTranslator.PublishXmlJob";
+    var PUBLISH_XML_JOB_MAX_BLOCKED_ATTEMPTS = 10;
     var ENTITY_DEPENDENT_TYPE_ITEMS = [
         "type:allInOne",
         "type:entitySeparator",
@@ -138,10 +140,140 @@
         }
     }
 
+    function getStoredPublishXmlJob() {
+        if (!window.localStorage) {
+            return null;
+        }
+
+        var raw = localStorage.getItem(PUBLISH_XML_JOB_STORAGE_KEY);
+        if (!raw) {
+            return null;
+        }
+
+        try {
+            var job = JSON.parse(raw);
+            if (!job || job.source !== "DataverseLabelTranslator" || !job.jobId) {
+                localStorage.removeItem(PUBLISH_XML_JOB_STORAGE_KEY);
+                return null;
+            }
+
+            return job;
+        }
+        catch (e) {
+            localStorage.removeItem(PUBLISH_XML_JOB_STORAGE_KEY);
+            return null;
+        }
+    }
+
+    function isNotFoundError(error) {
+        var message = String(error && (error.message || error.statusText || error) || "");
+        return /not\s+found|does\s+not\s+exist|0x80040217/i.test(message);
+    }
+
+    function retrievePublishJob(jobId) {
+        return WebApiClient.Retrieve({
+            apiVersion: "9.2",
+            entityName: "asyncoperation",
+            entityId: jobId,
+            queryParams: "?$select=asyncoperationid,name,statuscode,statecode,operationtype,createdon"
+        });
+    }
+
+    function persistPublishXmlJob(job) {
+        if (window.localStorage && job) {
+            localStorage.setItem(PUBLISH_XML_JOB_STORAGE_KEY, JSON.stringify(job));
+        }
+    }
+
+    function getPublishXmlJobAttempts(job) {
+        var attempts = parseInt(job && job.blockedAttempts, 10);
+        if (isNaN(attempts) || attempts < 0) {
+            return 0;
+        }
+
+        return attempts;
+    }
+
+    function getPublishXmlJobAttemptsRemaining(job) {
+        return Math.max(PUBLISH_XML_JOB_MAX_BLOCKED_ATTEMPTS - getPublishXmlJobAttempts(job), 0);
+    }
+
+    function incrementPublishXmlJobAttempt(job) {
+        job.blockedAttempts = Math.min(getPublishXmlJobAttempts(job) + 1, PUBLISH_XML_JOB_MAX_BLOCKED_ATTEMPTS);
+        job.lastCheckedOn = new Date().toISOString();
+        persistPublishXmlJob(job);
+
+        return job;
+    }
+
+    function parseAsyncOperationCode(value) {
+        var number = parseInt(value, 10);
+        return isNaN(number) ? null : number;
+    }
+
+    function isPublishXmlJobTerminal(asyncOperation) {
+        var stateCode = parseAsyncOperationCode(asyncOperation && asyncOperation.statecode);
+        var statusCode = parseAsyncOperationCode(asyncOperation && asyncOperation.statuscode);
+
+        return stateCode === 3 || statusCode === 30 || statusCode === 31 || statusCode === 32;
+    }
+
+    function ensurePublishStatusBanner() {
+        if (!document || !document.body) {
+            return null;
+        }
+
+        var banner = document.getElementById("xqt-publish-status-banner");
+        if (banner) {
+            return banner;
+        }
+
+        banner = document.createElement("div");
+        banner.id = "xqt-publish-status-banner";
+        banner.className = "xqt-publish-status-banner";
+
+        var icon = document.createElement("span");
+        icon.className = "xqt-publish-status-banner-icon";
+        icon.textContent = "!";
+        banner.appendChild(icon);
+
+        var text = document.createElement("span");
+        text.className = "xqt-publish-status-banner-text";
+        banner.appendChild(text);
+
+        document.body.insertBefore(banner, document.body.firstChild);
+
+        return banner;
+    }
+
+    function updatePublishStatusBanner(job) {
+        var banner = ensurePublishStatusBanner();
+        if (!banner) {
+            return;
+        }
+
+        var text = banner.querySelector(".xqt-publish-status-banner-text");
+        if (!text) {
+            return;
+        }
+
+        var attemptsRemaining = getPublishXmlJobAttemptsRemaining(job);
+        text.textContent = "Publish XML is running. Load any type or refresh this page to re-check. Save and Load will be blocked while the job is still running. Recovery checks left: " + attemptsRemaining + ". Job ID: ";
+
+        var code = document.createElement("span");
+        code.className = "xqt-publish-status-banner-code";
+        code.textContent = job && job.jobId ? job.jobId : "";
+        text.appendChild(code);
+
+        document.body.classList.add("xqt-publish-status-visible");
+    }
+
     function NormalizeGridSearchUiSoon() {
         NormalizeGridSearchUi();
         setTimeout(NormalizeGridSearchUi, 0);
         setTimeout(NormalizeGridSearchUi, 50);
+        setTimeout(NormalizeGridSearchUi, 150);
+        setTimeout(NormalizeGridSearchUi, 300);
     }
 
     function NormalizeGridSearchUi() {
@@ -153,6 +285,19 @@
 
         ConfigureSimpleGridSearch(grid);
         RemoveGridSearchPanel(gridBox);
+        EnsureSimpleGridSearchStyle(grid);
+
+        if (grid.searchSelected) {
+            grid.searchSelected = null;
+            if (typeof grid.refreshSearch === "function") {
+                grid.refreshSearch();
+            }
+        }
+
+        if (grid.last) {
+            grid.last.field = "all";
+            grid.last.label = "All Fields";
+        }
 
         var searchName = gridBox.querySelector("#grid_" + grid.name + "_search_name");
         var searchInput = gridBox.querySelector("#grid_" + grid.name + "_search_all");
@@ -184,13 +329,22 @@
         }
 
         if (grid.last) {
-            if (!grid.last.field || ["null", "undefined"].indexOf(String(grid.last.field).toLowerCase()) !== -1) {
-                grid.last.field = "all";
-            }
-            if (!grid.last.label || ["null", "undefined"].indexOf(String(grid.last.label).toLowerCase()) !== -1) {
-                grid.last.label = "All Fields";
-            }
+            grid.last.field = "all";
+            grid.last.label = "All Fields";
         }
+    }
+
+    function EnsureSimpleGridSearchStyle(grid) {
+        var styleId = "xrm-translator-simple-grid-search-style";
+        if (!grid || document.getElementById(styleId)) {
+            return;
+        }
+
+        var style = document.createElement("style");
+        style.id = styleId;
+        style.textContent = "#grid_" + grid.name + "_search_name{display:none!important;}" +
+            "#grid_" + grid.name + "_search_all::placeholder{color:transparent!important;}";
+        document.head.appendChild(style);
     }
 
     function RemoveGridSearchPanel(gridBox) {
@@ -391,6 +545,11 @@
     function SetToolbarLocked(locked) {
         var toolbar = GetToolbar();
         var toolbarBox = toolbar && toolbar.box ? toolbar.box : null;
+
+        if (typeof document !== "undefined" && document.body && document.body.classList) {
+            document.body.classList.toggle("xqt-grid-locked", !!locked);
+        }
+
         if (toolbarBox && toolbarBox.classList) {
             toolbarBox.classList.toggle("xqt-toolbar-locked", !!locked);
         }
@@ -601,12 +760,33 @@
     }
 
     XrmTranslator.errorHandler = function(error) {
-        if(error.statusText) {
-            w2alert(error.statusText);
+        var message = "Unexpected error.";
+
+        if (error) {
+            if (error.statusText) {
+                message = error.statusText;
+            }
+            else if (error.message) {
+                message = error.message;
+            }
+            else if (typeof error === "string") {
+                message = error;
+            }
+            else {
+                try {
+                    message = JSON.stringify(error);
+                }
+                catch (e) {
+                    message = String(error);
+                }
+            }
         }
-        else {
-            w2alert(error);
+
+        if (window.console && console.error) {
+            console.error(error);
         }
+
+        w2alert(message);
 
         XrmTranslator.UnlockGrid();
     };
@@ -925,10 +1105,168 @@
     }
 
     XrmTranslator.SetSaveButtonDisabled = function (disabled) {
-        var saveButton = w2ui.grid_toolbar.get("w2ui-save");
+        var toolbar = w2ui && w2ui.grid_toolbar ? w2ui.grid_toolbar : null;
+        if (!toolbar) {
+            return;
+        }
+
+        var saveButton = toolbar.get("w2ui-save");
+        if (!saveButton) {
+            return;
+        }
+
         saveButton.disabled = disabled;
-        w2ui.grid_toolbar.refresh();
+        toolbar.refresh();
     }
+
+    XrmTranslator.ShowPublishXmlStatus = function(job) {
+        updatePublishStatusBanner(job || getStoredPublishXmlJob());
+        XrmTranslator.SetSaveButtonDisabled(true);
+    };
+
+    XrmTranslator.HidePublishXmlStatus = function() {
+        if (document && document.body) {
+            document.body.classList.remove("xqt-publish-status-visible");
+        }
+    };
+
+    XrmTranslator.StorePublishXmlJob = function(job) {
+        if (!job || !job.jobId) {
+            throw new Error("Publish XML did not return a system job id.");
+        }
+
+        if (!window.localStorage) {
+            throw new Error("Browser localStorage is not available. The Publish XML job cannot be guarded.");
+        }
+
+        var storedJob = {
+            jobId: job.jobId,
+            source: "DataverseLabelTranslator",
+            operation: job.operation || "PublishAllXmlAsync",
+            type: job.type || null,
+            entityLogicalName: job.entityLogicalName || null,
+            createdOn: job.createdOn || new Date().toISOString(),
+            blockedAttempts: 0,
+            lastCheckedOn: null
+        };
+
+        persistPublishXmlJob(storedJob);
+        XrmTranslator.ShowPublishXmlStatus(storedJob);
+
+        return storedJob;
+    };
+
+    XrmTranslator.ClearPublishXmlJob = function() {
+        if (window.localStorage) {
+            localStorage.removeItem(PUBLISH_XML_JOB_STORAGE_KEY);
+        }
+
+        XrmTranslator.HidePublishXmlStatus();
+    };
+
+    XrmTranslator.RefreshPublishXmlJobState = function(options) {
+        options = options || {};
+        var job = getStoredPublishXmlJob();
+
+        if (!job) {
+            XrmTranslator.HidePublishXmlStatus();
+            return Promise.resolve({ hasRunningJob: false, job: null });
+        }
+
+        XrmTranslator.ShowPublishXmlStatus(job);
+
+        return retrievePublishJob(job.jobId)
+        .then(function(asyncOperation) {
+            if (isPublishXmlJobTerminal(asyncOperation)) {
+                XrmTranslator.ClearPublishXmlJob();
+                XrmTranslator.UnlockGrid();
+                XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                return { hasRunningJob: false, job: job, cleared: true, completed: true, asyncOperation: asyncOperation };
+            }
+
+            if (options.countAttempt) {
+                job = incrementPublishXmlJobAttempt(job);
+
+                if (getPublishXmlJobAttempts(job) >= PUBLISH_XML_JOB_MAX_BLOCKED_ATTEMPTS) {
+                    XrmTranslator.ClearPublishXmlJob();
+                    XrmTranslator.UnlockGrid();
+                    XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+
+                    var forcedState = {
+                        hasRunningJob: false,
+                        job: job,
+                        cleared: true,
+                        forcedCleared: true,
+                        asyncOperation: asyncOperation
+                    };
+
+                    if (options.notifyForcedClear) {
+                        return DialogHelper.alert(
+                            "The stored Publish XML guard was cleared after " + PUBLISH_XML_JOB_MAX_BLOCKED_ATTEMPTS + " checks.\n\n" +
+                            "Job ID: " + job.jobId + "\n\n" +
+                            "Save is available again. If Dataverse is still publishing, wait a few minutes before saving ribbon changes.",
+                            { title: "Publish XML guard cleared", width: 560, height: 280 }
+                        )
+                        .then(function() {
+                            return forcedState;
+                        });
+                    }
+
+                    return forcedState;
+                }
+            }
+
+            XrmTranslator.ShowPublishXmlStatus(job);
+
+            if (options.lockGrid) {
+                XrmTranslator.LockGrid("Publish XML is running. Please wait a few minutes.");
+            }
+
+            if (!options.silent) {
+                return DialogHelper.alert(
+                    "Publish XML is still running for a previous Dataverse Label Translator ribbon save.\n\n" +
+                    "Job ID: " + job.jobId + "\n\n" +
+                    "Recovery checks left: " + getPublishXmlJobAttemptsRemaining(job) + "\n\n" +
+                    "Please wait a few minutes before loading, saving, or updating ribbon customizations again.",
+                    { title: "Publish XML running", width: 560, height: 260 }
+                )
+                .then(function() {
+                    return { hasRunningJob: true, job: job, asyncOperation: asyncOperation };
+                });
+            }
+
+            return { hasRunningJob: true, job: job, asyncOperation: asyncOperation };
+        })
+        .catch(function(error) {
+            if (isNotFoundError(error)) {
+                XrmTranslator.ClearPublishXmlJob();
+                XrmTranslator.UnlockGrid();
+                return { hasRunningJob: false, job: null, cleared: true };
+            }
+
+            throw error;
+        });
+    };
+
+    XrmTranslator.CheckPendingPublishJobBeforeSave = function() {
+        return XrmTranslator.RefreshPublishXmlJobState({ silent: true, countAttempt: true, notifyForcedClear: true })
+        .then(function(state) {
+            if (!state.hasRunningJob) {
+                return true;
+            }
+
+            return DialogHelper.alert(
+                "Publish XML is still running for a previous Dataverse Label Translator ribbon save.\n\n" +
+                "Job ID: " + state.job.jobId + "\n\n" +
+                "Recovery checks left: " + getPublishXmlJobAttemptsRemaining(state.job) + "\n\n" +
+                "Please wait a few minutes before saving again.",
+                { title: "Publish XML running", width: 560, height: 260 }
+            )
+            .then(function() {
+                return false;
+            });
+        });
+    };
 
     function HasOwnProperty(obj, property) {
         return !!obj && Object.prototype.hasOwnProperty.call(obj, property);
@@ -964,6 +1302,13 @@
         return NormalizeComparableGridValue(left) === NormalizeComparableGridValue(right);
     }
 
+    function ShouldKeepRibbonBlankChange(record, field, value) {
+        return record &&
+            record._isRibbonLabelRow === true &&
+            (record[field] === null || typeof record[field] === "undefined") &&
+            value === "";
+    }
+
     XrmTranslator.NormalizeRecordChanges = function(record) {
         if (!record || !record.w2ui || !record.w2ui.changes) {
             return false;
@@ -974,6 +1319,10 @@
 
         for (var field in changes) {
             if (!HasOwnProperty(changes, field)) {
+                continue;
+            }
+
+            if (ShouldKeepRibbonBlankChange(record, field, changes[field])) {
                 continue;
             }
 
@@ -2132,7 +2481,7 @@
             '<li><b>8. Charts</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Charts &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '<li><b>9. Business Process Flows</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Process Flows &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '<li><b>14. Content Snippets</b> — Solution &rarr; Entity &rarr; Adx_contentsnippet &rarr; Type &rarr; 14. Content Snippets &rarr; Load &rarr; Translate &rarr; Save</li>' +
-            '<li><b>15. Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load. Phase 1 is read-only.</li>' +
+            '<li><b>15. Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load &rarr; Translate &rarr; Save. Save downloads a backup first, then starts Publish XML asynchronously.</li>' +
             '</ul>' +
             '<b>Entity-independent types</b> (set Entity to None):' +
             '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
@@ -2193,6 +2542,26 @@
         }
 
         promise.then(function(){
+            return XrmTranslator.RefreshPublishXmlJobState({ silent: true, countAttempt: true, notifyForcedClear: true });
+        })
+        .then(function(publishState) {
+            if (publishState && publishState.hasRunningJob) {
+                XrmTranslator.UnlockGrid();
+                XrmTranslator.SetSaveButtonDisabled(true);
+                return publishState;
+            }
+
+            if (publishState && publishState.cleared) {
+                XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+            }
+
+            return publishState;
+        })
+        .then(function(publishState){
+            if (publishState && publishState.hasRunningJob) {
+                return;
+            }
+
             XrmTranslator.columnRestoreNeeded = false;
             XrmTranslator.entity = entity;
             SetHandler();
@@ -2204,7 +2573,8 @@
             // Reset column sorting
             XrmTranslator.GetGrid().sort();
             currentHandler.Load();
-        });
+        })
+        .catch(XrmTranslator.errorHandler);
     }
 
     function HandleToolbarClick(event) {
@@ -2404,19 +2774,40 @@
                     return;
                 }
 
+                if (event && typeof event.preventDefault === "function") {
+                    event.preventDefault();
+                }
+
                 var grid = XrmTranslator.GetGrid();
                 var normalizedRecords = XrmTranslator.NormalizeGridChanges();
                 for (var i = 0; i < normalizedRecords.length; i++) {
                     grid.refreshRow(normalizedRecords[i].recid);
                 }
 
-                if (!XrmTranslator.HasPendingChanges()) {
-                    XrmTranslator.SetSaveButtonDisabled(true);
-                    grid.refresh();
-                    return;
-                }
+                XrmTranslator.SetSaveButtonDisabled(true);
 
-                currentHandler.Save();
+                return XrmTranslator.CheckPendingPublishJobBeforeSave()
+                .then(function(canSave) {
+                    if (!canSave) {
+                        XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                        return;
+                    }
+
+                    if (!XrmTranslator.HasPendingChanges()) {
+                        grid.refresh();
+                        return;
+                    }
+
+                    if (!currentHandler || typeof currentHandler.Save !== "function") {
+                        throw new Error("No save handler is available for the selected type.");
+                    }
+
+                    return currentHandler.Save();
+                })
+                .catch(function(error) {
+                    XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                    XrmTranslator.errorHandler(error);
+                });
             },
             onChange: function (event) {
                 event.onComplete = function () {
@@ -2733,6 +3124,7 @@
         })
         .then(function () {
             XrmTranslator.UnlockGrid();
+            return XrmTranslator.RefreshPublishXmlJobState({ silent: true, countAttempt: true, notifyForcedClear: true });
         })
         .catch(function (error) {
             XrmTranslator.errorHandler(error);
