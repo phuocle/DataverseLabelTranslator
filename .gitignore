@@ -19,6 +19,8 @@ __pycache__/
 .claude/settings.local.json
 .claude/*.local
 .claude/*.local.*
+.agents/mcp_config.json
+.agents/mcp_oauth_tokens.json
 .agents/**/*.local
 .agents/**/*.local.*
 .github/**/*.local

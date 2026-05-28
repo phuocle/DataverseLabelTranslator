@@ -6,8 +6,10 @@
 
 - Codex reads this file directly and discovers repo skills from `.agents/skills/`.
 - Claude Code reads `CLAUDE.md`; this repo keeps `CLAUDE.md` as a thin `@AGENTS.md` import with only Claude-specific notes.
-- GitHub Copilot in VS Code can read this file as always-on agent guidance when `chat.useAgentsMdFile` is enabled. `.github/copilot-instructions.md` is a standalone Copilot entry point, not an import wrapper, and `.github/prompts/*.prompt.md` exposes lightweight Copilot slash commands.
+- GitHub Copilot in VS Code reads this file as always-on agent guidance through workspace setting `chat.useAgentsMdFile=true` in `.vscode/settings.json`. Do not add `.github/copilot-instructions.md`; keep `AGENTS.md` as the shared source of truth. `.github/prompts/*.prompt.md` exposes lightweight Copilot slash commands.
 - GitHub Copilot MCP setup for VS Code is documented in `.vscode/mcp.json.example`; copy it to ignored local file `.vscode/mcp.json` and fill credentials locally. The Dataverse DevKit server name is `devkitQuickEdit`.
+- Antigravity uses `.agents/skills/` for project skills and `.agents/rules/` for workspace rules. The Antigravity project rule imports this file through `.agents/rules/pl-project.md`. Do not add `.agents/workflows/` unless the workflow is meaningfully different from an existing skill.
+- Antigravity IDE MCP config is managed outside the repo at `~/.gemini/antigravity/mcp_config.json`. `.agents/mcp_config.json.example` is a safe placeholder/example; never commit a real `.agents/mcp_config.json` with credentials.
 - Do not duplicate shared project rules between `AGENTS.md` and `CLAUDE.md`. Update this file first.
 
 ## Project
@@ -48,7 +50,8 @@ img/   Image web resources
 Detailed command workflows live in the agent-native command files:
 
 - Codex/OpenAI skills: `.agents/skills/<name>/SKILL.md`.
-- Claude Code slash commands: `.claude/commands/<name>.md`.
+- Antigravity skills: `.agents/skills/<name>/SKILL.md`.
+- Claude Code project skills: `.claude/skills/<name>/SKILL.md`.
 - GitHub Copilot prompt files: `.github/prompts/<name>.prompt.md`.
 
 Keep the roster below aligned with those files. Do not use `.codex/commands/` for new workflows; Codex should use `.agents/skills/`.

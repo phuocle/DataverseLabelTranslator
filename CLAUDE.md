@@ -4,7 +4,7 @@
 
 This file intentionally imports `AGENTS.md` so Claude Code and Codex share the same project guidance without duplicated instructions.
 
-Claude-specific command implementations live in `.claude/commands/`:
+Claude-specific command implementations live as project skills in `.claude/skills/`:
 
 - `/pl-commit`
 - `/pl-deploy-web-resource`

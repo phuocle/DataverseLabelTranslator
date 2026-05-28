@@ -1,3 +1,10 @@
+---
+name: "PL Test Package Deployer"
+description: Prepare the local Package Deployer cache with the Dataverse Label Translator package for manual pac tool pd testing.
+argument-hint: "[solution-version]"
+disable-model-invocation: true
+---
+
 # Test Package Deployer
 
 Prepare the local Package Deployer cache with the Dataverse Label Translator package for manual `pac tool pd` testing.

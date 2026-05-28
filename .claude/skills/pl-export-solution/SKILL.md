@@ -1,3 +1,9 @@
+---
+name: "PL Export Solution"
+description: Export the DataverseLabelTranslator solution with cleaned labels and final managed/unmanaged release ZIPs.
+disable-model-invocation: true
+---
+
 # Export Solution
 
 Export the Dataverse Label Translator (`DataverseLabelTranslator`) solution, remove non-base-language labels, stamp a hard-coded release version, and pack the final managed/unmanaged release ZIPs.

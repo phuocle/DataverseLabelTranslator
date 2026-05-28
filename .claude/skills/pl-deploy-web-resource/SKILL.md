@@ -1,3 +1,10 @@
+---
+name: "PL Deploy Web Resource"
+description: Deploy a local Dataverse Label Translator file as a Dataverse web resource through MCP manage_webresource.
+argument-hint: "<local-path>"
+disable-model-invocation: true
+---
+
 # Deploy Web Resource
 
 Deploy a local Dataverse Label Translator file as a web resource using MCP `manage_webresource`.

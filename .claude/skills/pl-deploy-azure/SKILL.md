@@ -1,3 +1,10 @@
+---
+name: "PL Deploy Azure"
+description: Upload the final Dataverse Label Translator AppSource ZIP to Azure Blob Storage and write the Partner Center SAS details to release.md.
+argument-hint: "[solution-version]"
+disable-model-invocation: true
+---
+
 # Deploy Azure
 
 Upload the final Dataverse Label Translator AppSource ZIP to Azure Blob Storage and write the Partner Center SAS details to `release.md`.
