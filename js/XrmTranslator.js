@@ -1870,6 +1870,70 @@
         return NormalizeComparableGridValue(left) === NormalizeComparableGridValue(right);
     }
 
+    function EncodeHtml(value) {
+        if (value === null || typeof value === "undefined") {
+            return "";
+        }
+
+        var text = String(value);
+        return (typeof w2utils !== "undefined" && w2utils.encodeTags) ? w2utils.encodeTags(text) : text.replace(/&/g, "&amp;").replace(/>/g, "&gt;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+    }
+
+    function FormatChangedCellFooterValue(value) {
+        if (value === null || typeof value === "undefined" || value === "") {
+            return "<i>(empty)</i>";
+        }
+
+        return EncodeHtml(value);
+    }
+
+    function GetGridEventValue(event, property) {
+        if (!event) {
+            return undefined;
+        }
+
+        if (typeof event[property] !== "undefined") {
+            return event[property];
+        }
+
+        return event.detail ? event.detail[property] : undefined;
+    }
+
+    function SetChangedCellFooter(html) {
+        var grid = XrmTranslator.GetGrid();
+        var footer = grid && grid.box ? grid.box.querySelector("#grid_" + grid.name + "_footer .w2ui-footer-center") : null;
+
+        if (footer) {
+            footer.innerHTML = html || "";
+        }
+    }
+
+    function GetColumnFooterText(column) {
+        var text = column ? (column.text || column.field || "") : "";
+        return (typeof w2utils !== "undefined" && w2utils.stripTags) ? w2utils.stripTags(text) : String(text).replace(/<[^>]*>/g, "");
+    }
+
+    XrmTranslator.UpdateChangedCellFooter = function(event) {
+        var grid = XrmTranslator.GetGrid();
+        var recid = GetGridEventValue(event, "recid");
+        var columnIndex = GetGridEventValue(event, "column");
+        var column = grid && typeof columnIndex !== "undefined" && columnIndex !== null ? grid.columns[columnIndex] : null;
+        var record = typeof recid !== "undefined" && recid !== null ? XrmTranslator.GetByRecId(XrmTranslator.GetAllRecords(), recid) : null;
+
+        if (!record || !column || !record.w2ui || !record.w2ui.changes || !HasOwnProperty(record.w2ui.changes, column.field)) {
+            SetChangedCellFooter("");
+            return;
+        }
+
+        SetChangedCellFooter(
+            '<span style="display:flex;align-items:center;box-sizing:border-box;height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;padding:0 8px;transform:translateY(3px);">' +
+                '<b>Column:&nbsp;</b>' + EncodeHtml(GetColumnFooterText(column)) +
+                ' | <b>Old Value:&nbsp;</b>' + FormatChangedCellFooterValue(GetOriginalRecordValue(record, column.field)) +
+                ' | <b>New Value:&nbsp;</b>' + FormatChangedCellFooterValue(record.w2ui.changes[column.field]) +
+            '</span>'
+        );
+    };
+
     function ShouldKeepRibbonBlankChange(record, field, value) {
         return record &&
             record._isRibbonLabelRow === true &&
@@ -3333,7 +3397,8 @@
                 footer: true,
                 toolbarSave: true,
                 toolbarSearch: true,
-                toolbarReload: false
+                toolbarReload: false,
+                statusRecordID: false
             },
             multiSearch: false,
             searches: [
@@ -3346,6 +3411,8 @@
                 if (XrmTranslator.hasAllowedRole === false) {
                     return;
                 }
+
+                SetChangedCellFooter("");
 
                 if (event && typeof event.preventDefault === "function") {
                     event.preventDefault();
@@ -3397,14 +3464,21 @@
                     }
 
                     XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                    XrmTranslator.UpdateChangedCellFooter(event);
                     EnforceToolbarOperationButtonsSoon();
                 };
             },
             onClick: function (event) {
-                event.onComplete = EnforceToolbarOperationButtonsSoon;
+                event.onComplete = function () {
+                    XrmTranslator.UpdateChangedCellFooter(event);
+                    EnforceToolbarOperationButtonsSoon();
+                };
             },
             onDblClick: function (event) {
-                event.onComplete = EnforceToolbarOperationButtonsSoon;
+                event.onComplete = function () {
+                    XrmTranslator.UpdateChangedCellFooter(event);
+                    EnforceToolbarOperationButtonsSoon();
+                };
             },
             onEditField: function (event) {
                 event.onComplete = EnforceToolbarOperationButtonsSoon;
