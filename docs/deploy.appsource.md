@@ -18,20 +18,20 @@ Repo hiện đã có release solution:
 
 Những file trên **chưa đủ để submit AppSource**. Microsoft yêu cầu tạo **Marketplace package** bọc managed solution bằng Package Deployer package, kèm `input.xml`, license terms HTML, icon PNG và content-type metadata. Kết quả cuối cùng phải là **một file ZIP all-in-one** chứa toàn bộ các artifact Marketplace package; file này mới là file pick để upload lên Azure Blob Storage và lấy SAS URL cho Partner Center.
 
-Versioning rule cho `Release AppSource`: nếu user mention version rõ, ví dụ `1.1.0.0`, workflow dùng đúng `release\1.1.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip` và tạo output mới dưới `release\1.1.0.0\appsource\`. Nếu user không mention version, script tự chọn latest bằng cách scan `release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip` và lấy version số lớn nhất. Nếu chưa có release folder nào, fallback là `1.0.0.0`. Mỗi version là một folder self-contained dưới `release\<version>`; version folder cũ là read-only theo quy ước release, nên build version mới không được sửa/xóa `release\1.0.0.0` hoặc bất kỳ version cũ nào.
+Versioning rule cho `$pl-release-appsource`: nếu user mention version rõ, ví dụ `1.1.0.0`, workflow dùng đúng `release\1.1.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip` và tạo output mới dưới `release\1.1.0.0\appsource\`. Nếu user không mention version, script tự chọn latest bằng cách scan `release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip` và lấy version số lớn nhất. Nếu chưa có release folder nào, fallback là `1.0.0.0`. Mỗi version là một folder self-contained dưới `release\<version>`; version folder cũ là read-only theo quy ước release, nên build version mới không được sửa/xóa `release\1.0.0.0` hoặc bất kỳ version cũ nào.
 
 Quyết định đã chốt: publish dạng **Get it now (free)**. Không dùng `Contact me`, không bán paid plan, không bật ISV app license management trong giai đoạn AppSource này. App sẽ được định vị là free admin utility; mọi nội dung listing, package, certification notes và support flow phải nhất quán với hướng này.
 
 Baseline đã có: dùng lại Partner Center account/publisher hiện có của bạn. Publisher `PhuocLe` đã có offer public/certified trên Microsoft Marketplace là [Icons and Tooltips with D365](https://marketplace.microsoft.com/en-us/product/dynamics365/phuocle.d365-icons-and-tooltips), và bạn đã có trạng thái ISV/certification thành công. Điều này thay đổi trọng tâm kế hoạch: không cần coi Partner Center enrollment, publisher verification hay việc hiểu certification flow là blocker ban đầu nữa. Cần tái sử dụng playbook, contact profile, support/legal URLs, package/certification notes pattern và kinh nghiệm xử lý certification từ offer đã thành công đó. Dataverse Label Translator đã chốt 100% là **Get it now (free)**; không có nhánh paid/contact/license-managed trong kế hoạch này.
 
-Tham chiếu local đã đọc: `D:\azure\phuocle\d365icons\D365Icons\src2\AppSource`. Folder này cho thấy pattern đã pass certification cho app Icons: mỗi version có `src/` chứa package source, `zip/` chứa final upload ZIP và `url.txt`, `Documents/` chứa User Guide, `Test/` chứa E2E scenario PDF/DOCX và screenshots, `Videos/`/`Images/` cho listing media, và `DeployError/` lưu log/screenshot khi certification/deployment lỗi. Kế hoạch bên dưới đã được chỉnh theo pattern thực tế đó.
+Tham chiếu local đã đọc: `D:\azure\phuocle\d365icons\D365Icons\src2\AppSource`. Folder này cho thấy pattern đã pass certification cho app Icons: mỗi version có `src/` chứa package source, `zip/` chứa final upload ZIP và private SAS record, `Documents/` chứa User Guide, `Test/` chứa E2E scenario PDF/DOCX và screenshots, `Videos`/`Images` cho listing media, và `DeployError/` lưu log/screenshot khi certification/deployment lỗi. Kế hoạch bên dưới đã được chỉnh theo pattern thực tế đó.
 
 Tài liệu AppSource của app này được giữ trực tiếp trong release folder theo version, không dùng folder `appsource\Documents` riêng nữa. Với version hiện tại, source/review documents nằm ở:
 
 - `D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Documents\UserGuide.1.0.0.0.docx`
 - `D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\Test\E2E User Scenario.1.0.0.0.docx`
 
-Khi tạo version mới, ví dụ `1.0.1.0`, copy nguyên folder `release\1.0.0.0` thành `release\1.0.1.0`, thay managed solution trong `release\1.0.1.0\dataverse\solutions\`, rồi chạy `Release AppSource -SolutionVersion 1.0.1.0`. Script chỉ clean `appsource\src` và `appsource\zip` của selected version, giữ lại `appsource\Documents`, `appsource\Test`, `appsource\Images`, `appsource\Videos`, `appsource\assets`, và tự đổi tên các file review DOCX/PDF versioned trong selected folder nếu chưa có file đúng version.
+Khi tạo version mới, ví dụ `1.0.1.0`, copy nguyên folder `release\1.0.0.0` thành `release\1.0.1.0`, thay managed solution trong `release\1.0.1.0\dataverse\solutions\`, rồi chạy `$pl-release-appsource` với `-SolutionVersion 1.0.1.0`. Script chỉ clean `appsource\src` và `appsource\zip` của selected version, giữ lại `appsource\Documents`, `appsource\Test`, `appsource\Images`, `appsource\Videos`, `appsource\assets`, và tự đổi tên các file review DOCX/PDF versioned trong selected folder nếu chưa có file đúng version.
 
 ## Nguồn Microsoft đã đối chiếu
 
@@ -93,7 +93,7 @@ Quyết định cố định cho offer mới:
 
 ## Giai đoạn 2 - Product readiness trong solution
 
-Microsoft yêu cầu managed solution cho app. Repo đã có managed solution `release/1.0.0.0/dataverse/solutions/DataverseLabelTranslator_managed.zip`. Trong workflow `Release AppSource`, file managed ZIP trong `release\<version>\dataverse\solutions\` là source of truth do anh Phước/AP kiểm soát; không chạy export lại và không kiểm freshness với Dataverse. Khi muốn release version mới, ví dụ `1.1.0.0`, trước tiên copy folder version cũ thành `release\1.1.0.0`, thay managed solution mới vào `release\1.1.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip`, sau đó chạy `Release AppSource` cho version đó.
+Microsoft yêu cầu managed solution cho app. Repo đã có managed solution `release/1.0.0.0/dataverse/solutions/DataverseLabelTranslator_managed.zip`. Trong workflow `$pl-release-appsource`, file managed ZIP trong `release\<version>\dataverse\solutions\` là source of truth do anh Phước/AP kiểm soát; không chạy export lại và không kiểm freshness với Dataverse. Khi muốn release version mới, ví dụ `1.1.0.0`, trước tiên copy folder version cũ thành `release\1.1.0.0`, thay managed solution mới vào `release\1.1.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip`, sau đó chạy `$pl-release-appsource` cho version đó.
 
 Checklist riêng cho project này:
 
@@ -184,7 +184,7 @@ release/1.0.0.0/
         DataverseLabelTranslatorPackage.zip
     zip/
       DataverseLabelTranslator.v.1.0.0.zip   <- FINAL UPLOAD ARTIFACT
-      url.txt                                <- SAS URL record, keep private
+      release.md                             <- SAS URL record, keep private
     Documents/
       UserGuide.1.0.0.0.docx
       UserGuide.1.0.0.0.pdf
@@ -221,7 +221,7 @@ Final upload artifact:
 - Đây là **file ZIP all-in-one duy nhất** cần upload lên Azure Blob Storage.
 - File này phải chứa trực tiếp các file `DataverseLabelTranslatorPackage.zip`, `[Content_Types].xml`, `input.xml`, `logo32x32.png`, `TermsOfUse.html` ở root của ZIP. Không để thêm một folder cha như `DataverseLabelTranslator.v.1.0.0/` bên trong ZIP, vì Microsoft validate package structure rất chặt.
 - `DataverseLabelTranslatorPackage.zip` bên trong final ZIP là artifact trung gian Package Deployer, không phải file upload trực tiếp lên Azure Blob.
-- Lưu SAS URL sau upload vào `release/<solution-version>/appsource/zip/url.txt` để tracking giống app Icons, nhưng không commit file này nếu nó chứa query string SAS thật.
+- Lưu SAS URL sau upload vào `release/<solution-version>/appsource/zip/release.md` để tracking local/private, nhưng không commit file này nếu nó chứa query string SAS thật.
 
 `input.xml` cần có những trường chính:
 
@@ -244,7 +244,7 @@ Các convention rút ra từ package AppSource cũ đã pass:
 - `[Content_Types].xml` trong cả Marketplace root và Package Deployer package dùng content type `application/octet-stream` cho các extension cần thiết như `xml`, `dll`, `zip`, `png`, `html`, `css`.
 - `PkgFolder/ImportConfig.xml` có thể rất tối giản nếu chỉ import một managed solution: `<configsolutionfile solutionpackagefilename="DataverseLabelTranslator_managed.zip" />`.
 - Welcome/End HTML pages trong `PkgFolder\Content\en-us` là Package Deployer wizard UI khi user/reviewer install app. Cần tạo nội dung riêng cho Dataverse Label Translator, không để template title và không để text app Icons. Nếu dùng `common.css` có `url(../images/...)`, phải include đủ `Images` assets trong cả `WelcomeHtml` và `EndHtml`.
-- `zip/url.txt` trong app cũ lưu SAS URL sau khi upload. Với repo này chỉ giữ local/private; không commit SAS query string.
+- `zip/release.md` trong repo này lưu SAS URL sau khi upload. Chỉ giữ local/private; không commit SAS query string.
 - `DeployError/<version>/` là pattern hữu ích để lưu Package Deployer log, failed package ZIP và screenshots khi Microsoft báo lỗi certification/deploy.
 
 ## Giai đoạn 5 - Upload Azure Blob và SAS URL
@@ -253,7 +253,7 @@ Các convention rút ra từ package AppSource cũ đã pass:
 2. Upload **file ZIP all-in-one cuối cùng**: `release/1.0.0.0/appsource/zip/DataverseLabelTranslator.v.1.0.0.zip`.
 3. Tạo read-only SAS URL cho blob.
 4. SAS expiry nên còn ít nhất 1 tháng trong tương lai để tránh publishing block.
-5. Lưu URL vào `release/1.0.0.0/appsource/zip/url.txt` để tracking local, giống workflow app Icons. Không commit SAS URL thật.
+5. Lưu URL vào `release/1.0.0.0/appsource/zip/release.md` để tracking local/private. Không commit SAS URL thật.
 6. Test URL bằng browser/incognito hoặc `Invoke-WebRequest` để đảm bảo Microsoft có thể download package.
 
 URL này sẽ được nhập vào Partner Center ở **Technical configuration -> CRM package -> URL of your package location**.
@@ -423,7 +423,7 @@ release/
           DataverseLabelTranslatorPackage.zip
       zip/
         DataverseLabelTranslator.v.1.0.0.zip    <-- UPLOAD THIS FILE TO AZURE STORAGE
-        url.txt                                 <-- SAS URL record; keep private
+        release.md                              <-- SAS URL record; keep private
       assets/
         logo32x32.png
         logo-large.png

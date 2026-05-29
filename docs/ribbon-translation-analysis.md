@@ -612,26 +612,27 @@ The handler should store the exported ZIP, parsed XML, and loc label map in `Xrm
 
 ### Part 2: Save after user edit
 
-Proposed `RibbonHandler.SaveOnly()`:
+Implemented `RibbonHandler.SaveOnly()`:
 
 1. Read grid changes.
-2. Re-export helper solution `translate_ribbon` before saving, like MCP fetches existing `RibbonDiffXml` before update. This avoids applying edits to stale XML if someone changed ribbon customizations after the user's load.
-3. Decode/open the latest exported ZIP with JSZip.
-4. Parse latest `customizations.xml` and locate target entity `RibbonDiffXml`.
+2. Use the loaded helper solution ZIP/XML from the current Load session. User must reload if they want to pick up external ribbon changes.
+3. Decode/open the loaded ZIP with JSZip.
+4. Parse `customizations.xml` and locate target entity `RibbonDiffXml`.
 5. For each changed record, find `locLabelId` and changed LCID.
 6. Upsert only the `Title` node for that LCID.
 7. Preserve every unrelated `LocLabel`, `Title`, `CustomAction`, command, rule, and XML attribute.
 8. Serialize `customizations.xml`.
-9. Replace only `customizations.xml` in the latest exported solution ZIP.
+9. Replace only `customizations.xml` in the loaded solution ZIP.
 10. Generate the updated solution ZIP payload.
 11. Execute `ImportSolution` with:
    - `CustomizationFile`
+   - `ImportJobId`
    - `OverwriteUnmanagedCustomizations = true`
    - `PublishWorkflows = true`
-12. Execute `PublishAllXml`.
-13. Reload after publish completes.
+12. Execute `PublishAllXmlAsync`.
+13. Store the returned async job id in `localStorage`, show the publish banner, and poll until Dataverse finishes the job.
 
-Because the current app already has synchronous `PublishAllXmlRequest` usage, the first implementation can reuse that pattern. If publish timeouts occur, the safer version is an async publish and polling UX, like the MCP implementation.
+The implemented flow follows the async publish pattern because ribbon publish can be slow. Save and Load are temporarily disabled while the tool-owned import/publish state is active, then the page unlocks automatically after the async job completes.
 
 Save scope assessment:
 
@@ -770,7 +771,7 @@ Microsoft's classic ribbon docs repeatedly note that modern commanding is a newe
 
 ### Publish behavior
 
-The MCP code uses `PublishAllXmlAsyncRequest`, not entity-scoped publish. The app should use `PublishAllXml` for MVP and be ready to move to async polling if publish durations are high.
+The MCP code uses `PublishAllXmlAsyncRequest`, not entity-scoped publish. The app also uses async Publish XML for ribbon save and polls the returned async job id until Dataverse completes it.
 
 ### Concurrency
 
@@ -778,7 +779,7 @@ Because the workflow exports, mutates, imports, and publishes a solution, concur
 
 - export on load
 - warn if the page is stale for a long time before save
-- consider re-exporting before save and merging changes into the latest XML
+- require the user to reload before save if another admin changed ribbon XML after the current load
 - preserve all unrelated XML nodes
 
 ### XML preservation
@@ -838,7 +839,7 @@ Enable save for rows backed by `RibbonDiffXml/LocLabels`.
 Write path:
 
 ```text
-ExportSolution -> update customizations.xml -> ImportSolution -> PublishAllXml -> Reload
+ExportSolution on Load -> update customizations.xml -> ImportSolution -> PublishAllXmlAsync -> poll job -> Reload when needed
 ```
 
 Keep OOB/merged-only rows excluded or read-only.

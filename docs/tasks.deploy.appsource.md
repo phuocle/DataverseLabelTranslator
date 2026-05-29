@@ -10,13 +10,13 @@ D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\zip\DataverseLabelT
 
 Version rule cho các release sau:
 
-- Nếu user/prompt mention version rõ, ví dụ `1.1.0.0`, `Release AppSource` phải dùng đúng version đó.
+- Nếu user/prompt mention version rõ, ví dụ `1.1.0.0`, `$pl-release-appsource` phải dùng đúng version đó.
 - Nếu user không mention version, script phải tự chọn latest bằng cách scan folder `release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip` và lấy version số lớn nhất.
 - Nếu không tìm được managed release folder nào, default/fallback là `1.0.0.0`.
 - Marketplace package version lấy 3 số đầu của solution version: `1.0.0.0 -> 1.0.0`, `1.1.0.0 -> 1.1.0`.
 - Mỗi version release nằm trong folder riêng: `release\<solution-version>\`, gồm `dataverse\` và `appsource\`.
 - Version folder cũ là read-only theo quy ước release. Khi build `1.1.0.0`, không xóa/sửa `release\1.0.0.0`; script chỉ clean `appsource\src` và `appsource\zip` của selected version.
-- Nếu muốn tạo version mới, ví dụ `1.0.1.0`, anh Phước/AP copy nguyên folder `release\1.0.0.0` thành `release\1.0.1.0`, thay managed solution trong `release\1.0.1.0\dataverse\solutions\`, rồi gọi `Release AppSource` với version `1.0.1.0`. Script sẽ rebuild package cho selected version và tự đổi tên các file review DOCX/PDF trong selected folder nếu chúng vẫn còn tên version cũ.
+- Nếu muốn tạo version mới, ví dụ `1.0.1.0`, anh Phước/AP copy nguyên folder `release\1.0.0.0` thành `release\1.0.1.0`, thay managed solution trong `release\1.0.1.0\dataverse\solutions\`, rồi gọi `$pl-release-appsource` với version `1.0.1.0`. Script sẽ rebuild package cho selected version và tự đổi tên các file review DOCX/PDF trong selected folder nếu chúng vẫn còn tên version cũ.
 
 Quyết định đã chốt, không hỏi lại:
 
@@ -30,10 +30,10 @@ Quyết định đã chốt, không hỏi lại:
 
 Nguyên tắc an toàn:
 
-- Với `Release AppSource`, luôn trust file managed solution của selected version tại `D:\github\DataverseLabelTranslator\release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip` là bản latest/newest do user kiểm soát. Không kiểm Dataverse freshness, không đọc version từ Dataverse, không chạy PAC export, không gợi ý chạy export.
-- Không chạy `/export-solution` hoặc skill `export-solution` trong bất kỳ bước `release-appsource` nào.
+- Với `$pl-release-appsource`, luôn trust file managed solution của selected version tại `D:\github\DataverseLabelTranslator\release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip` là bản latest/newest do user kiểm soát. Không kiểm Dataverse freshness, không đọc version từ Dataverse, không chạy PAC export, không gợi ý chạy export.
+- Không chạy `$pl-export-solution` hoặc skill `pl-export-solution` trong bất kỳ bước `$pl-release-appsource` nào.
 - Không upload Azure Blob trong repo task trừ khi user yêu cầu rõ.
-- Không commit SAS URL thật. `zip/url.txt` chỉ được tạo local/private và phải bị ignore hoặc không stage.
+- Không commit SAS URL thật. `zip/release.md` chỉ được tạo local/private và phải bị ignore hoặc không stage.
 - Không deploy PropertyEditor resources.
 - Không hard-code AI endpoint/API key vào source, package hoặc docs commit.
 - Không stage/commit/push trừ khi user yêu cầu.
@@ -49,7 +49,7 @@ Actions:
 1. Đọc `docs/deploy.appsource.md`.
 2. Đọc `README.md`.
 3. Đọc `AGENTS.md`.
-4. Đọc `.agents/skills/export-solution/SKILL.md` chỉ để học style workflow/output contract. Không chạy export và không bảo user chạy export trong luồng này.
+4. Đọc `.agents/skills/pl-export-solution/SKILL.md` chỉ để học style workflow/output contract. Không chạy export và không bảo user chạy export trong luồng này.
 5. Đọc cấu trúc AppSource cũ nếu có quyền:
    - `D:\azure\phuocle\d365icons\D365Icons\src2\AppSource`
    - Tập trung vào version mới nhất, hiện là `1.3.3.0`.
@@ -95,34 +95,34 @@ release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator.zip
 Acceptance criteria:
 
 - Biết rõ managed solution source đang dùng để build AppSource.
-- Không đánh giá file này có mới hơn Dataverse hay không; user/AP sẽ chịu trách nhiệm cập nhật file này trước khi gọi `Release AppSource`.
-- Nếu thiếu managed solution, task Release AppSource phải stop và báo thiếu file nguồn. Không tự chạy export và không yêu cầu trong cùng luồng release-appsource.
+- Không đánh giá file này có mới hơn Dataverse hay không; user/AP sẽ chịu trách nhiệm cập nhật file này trước khi gọi `$pl-release-appsource`.
+- Nếu thiếu managed solution, task `$pl-release-appsource` phải stop và báo thiếu file nguồn. Không tự chạy export và không yêu cầu trong cùng luồng `$pl-release-appsource`.
 
 ## Phase 1 - Tạo Skill `Release AppSource`
 
 ### Task 1.1 - Tạo folder skill
 
-Mục tiêu: có một workflow/skill chính thức, giống style `$export-solution`, để lần sau user gọi `Release AppSource` là AI biết build final ZIP.
+Mục tiêu: có một workflow/skill chính thức, giống style `$pl-export-solution`, để lần sau user gọi `$pl-release-appsource` là AI biết build final ZIP.
 
 Actions:
 
 1. Tạo folder:
 
 ```text
-D:\github\DataverseLabelTranslator\.agents\skills\release-appsource
+D:\github\DataverseLabelTranslator\.agents\skills\pl-release-appsource
 ```
 
 2. Tạo file:
 
 ```text
-D:\github\DataverseLabelTranslator\.agents\skills\release-appsource\SKILL.md
+D:\github\DataverseLabelTranslator\.agents\skills\pl-release-appsource\SKILL.md
 ```
 
 3. Front matter đề xuất:
 
 ```yaml
 ---
-name: "release-appsource"
+name: "pl-release-appsource"
 description: "Build the final AppSource all-in-one Marketplace ZIP for Dataverse Label Translator. Does not upload to Azure."
 ---
 ```
@@ -135,13 +135,13 @@ description: "Build the final AppSource all-in-one Marketplace ZIP for Dataverse
 
 Acceptance criteria:
 
-- Skill mới xuất hiện trong `.agents/skills/release-appsource/SKILL.md`.
-- Skill không gọi là `export-solution`.
+- Skill mới xuất hiện trong `.agents/skills/pl-release-appsource/SKILL.md`.
+- Skill không gọi là `pl-export-solution`.
 - Skill không tự upload Azure Blob.
 
 ### Task 1.2 - Viết Output Contract cho skill
 
-Mục tiêu: mỗi lần gọi `Release AppSource`, output cuối luôn là final ZIP ready để user upload.
+Mục tiêu: mỗi lần gọi `$pl-release-appsource`, output cuối luôn là final ZIP ready để user upload.
 
 Nội dung cần có trong `SKILL.md`:
 
@@ -223,7 +223,7 @@ $FinalZip = Join-Path $ZipDir "DataverseLabelTranslator.v.$PackageVersion.zip"
 ```text
 Missing managed solution source:
 D:\github\DataverseLabelTranslator\release\<solution-version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
-Release AppSource cannot continue without this user-controlled file.
+$pl-release-appsource cannot continue without this user-controlled file.
 ```
 
 4. Recreate only selected-version staging folders:
@@ -260,27 +260,27 @@ Acceptance criteria:
 
 - Skill has enough commands/pseudocode to rebuild the final ZIP.
 - Skill explicitly refuses to continue if managed solution is missing.
-- Skill does not say it will run `/export-solution`.
+- Skill does not say it will run `$pl-export-solution`.
 - Skill states that `DataverseLabelTranslator_managed.zip` is always trusted as latest/newest for this workflow.
 
 ### Task 1.4 - Add trigger note to AGENTS.md if desired
 
-Mục tiêu: future AI sees `Release AppSource` as a supported repo command.
+Mục tiêu: future AI sees `$pl-release-appsource` as a supported repo command.
 
 Actions:
 
 1. Add a new command section to `AGENTS.md`:
 
 ```markdown
-### /release-appsource
+### /pl-release-appsource
 Build the final AppSource all-in-one Marketplace ZIP from the existing managed release solution. Always trust `release/1.0.0.0/dataverse/solutions/DataverseLabelTranslator_managed.zip` as the latest user-controlled source. Do not export the Dataverse solution. Output must be `release/<version>/appsource/zip/DataverseLabelTranslator.v.<package-version>.zip`. Do not upload to Azure.
 ```
 
-2. Keep `/export-solution` unchanged.
+2. Keep `$pl-export-solution` unchanged.
 
 Acceptance criteria:
 
-- Repo instructions mention `/release-appsource`.
+- Repo instructions mention `$pl-release-appsource`.
 - It clearly says do not export Dataverse solution.
 - It clearly says the existing managed ZIP is trusted as latest.
 
@@ -886,7 +886,7 @@ Actions:
    - System Administrator/System Customizer permission requirement.
 3. Resolve or leave visible for anh Phước all screenshot placeholders that start with `[📷 HÌNH ẢNH`.
 4. Render/export the `.docx` to PDF with the same versioned filename.
-5. For a new version, copy the previous version folder first. `Release AppSource` will rename `UserGuide.<old-version>.docx/pdf` to `UserGuide.<selected-version>.docx/pdf` if exact selected-version files do not exist.
+5. For a new version, copy the previous version folder first. `$pl-release-appsource` will rename `UserGuide.<old-version>.docx/pdf` to `UserGuide.<selected-version>.docx/pdf` if exact selected-version files do not exist.
 
 Acceptance criteria:
 
@@ -934,7 +934,7 @@ Actions:
 3. Add missing steps to the review document.
 4. Resolve or leave visible for anh Phước all screenshot placeholders that start with `[📷 HÌNH ẢNH`.
 5. Render/export the `.docx` to PDF with the same versioned filename.
-6. For a new version, copy the previous version folder first. `Release AppSource` will rename `E2E User Scenario.<old-version>.docx/pdf` to `E2E User Scenario.<selected-version>.docx/pdf` if exact selected-version files do not exist.
+6. For a new version, copy the previous version folder first. `$pl-release-appsource` will rename `E2E User Scenario.<old-version>.docx/pdf` to `E2E User Scenario.<selected-version>.docx/pdf` if exact selected-version files do not exist.
 
 Acceptance criteria:
 
@@ -1051,7 +1051,7 @@ Rules:
 
 Acceptance criteria:
 
-- Generated image files exist after `Release AppSource`.
+- Generated image files exist after `$pl-release-appsource`.
 - `Images\README.md` clearly says real screenshots must be captured by anh Phước.
 - No generated image contains secrets, SAS URLs, tenant IDs, or API keys.
 
@@ -1422,7 +1422,7 @@ Acceptance criteria:
 
 Mục tiêu: create download URL for Partner Center.
 
-Manual/user-controlled task unless user explicitly asks AI to do it.
+Manual/user-controlled task unless user explicitly asks AI to run `$pl-deploy-azure`.
 
 Input:
 
@@ -1432,16 +1432,17 @@ release\1.0.0.0\appsource\zip\DataverseLabelTranslator.v.1.0.0.zip
 
 Actions:
 
-1. Upload only this final ZIP.
-2. Generate read-only SAS URL.
-3. Expiry at least 1 month in future.
-4. Save local/private copy to:
+1. Run `$pl-deploy-azure` when the user explicitly asks for Azure upload.
+2. Upload only this final ZIP.
+3. Generate read-only SAS URL.
+4. Expiry at least 1 month in future.
+5. Save local/private copy to:
 
 ```text
-release\1.0.0.0\appsource\zip\url.txt
+release\1.0.0.0\appsource\zip\release.md
 ```
 
-5. Do not commit `url.txt` with SAS query string.
+6. Do not commit `release.md` with SAS query string.
 
 Acceptance criteria:
 
@@ -1489,7 +1490,7 @@ release\1.0.0.0\appsource\DeployError\<date-or-case-id>\
 - fix notes.
 
 3. Fix code/package/docs.
-4. Re-run `Release AppSource`.
+4. Re-run `$pl-release-appsource`.
 5. Upload new final ZIP.
 6. Resubmit.
 
@@ -1506,7 +1507,7 @@ The AppSource release is ready for user upload when all are true:
 - GitHub Pages homepage target is `https://phuocle.github.io/DataverseLabelTranslator/`.
 - `site/index.html` exists.
 - `.github/workflows/pages.yml` exists and publishes `site/`.
-- `Release AppSource` skill exists.
+- `$pl-release-appsource` skill exists.
 - `scripts\release-appsource.ps1` exists and passes validation.
 - Final ZIP exists:
 
@@ -1724,8 +1725,8 @@ D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\zip\DataverseLabelT
 - [ ] SAS URL là read-only.
 - [ ] SAS expiry còn ít nhất 1 tháng trong tương lai.
 - [ ] Test SAS URL download thành công trong browser/incognito.
-- [ ] Lưu `url.txt` local nếu cần.
-- [ ] Không commit `url.txt` có SAS query string.
+- [ ] Lưu `release.md` local nếu cần.
+- [ ] Không commit `release.md` có SAS query string.
 
 ### 9.11 - Final go/no-go
 

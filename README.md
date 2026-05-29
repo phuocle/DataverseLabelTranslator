@@ -28,6 +28,7 @@ Translate UI labels for Dataverse components using the same type menu shown in t
 | **11. Dashboards** | None | Dashboard form labels |
 | **12. Web Resources** | None | Text content within web resources |
 | **13. Global Option Sets** | None | Global option set values independent of an entity |
+| **15. Ribbons** | Entity | Classic ribbon / command bar button text, tooltip title, and tooltip description labels |
 
 There is also a special **14. Content Snippets** type for legacy Dynamics 365 Portals / Power Pages content snippets. It appears only when the selected entity is `Adx_contentsnippet`.
 
@@ -40,6 +41,10 @@ Loads all entity-dependent translation types into one grid for bulk translation.
 The app still includes legacy content snippet support from the original translator. This is not a general Dataverse label type. It is available only when the environment has the old portal tables and the selected entity is `Adx_contentsnippet`.
 
 When available, **14. Content Snippets** loads `adx_contentsnippet` records grouped by website, uses `adx_websitelanguage` to map portal languages to LCIDs, and saves translated snippet values back to `adx_contentsnippet`. Environments without those portal tables should ignore this type.
+
+### Ribbon Labels
+
+**15. Ribbons** loads classic `RibbonDiffXml` labels for the selected entity only. Each ribbon button is shown as a parent row with `Text`, `Title`, and `Description` child rows, even when a tooltip value is currently blank. Save imports the updated ribbon solution XML and starts Dataverse Publish XML, so the app shows a status banner and temporarily blocks Save/Load until the server job finishes.
 
 ### AI Translation
 
@@ -178,3 +183,13 @@ No build step is required. JavaScript files deploy directly as Dataverse web res
 ## License
 
 MIT License
+
+## Release And Deployment Flow
+
+Confirmed on May 29, 2026, the production release flow is:
+
+1. Run `$pl-export-solution` to export `DataverseLabelTranslator`, clean labels, and create final Dataverse solution ZIPs under `release/<version>/dataverse/solutions/`.
+2. Run `$pl-release-appsource` to build the AppSource Marketplace upload ZIP from the existing managed solution. This step does not export Dataverse again. The final upload file is `release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`.
+3. Run `$pl-deploy-azure` to upload only that final AppSource ZIP to Azure Blob Storage and generate Partner Center SAS details in `release/<version>/appsource/zip/release.md`.
+
+`release.md` contains private SAS details and must stay ignored/uncommitted. Paste the generated SAS package URL into Partner Center, but do not paste it into commits, issues, or chat logs.

@@ -40,7 +40,7 @@ logo32x32.png
 D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
-- [x] Xac nhan khong can export lai solution trong luong `Release AppSource`.
+- [x] Xac nhan khong can export lai solution trong luong `$pl-release-appsource`.
 - [x] Xac nhan version `1.0.0.0` la version muon submit.
 - [x] Xac nhan solution khong chua PropertyEditor resources.
 - [x] Test install package vao clean/test environment.
@@ -187,8 +187,8 @@ D:\github\DataverseLabelTranslator\release\1.0.0.0\appsource\zip\DataverseLabelT
 - [ ] SAS URL la read-only.
 - [ ] SAS expiry con it nhat 1 thang trong tuong lai.
 - [ ] Test SAS URL download thanh cong trong browser/incognito.
-- [ ] Luu `url.txt` local neu can.
-- [ ] Khong commit `url.txt` co SAS query string.
+- [ ] Luu `release.md` local neu can.
+- [ ] Khong commit `release.md` co SAS query string.
 
 ## 11. Final Go/No-Go
 
