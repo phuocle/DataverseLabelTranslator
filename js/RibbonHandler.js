@@ -13,6 +13,7 @@
         ToolTipDescription: "Description"
     };
     var ribbonState = null;
+    var ribbonLoadReleaseTimer = null;
 
     function escapeODataString(value) {
         return String(value || "").replace(/'/g, "''");
@@ -220,8 +221,33 @@
         }));
     }
 
+    function showRibbonLoadStatus(message, tone, autoHideMs) {
+        XrmTranslator.ShowStatusBanner({
+            tone: tone || "info",
+            message: message,
+            autoHideMs: autoHideMs || 0
+        });
+    }
+
+    function setRibbonLoadButtonsDisabled(disabled, saveDisabled) {
+        XrmTranslator.SetLoadButtonDisabled(!!disabled);
+        XrmTranslator.SetSaveButtonDisabled(typeof saveDisabled === "boolean" ? saveDisabled : !!disabled);
+    }
+
+    function scheduleRibbonLoadButtonsRelease(saveDisabled, delayMs) {
+        if (ribbonLoadReleaseTimer) {
+            clearTimeout(ribbonLoadReleaseTimer);
+            ribbonLoadReleaseTimer = null;
+        }
+
+        ribbonLoadReleaseTimer = setTimeout(function() {
+            ribbonLoadReleaseTimer = null;
+            setRibbonLoadButtonsDisabled(false, !!saveDisabled);
+        }, delayMs || 0);
+    }
+
     function resetHelperSolutionToEntity(solution, entityInfo) {
-        XrmTranslator.LockGrid("Preparing ribbon helper solution");
+        showRibbonLoadStatus("Preparing ribbon helper solution for " + entityInfo.logicalName + ".");
 
         return getSolutionComponents(solution.solutionid)
         .then(function (components) {
@@ -252,7 +278,7 @@
     }
 
     function exportHelperSolution() {
-        XrmTranslator.LockGrid("Exporting ribbon helper solution");
+        showRibbonLoadStatus("Exporting ribbon helper solution.");
 
         return WebApiClient.Execute(WebApiClient.Requests.ExportSolutionRequest.with({
             payload: {
@@ -542,6 +568,8 @@
             throw new Error("ExportSolution did not return ExportSolutionFile.");
         }
 
+        showRibbonLoadStatus("Reading exported ribbon solution.");
+
         return JSZip.loadAsync(exportResponse.ExportSolutionFile, { base64: true })
         .then(function (zip) {
             var entry = zip.file("customizations.xml");
@@ -778,6 +806,26 @@
         }, 0);
     }
 
+    function askRibbonBackupDecision(backupArtifact) {
+        return DialogHelper.question(
+            "Before saving ribbon labels, choose how to continue.\n\n" +
+            "- Download backup and save: download the current entity ribbon backup first, then continue Save.\n" +
+            "- Save without backup: no backup file will be downloaded. Use at your own risk.\n" +
+            "- Cancel: stop Save and keep current grid changes.\n\n" +
+            "Backup file prepared: " + backupArtifact.fileName,
+            [
+                { text: "Download backup and save", value: "download" },
+                { text: "Save without backup", value: "skip" },
+                { text: "Cancel", value: "cancel" }
+            ],
+            {
+                title: "Ribbon backup before save",
+                width: 760,
+                height: 380
+            }
+        );
+    }
+
     function createImportSolutionBase64(updatedCustomizationsXml) {
         return JSZip.loadAsync(ribbonState.solutionZipBase64, { base64: true })
         .then(function(zip) {
@@ -793,15 +841,42 @@
     }
 
     function importRibbonSolution(importZipBase64) {
-        XrmTranslator.LockGrid("Importing ribbon solution");
+        var importJobId = createGuid();
+
+        XrmTranslator.StartOperationStatus({
+            phase: "importing",
+            tone: "info",
+            message: "Importing ribbon solution. Save and Load are temporarily disabled.",
+            type: "ribbons",
+            entityLogicalName: ribbonState.entityInfo.logicalName,
+            importJobId: importJobId,
+            operationId: importJobId,
+            blockSave: true,
+            blockLoad: true
+        });
 
         return XrmTranslator.RunAsBaseLanguage(function () {
             return WebApiClient.SendRequest("POST", WebApiClient.GetApiUrl({ apiVersion: "9.2" }) + "ImportSolution()", {
                 CustomizationFile: importZipBase64,
-                ImportJobId: createGuid(),
+                ImportJobId: importJobId,
                 OverwriteUnmanagedCustomizations: true,
                 PublishWorkflows: false
             });
+        })
+        .then(function(response) {
+            XrmTranslator.UpdateOperationStatus({
+                phase: "startingPublish",
+                tone: "info",
+                message: "Ribbon import completed. Starting Publish XML. Save and Load are temporarily disabled.",
+                type: "ribbons",
+                entityLogicalName: ribbonState.entityInfo.logicalName,
+                importJobId: importJobId,
+                operationId: importJobId,
+                blockSave: true,
+                blockLoad: true
+            });
+
+            return response;
         });
     }
 
@@ -833,7 +908,15 @@
     }
 
     function publishAllXmlAsync() {
-        XrmTranslator.LockGrid("Starting Publish XML");
+        XrmTranslator.UpdateOperationStatus({
+            phase: "startingPublish",
+            tone: "info",
+            message: "Starting Publish XML. Save and Load are temporarily disabled.",
+            type: "ribbons",
+            entityLogicalName: ribbonState.entityInfo.logicalName,
+            blockSave: true,
+            blockLoad: true
+        });
 
         return XrmTranslator.RunAsBaseLanguage(function () {
             return WebApiClient.SendRequest("POST", WebApiClient.GetApiUrl({ apiVersion: "9.2" }) + "PublishAllXmlAsync()", null);
@@ -880,17 +963,7 @@
     function showPublishStartedMessage(job) {
         XrmTranslator.UnlockGrid();
         XrmTranslator.ShowPublishXmlStatus(job);
-
-        return DialogHelper.alert(
-            "Publish XML is running.\n\n" +
-            "Job ID: " + job.jobId + "\n\n" +
-            "Please wait a few minutes before loading, saving, or updating ribbon customizations again. Save and Load will check this publish job and block while it is still running.",
-            { title: "Publish XML running", width: 560, height: 280 }
-        )
-        .then(function() {
-            XrmTranslator.UnlockGrid();
-            XrmTranslator.ShowPublishXmlStatus(job);
-        });
+        return Promise.resolve();
     }
 
     function fillTable(records) {
@@ -910,6 +983,11 @@
         }
 
         var exported = null;
+        var successBannerMs = 4000;
+        var errorBannerMs = 8000;
+
+        setRibbonLoadButtonsDisabled(true, true);
+        showRibbonLoadStatus("Preparing ribbon labels for " + entityInfo.logicalName + ".");
 
         return ensureHelperSolution()
         .then(function (solution) {
@@ -921,7 +999,7 @@
         })
         .then(function (exportData) {
             exported = exportData;
-            XrmTranslator.LockGrid("Parsing ribbon labels");
+            showRibbonLoadStatus("Parsing ribbon labels.");
 
             var customizationsDoc = parseXml(exportData.customizationsXml);
             var entityNode = findEntityNode(customizationsDoc, entityInfo.logicalName);
@@ -941,8 +1019,12 @@
             };
             XrmTranslator.metadata = records;
             fillTable(records);
+            showRibbonLoadStatus("Ribbon labels loaded.", "success", successBannerMs);
+            scheduleRibbonLoadButtonsRelease(false, successBannerMs);
         })
         .catch(function (error) {
+            showRibbonLoadStatus("Ribbon labels failed to load.", "error", errorBannerMs);
+            scheduleRibbonLoadButtonsRelease(!XrmTranslator.HasPendingChanges(), errorBannerMs);
             XrmTranslator.errorHandler(error);
             XrmTranslator.GetGrid().unlock();
         });
@@ -967,40 +1049,43 @@
         var updatedCustomizationsXml = null;
         var importData = null;
 
-        XrmTranslator.LockGrid("Preparing ribbon backup");
+        XrmTranslator.ShowStatusBanner({
+            tone: "info",
+            message: "Preparing ribbon backup."
+        });
 
         return prepareBackupArtifact(changes)
         .then(function(preparedBackup) {
             backupArtifact = preparedBackup;
             XrmTranslator.UnlockGrid();
-
-            return DialogHelper.confirm(
-                "Before saving ribbon labels, Dataverse Label Translator will download a backup of the current entity ribbon.\n\n" +
-                "Backup file: " + backupArtifact.fileName + "\n\n" +
-                "Click Yes to download the backup and continue Save. Click No to cancel Save.",
-                {
-                    title: "Download ribbon backup",
-                    yesText: "Yes",
-                    noText: "No",
-                    width: 620,
-                    height: 300
-                }
-            );
+            return askRibbonBackupDecision(backupArtifact);
         })
-        .then(function(confirmed) {
-            if (!confirmed) {
+        .then(function(backupDecision) {
+            if (backupDecision === "cancel" || !backupDecision) {
+                XrmTranslator.HideStatusBanner();
                 XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
                 return false;
             }
 
-            downloadBackupArtifact(backupArtifact);
-            XrmTranslator.LockGrid("Updating ribbon XML");
+            if (backupDecision === "download") {
+                downloadBackupArtifact(backupArtifact);
+            }
+
+            XrmTranslator.StartOperationStatus({
+                phase: "preparingImport",
+                tone: "info",
+                message: "Preparing ribbon import. Save and Load are temporarily disabled.",
+                type: "ribbons",
+                entityLogicalName: ribbonState.entityInfo.logicalName,
+                blockSave: true,
+                blockLoad: true
+            });
             updatedCustomizationsXml = applyRibbonXmlChanges(ribbonState.customizationsXml, changes);
             return createImportSolutionBase64(updatedCustomizationsXml);
         })
         .then(function(createdImportData) {
             if (!createdImportData) {
-                XrmTranslator.UnlockGrid();
+                XrmTranslator.ClearOperationStatus();
                 XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
                 return null;
             }
@@ -1028,6 +1113,13 @@
             return showPublishStartedMessage(job);
         })
         .catch(function(error) {
+            XrmTranslator.ClearOperationStatus({
+                status: {
+                    tone: "error",
+                    message: "Ribbon save failed. Save and Load are available.",
+                    autoHideMs: 8000
+                }
+            });
             XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
             XrmTranslator.errorHandler(error);
         });
