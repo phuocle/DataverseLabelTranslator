@@ -24,18 +24,20 @@ Translate UI labels for Dataverse components using the same type menu shown in t
 | **7. Relationships** | Entity | Navigation menu labels for entity relationships |
 | **8. Charts** | Entity | Visualization display names |
 | **9. Business Process Flows** | Entity | Stage and field labels |
-| **10. Sitemap** | None | App navigation areas, groups, and subareas |
-| **11. Dashboards** | None | Dashboard form labels |
-| **12. Web Resources** | None | Text content within web resources |
-| **13. Global Option Sets** | None | Global option set values independent of an entity |
-| **15. Business Rules** | Entity | Business rule error messages and recommendation text stored in workflow XAML |
-| **18. Ribbons** | Entity | Classic ribbon / command bar button text, tooltip title, and tooltip description labels |
+| **10. Business Rules** | Entity | Business rule error messages and recommendation text stored in workflow XAML |
+| **11. Ribbons** | Entity | Classic ribbon / command bar button text, tooltip title, and tooltip description labels |
+| **12. Commands** | Entity | Planned placeholder for modern command labels |
+| **13. Entity Messages** | Entity | Planned placeholder for entity messages/display strings |
+| **15. Sitemap** | None | App navigation areas, groups, and subareas |
+| **16. Dashboards** | None | Dashboard form labels |
+| **17. Web Resources** | None | Text content within web resources |
+| **18. Global Option Sets** | None | Global option set values independent of an entity |
 
 There is also a special **14. Content Snippets** type for legacy Dynamics 365 Portals / Power Pages content snippets. It appears only when the selected entity is `Adx_contentsnippet`.
 
 ### All-In-One Mode
 
-Loads all entity-dependent translation types into one grid for bulk translation. Use it to translate attributes, option sets, forms, views, form metadata, entity metadata, relationships, charts, and business process flows without switching between types. Business Rules are currently available as a standalone type first; All-In-One integration is planned separately after standalone save has been verified.
+Loads all entity-dependent translation types into one grid for bulk translation. Use it to translate attributes, option sets, forms, views, form metadata, entity metadata, relationships, charts, business process flows, and business rules without switching between types.
 
 ### Power Pages Content Snippets
 
@@ -45,11 +47,11 @@ When available, **14. Content Snippets** loads `adx_contentsnippet` records grou
 
 ### Ribbon Labels
 
-**18. Ribbons** loads classic `RibbonDiffXml` labels for the selected entity only. Each ribbon button is shown as a parent row with `Text`, `Title`, and `Description` child rows, even when a tooltip value is currently blank. Save imports the updated ribbon solution XML and starts Dataverse Publish XML, so the app shows a status banner and temporarily blocks Save/Load until the server job finishes.
+**11. Ribbons** loads classic `RibbonDiffXml` labels for the selected entity only. Each ribbon button is shown as a parent row with `Text`, `Title`, and `Description` child rows, even when a tooltip value is currently blank. Save imports the updated ribbon solution XML and starts Dataverse Publish XML, so the app shows a status banner and temporarily blocks Save/Load until the server job finishes.
 
 ### Business Rule Labels
 
-**15. Business Rules** loads Dataverse business rule labels from `workflow.xaml`, including error messages, recommendation titles, and recommendation details. Save temporarily deactivates each changed rule, patches only its `mcwo:StepLabel` entries by `LabelId` and LCID, then reactivates the rule. The runtime flow does not download or persist a backup file; it keeps the original XAML in memory for best-effort rollback during the same save operation.
+**10. Business Rules** loads Dataverse business rule labels from `workflow.xaml`, including error messages, recommendation titles, and recommendation details. Save temporarily deactivates each changed rule, patches only its `mcwo:StepLabel` entries by `LabelId` and LCID, then reactivates the rule. The runtime flow does not download or persist a backup file; it keeps the original XAML in memory for best-effort rollback during the same save operation.
 
 ### AI Translation
 
@@ -116,7 +118,7 @@ Dictionary storage is Dataverse-backed, not browser-only:
 ### Workflow
 
 1. Select a **Solution** to scope the entity list and solution-level types.
-2. Select an **Entity**, or choose **None** for entity-independent types like **10. Sitemap**, **11. Dashboards**, **12. Web Resources**, and **13. Global Option Sets**.
+2. Select an **Entity**, or choose **None** for entity-independent types like **15. Sitemap**, **16. Dashboards**, **17. Web Resources**, and **18. Global Option Sets**.
 3. Select a **Type**.
 4. Click **Load** to populate the grid.
 5. Edit cells inline, use **Auto Translate**, or use **Apply Dictionary**.

@@ -17,15 +17,18 @@ The second confirmed gap is **Entity Messages / Display Strings**. Microsoft lis
 | Entities / tables | Yes | `6. Entity Metadata` loads two rows: `Display Name` and `Collection Name`. |
 | Attributes / columns | Yes | `1. Attributes` handles display names and descriptions. |
 | Local option sets / state / status | Yes | `2. Option Sets`. |
-| Global option sets | Yes | `13. Global Option Sets`. |
+| Global option sets | Yes | `18. Global Option Sets`. |
 | Relationships | Yes | `7. Relationships` handles associated menu labels. |
 | Entity forms | Yes | `3. Forms` and `5. Form Metadata`. |
 | Entity views / saved queries | Yes | `4. Views`. |
 | Charts | Yes | `8. Charts`. |
-| Dashboards | Yes | `11. Dashboards`. |
-| Sitemap | Yes | `10. Sitemap`. Microsoft documents sitemap titles/descriptions as localized XML. |
-| Classic ribbon labels | Yes | `15. Ribbons` reads/saves `RibbonDiffXml` `LocLabels` for entity-level classic ribbon labels. |
-| RESX / JSON web resources | Mostly yes | `12. Web Resources` supports localized `.resx` and `.js` resources by LCID naming. |
+| Dashboards | Yes | `16. Dashboards`. |
+| Sitemap | Yes | `15. Sitemap`. Microsoft documents sitemap titles/descriptions as localized XML. |
+| Business rule messages | Yes | `10. Business Rules` reads/saves `workflow.xaml` `mcwo:StepLabel` values for rule messages and recommendation text. |
+| Classic ribbon labels | Yes | `11. Ribbons` reads/saves `RibbonDiffXml` `LocLabels` for entity-level classic ribbon labels. |
+| Modern commands | Planned placeholder | `12. Commands` menu exists; implementation is pending. |
+| Entity messages / display strings | Planned placeholder | `13. Entity Messages` menu exists; implementation is pending. |
+| RESX / JSON web resources | Mostly yes | `17. Web Resources` supports localized `.resx` and `.js` resources by LCID naming. |
 | Content snippets | Yes, legacy/special | `14. Content Snippets` is portal-specific, not a general Dataverse metadata label type. |
 
 ## Confirmed Missing Items
@@ -54,8 +57,8 @@ Relevant command locations:
 
 Recommended app feature:
 
-- Add a new type after `15. Ribbons`, probably **16. Modern Commands**.
-- Keep it separate from `15. Ribbons`; do not merge it into the classic ribbon handler.
+- Implement the existing planned placeholder type **12. Commands**.
+- Keep it separate from `11. Ribbons`; do not merge it into the classic ribbon handler.
 - Node design should mirror ribbon:
   - parent row: location + command type + command label/name
   - child rows: Text, Title, Description, Accessibility Text, Group Title where applicable
@@ -71,7 +74,7 @@ Recommended app feature:
 Why this matters:
 
 - Classic `RibbonDiffXml` does not cover modern command designer objects.
-- Replaced/customized OOB commands can become modern commands and will not be handled by `15. Ribbons`.
+- Replaced/customized OOB commands can become modern commands and will not be handled by `11. Ribbons`.
 
 ### P0 - Entity Messages / Display Strings
 
@@ -79,7 +82,7 @@ Microsoft lists **Entity Messages** as exportable localizable solution component
 
 Recommended app feature:
 
-- Add **17. Entity Messages**.
+- Implement the existing planned placeholder type **13. Entity Messages**.
 - Load entity-scoped display strings/messages through the official translation export path first, because direct `displaystring` rows do not contain all default text.
 - Show rows such as:
   - default display text
@@ -94,18 +97,15 @@ Why this matters:
 - If a system table display name is changed, Microsoft says messages can still contain old names unless those messages are updated.
 - This matches the Power Apps **Messages** screen previously seen for OOB tables.
 
-### P1 - Business Rule Error Messages
+### Implemented - Business Rule Error Messages
 
 Business rule "show error message" text is localizable. Microsoft says each message generates a label and can be localized by exporting/importing translations.
 
-Recommended app feature:
+Current app feature:
 
-- Add a solution/entity-scoped handler only after the export/import translation service exists.
-- Candidate type: **18. Business Rule Messages**.
-- Read from `CrmTranslations.xml` Display Strings / Localized Labels rows related to business rules.
-- Save by importing the updated translation package.
-
-Do not try to hand-edit workflow XAML first unless export/import cannot round-trip the messages reliably.
+- `10. Business Rules` is entity-scoped and loads `workflow` category `2`.
+- It reads `mcwo:StepLabel` nodes from `workflow.xaml`.
+- It saves by deactivating the rule when needed, patching XAML by `LabelId` and LCID, then reactivating the rule.
 
 ### P1 - Translation Package Audit Mode
 
@@ -145,7 +145,7 @@ Recommended app feature:
 
 ### P2 - Custom Pages / Canvas RESX Improvements
 
-Current `12. Web Resources` can edit LCID-named RESX web resources. Microsoft custom page localization, however, also depends on custom page resource binding and control expressions.
+Current `17. Web Resources` can edit LCID-named RESX web resources. Microsoft custom page localization, however, also depends on custom page resource binding and control expressions.
 
 Recommended app feature:
 
@@ -180,7 +180,7 @@ Create a reusable browser-side service around Dataverse translation package oper
 
 This service should be private/internal at first, then used by modern commands, entity messages, and business rule messages.
 
-### Phase 2 - Implement 16. Modern Commands
+### Phase 2 - Implement 12. Commands
 
 1. Create real test data:
    - one modern command on main grid
@@ -194,7 +194,7 @@ This service should be private/internal at first, then used by modern commands, 
 4. Implement UI as command parent nodes with child rows.
 5. Keep it out of All-In-One until the UX and save behavior are stable.
 
-### Phase 3 - Implement 17. Entity Messages
+### Phase 3 - Implement 13. Entity Messages
 
 1. Create/modify an OOB system table message in a dev solution.
 2. Export translations and map message rows.
@@ -202,7 +202,7 @@ This service should be private/internal at first, then used by modern commands, 
 4. Save through translation package import.
 5. Warn users that message text can be broad and should be reviewed carefully before saving.
 
-### Phase 4 - Implement 18. Business Rule Messages
+### Phase 4 - Extend 10. Business Rules If Needed
 
 1. Create a business rule with "Show Error Message".
 2. Export translations and confirm the generated label rows.

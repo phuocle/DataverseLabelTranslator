@@ -15,7 +15,27 @@
         { type: "bpf",        prefix: "bpfs~", number: 9, label: "Business Process Flows", handler: function() { return BpfHandler; } }
     ];
 
+    handlerTypes.push({
+        type: "businessRules",
+        prefix: "brul~",
+        number: getNextHandlerNumber(),
+        label: "Business Rules",
+        handler: function() { return BusinessRuleHandler; }
+    });
+
     // --- Utility functions ---
+
+    function getNextHandlerNumber() {
+        var maxNumber = 3; // Forms are loaded separately but still occupy an All-In-One group number.
+
+        for (var i = 0; i < handlerTypes.length; i++) {
+            if (handlerTypes[i].number > maxNumber) {
+                maxNumber = handlerTypes[i].number;
+            }
+        }
+
+        return maxNumber + 1;
+    }
 
     function deepClone(obj) {
         return JSON.parse(JSON.stringify(obj));

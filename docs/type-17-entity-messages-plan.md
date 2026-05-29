@@ -1,12 +1,12 @@
-# Type 17 Entity Messages Implementation Plan
+# Type 13 Entity Messages Implementation Plan
 
 ## Goal
 
-Add a new translation type named **17. Entity Messages** for Dataverse system table messages / display strings.
+Add a new translation type named **13. Entity Messages** for Dataverse system table messages / display strings.
 
 This type is entity-scoped and solution-scoped, but it must **not** be added to **0. All-In-One**.
 
-Important numbering note: the current codebase may already have a `15. Ribbons` item. This work packet follows the requested future numbering. Before merging code, reconcile the menu numbering with the product owner. Do not delete the existing ribbon handler unless explicitly approved.
+Numbering note: Entity Messages owns menu number `13` and remains separate from `12. Commands` and `11. Ribbons`.
 
 ## Microsoft References
 
@@ -64,7 +64,7 @@ The implementation must be based on the observed row shape.
 
 ## Dependency
 
-Reuse `js\TranslationPackageService.js` from Type 15 Business Rules. If Type 15 has not implemented it yet, build it here with the same contract:
+Reuse `js\TranslationPackageService.js` from Type 10 Business Rules if that service exists in a future implementation. If Type 10 has not implemented it, build it here with the same contract:
 
 - export solution translations
 - parse `CrmTranslations.xml`
@@ -163,7 +163,7 @@ Do not use the visible text as the only key because many messages can have simil
 - `.codex\mapping.xml`
   - add `EntityMessageHandler.js`
 - `js\XrmTranslator.js`
-  - add menu item `17. Entity Messages`
+  - add menu item `13. Entity Messages`
   - add type id to entity-dependent type list
   - route type to `EntityMessageHandler`
   - update help/about text
@@ -218,7 +218,7 @@ node --check js\XrmTranslator.js
 Functional checks:
 
 1. Use Account or another OOB table with visible Messages.
-2. Load `17. Entity Messages`.
+2. Load `13. Entity Messages`.
 3. Confirm rows match the Power Apps Messages page/export.
 4. Edit target language cells.
 5. Save.

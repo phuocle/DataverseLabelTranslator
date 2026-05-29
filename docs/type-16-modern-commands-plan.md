@@ -1,12 +1,12 @@
-# Type 16 Modern Commands Implementation Plan
+# Type 12 Commands Implementation Plan
 
 ## Goal
 
-Add a new translation type named **16. Modern Commands** for Power Apps command designer commands stored as Dataverse `appaction` records.
+Add a new translation type named **12. Commands** for Power Apps command designer commands stored as Dataverse `appaction` records.
 
 This type is entity/solution scoped, but it must **not** be added to **0. All-In-One**.
 
-Important numbering note: the current codebase may already have a `15. Ribbons` item. This work packet follows the requested future numbering. Before merging code, reconcile the menu numbering with the product owner. Do not delete the existing ribbon handler unless explicitly approved.
+Numbering note: classic ribbon labels are `11. Ribbons`; modern command designer labels are the separate `12. Commands` type.
 
 ## Microsoft References
 
@@ -39,7 +39,7 @@ Relevant command locations include:
 - Global Header
 - Dashboard
 
-Do not merge this into `15. Ribbons`. `15. Ribbons` remains classic `RibbonDiffXml`. Modern Commands is a separate handler.
+Do not merge this into `11. Ribbons`. `11. Ribbons` remains classic `RibbonDiffXml`. Commands is a separate handler.
 
 ## Required Spike Before Coding
 
@@ -164,7 +164,7 @@ Do not rely on field names without verifying them in the target environment.
 - `.codex\mapping.xml`
   - add `ModernCommandHandler.js`
 - `js\XrmTranslator.js`
-  - add menu item `16. Modern Commands`
+  - add menu item `12. Commands`
   - add type id to the correct visibility list
   - route type to `ModernCommandHandler`
   - update help/about text
@@ -173,7 +173,7 @@ Do not rely on field names without verifying them in the target environment.
 
 If the implementation chooses translation package import:
 
-- Reuse `js\TranslationPackageService.js` from Type 15 Business Rules.
+- Reuse `js\TranslationPackageService.js` from Type 10 Business Rules if that service exists in a future implementation.
 
 ## Save And Publish UX
 
@@ -215,7 +215,7 @@ node --check js\XrmTranslator.js
 Functional checks:
 
 1. Create a modern main grid command.
-2. Load `16. Modern Commands`.
+2. Load `12. Commands`.
 3. Confirm parent/child node shape.
 4. Edit target language `Text`, `Title`, and `Description`.
 5. Save.

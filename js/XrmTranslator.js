@@ -67,12 +67,14 @@
         "type:content",
         "type:bpf",
         "type:businessRules",
-        "type:ribbons"
+        "type:ribbons",
+        "type:commands",
+        "type:entityMessages"
     ];
     var GLOBAL_TYPE_ITEMS = [
-        "type:webresources",
-        "type:dashboards",
         "type:sitemap",
+        "type:dashboards",
+        "type:webresources",
         "type:globalOptionSets"
     ];
     var ALLOWED_ROLE_NAMES = {
@@ -964,7 +966,7 @@
             SetToolbarItemsVisible(ENTITY_DEPENDENT_TYPE_ITEMS, false);
             SetToolbarItemsVisible(GLOBAL_TYPE_ITEMS, true);
 
-            if (["allInOne", "attributes", "options", "forms", "views", "formMeta", "entityMeta", "relationships", "charts", "bpf", "content", "businessRules", "ribbons"].indexOf(GetToolbar().get("type").selected) !== -1) {
+            if (["allInOne", "attributes", "options", "forms", "views", "formMeta", "entityMeta", "relationships", "charts", "bpf", "content", "businessRules", "ribbons", "commands", "entityMessages"].indexOf(GetToolbar().get("type").selected) !== -1) {
                 GetToolbar().get("type").selected = "sitemap";
                 UpdateComponentDropdown("sitemap");
             }
@@ -1176,6 +1178,7 @@
         w2ui.grid.show.selectColumn = false;
 
         w2ui['grid_toolbar'].hide("removeOverriddenAttributeLabels");
+        currentHandler = null;
 
         if (XrmTranslator.GetType() === "allInOne") {
             currentHandler = AllInOneHandler;
@@ -1217,6 +1220,12 @@
         else if (XrmTranslator.GetType() === "ribbons") {
             currentHandler = RibbonHandler;
         }
+        else if (XrmTranslator.GetType() === "commands") {
+            currentHandler = CreatePlannedTypeHandler("12. Commands");
+        }
+        else if (XrmTranslator.GetType() === "entityMessages") {
+            currentHandler = CreatePlannedTypeHandler("13. Entity Messages");
+        }
         else if (XrmTranslator.GetType() === "content") {
             w2ui.grid.show.selectColumn = true;
             currentHandler = ContentSnippetHandler;
@@ -1230,6 +1239,21 @@
 
         w2ui.grid.refresh();
         RefreshToolbar();
+    }
+
+    function CreatePlannedTypeHandler(typeName) {
+        return {
+            Load: function () {
+                XrmTranslator.GetGrid().clear();
+                XrmTranslator.UnlockGrid();
+                w2alert(typeName + " is planned but not implemented yet.");
+                return Promise.resolve();
+            },
+            Save: function () {
+                w2alert(typeName + " is planned but not implemented yet.");
+                return Promise.resolve();
+            }
+        };
     }
 
     XrmTranslator.errorHandler = function(error) {
@@ -3111,7 +3135,7 @@
             '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
             '<b>Entity-based types</b> (select an Entity first):' +
             '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            '<li><b>0. All-In-One</b> — Loads the current bulk-supported entity types into one grid for translation. Business Rules are standalone for now.</li>' +
+            '<li><b>0. All-In-One</b> — Loads the current bulk-supported entity types into one grid for translation, including Business Rules.</li>' +
             '<li><b>1. Attributes</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Attributes &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '<li><b>2. Options</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Options &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '<li><b>3. Forms</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Forms &rarr; Load &rarr; Translate &rarr; Save</li>' +
@@ -3121,16 +3145,18 @@
             '<li><b>7. Relationships</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Relationships &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '<li><b>8. Charts</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Charts &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '<li><b>9. Business Process Flows</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Process Flows &rarr; Load &rarr; Translate &rarr; Save</li>' +
+            '<li><b>10. Business Rules</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Rules &rarr; Load &rarr; Translate &rarr; Save. Save temporarily deactivates each changed rule, patches workflow XAML, then reactivates it.</li>' +
+            '<li><b>11. Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load &rarr; Translate &rarr; Save. Save downloads a backup first, then starts Publish XML asynchronously.</li>' +
+            '<li><b>12. Commands</b> — Planned. Menu placeholder only; implementation is not available yet.</li>' +
+            '<li><b>13. Entity Messages</b> — Planned. Menu placeholder only; implementation is not available yet.</li>' +
             '<li><b>14. Content Snippets</b> — Solution &rarr; Entity &rarr; Adx_contentsnippet &rarr; Type &rarr; 14. Content Snippets &rarr; Load &rarr; Translate &rarr; Save</li>' +
-            '<li><b>15. Business Rules</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Rules &rarr; Load &rarr; Translate &rarr; Save. Save temporarily deactivates each changed rule, patches workflow XAML, then reactivates it.</li>' +
-            '<li><b>18. Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load &rarr; Translate &rarr; Save. Save downloads a backup first, then starts Publish XML asynchronously.</li>' +
             '</ul>' +
             '<b>Entity-independent types</b> (set Entity to None):' +
             '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            '<li><b>10. Sitemap</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Sitemap &rarr; Load &rarr; Translate &rarr; Save</li>' +
-            '<li><b>11. Dashboards</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Dashboards &rarr; Load &rarr; Translate &rarr; Save</li>' +
-            '<li><b>12. Web Resources</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Web Resources &rarr; Load &rarr; Translate &rarr; Save</li>' +
-            '<li><b>13. Global Option Sets</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Global Option Sets &rarr; Load &rarr; Translate &rarr; Save</li>' +
+            '<li><b>15. Sitemap</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Sitemap &rarr; Load &rarr; Translate &rarr; Save</li>' +
+            '<li><b>16. Dashboards</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Dashboards &rarr; Load &rarr; Translate &rarr; Save</li>' +
+            '<li><b>17. Web Resources</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Web Resources &rarr; Load &rarr; Translate &rarr; Save</li>' +
+            '<li><b>18. Global Option Sets</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Global Option Sets &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '</ul>' +
             '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
             '<b>AI Translate:</b>' +
@@ -3323,13 +3349,15 @@
                     { id: 'relationships', text: '7. Relationships', icon: 'icon-link' },
                     { id: 'charts', text: '8. Charts', icon: 'icon-chart' },
                     { id: 'bpf', text: '9. Business Process Flows', icon: 'icon-flow' },
-                    { id: 'sitemap', text: '10. Sitemap', icon: 'icon-sitemap' },
+                    { id: 'businessRules', text: '10. Business Rules', icon: 'icon-flow' },
+                    { id: 'ribbons', text: '11. Ribbons', icon: 'icon-grid' },
+                    { id: 'commands', text: '12. Commands', icon: 'icon-component' },
+                    { id: 'entityMessages', text: '13. Entity Messages', icon: 'icon-description' },
                     { id: 'content', text: '14. Content Snippets', icon: 'icon-code' },
-                    { id: 'businessRules', text: '15. Business Rules', icon: 'icon-flow' },
-                    { id: 'ribbons', text: '18. Ribbons', icon: 'icon-grid' },
-                    { id: 'dashboards', text: '11. Dashboards', icon: 'icon-dashboard' },
-                    { id: 'webresources', text: '12. Web Resources', icon: 'icon-file-code' },
-                    { id: 'globalOptionSets', text: '13. Global Option Sets', icon: 'icon-global-options' }
+                    { id: 'sitemap', text: '15. Sitemap', icon: 'icon-sitemap' },
+                    { id: 'dashboards', text: '16. Dashboards', icon: 'icon-dashboard' },
+                    { id: 'webresources', text: '17. Web Resources', icon: 'icon-file-code' },
+                    { id: 'globalOptionSets', text: '18. Global Option Sets', icon: 'icon-global-options' }
                 ])
             },
             { type: 'menu-radio', id: 'component', icon: 'icon-component',
