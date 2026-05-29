@@ -14,6 +14,7 @@
   <File LocalPath="js/AllInOneHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/AllInOneHandler.js" />
   <File LocalPath="js/AttributeHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/AttributeHandler.js" />
   <File LocalPath="js/BpfHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/BpfHandler.js" />
+  <File LocalPath="js/BusinessRuleHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/BusinessRuleHandler.js" />
   <File LocalPath="js/ChartHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/ChartHandler.js" />
   <File LocalPath="js/ContentSnippetHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/ContentSnippetHandler.js" />
   <File LocalPath="js/DialogHelper.js" UniqueName="pl_/DataverseLabelTranslator/js/DialogHelper.js" />

@@ -28,13 +28,14 @@ Translate UI labels for Dataverse components using the same type menu shown in t
 | **11. Dashboards** | None | Dashboard form labels |
 | **12. Web Resources** | None | Text content within web resources |
 | **13. Global Option Sets** | None | Global option set values independent of an entity |
-| **15. Ribbons** | Entity | Classic ribbon / command bar button text, tooltip title, and tooltip description labels |
+| **15. Business Rules** | Entity | Business rule error messages and recommendation text stored in workflow XAML |
+| **18. Ribbons** | Entity | Classic ribbon / command bar button text, tooltip title, and tooltip description labels |
 
 There is also a special **14. Content Snippets** type for legacy Dynamics 365 Portals / Power Pages content snippets. It appears only when the selected entity is `Adx_contentsnippet`.
 
 ### All-In-One Mode
 
-Loads all entity-dependent translation types into one grid for bulk translation. Use it to translate attributes, option sets, forms, views, form metadata, entity metadata, relationships, charts, and business process flows without switching between types.
+Loads all entity-dependent translation types into one grid for bulk translation. Use it to translate attributes, option sets, forms, views, form metadata, entity metadata, relationships, charts, and business process flows without switching between types. Business Rules are currently available as a standalone type first; All-In-One integration is planned separately after standalone save has been verified.
 
 ### Power Pages Content Snippets
 
@@ -44,7 +45,11 @@ When available, **14. Content Snippets** loads `adx_contentsnippet` records grou
 
 ### Ribbon Labels
 
-**15. Ribbons** loads classic `RibbonDiffXml` labels for the selected entity only. Each ribbon button is shown as a parent row with `Text`, `Title`, and `Description` child rows, even when a tooltip value is currently blank. Save imports the updated ribbon solution XML and starts Dataverse Publish XML, so the app shows a status banner and temporarily blocks Save/Load until the server job finishes.
+**18. Ribbons** loads classic `RibbonDiffXml` labels for the selected entity only. Each ribbon button is shown as a parent row with `Text`, `Title`, and `Description` child rows, even when a tooltip value is currently blank. Save imports the updated ribbon solution XML and starts Dataverse Publish XML, so the app shows a status banner and temporarily blocks Save/Load until the server job finishes.
+
+### Business Rule Labels
+
+**15. Business Rules** loads Dataverse business rule labels from `workflow.xaml`, including error messages, recommendation titles, and recommendation details. Save temporarily deactivates each changed rule, patches only its `mcwo:StepLabel` entries by `LabelId` and LCID, then reactivates the rule. The runtime flow does not download or persist a backup file; it keeps the original XAML in memory for best-effort rollback during the same save operation.
 
 ### AI Translation
 
@@ -157,6 +162,7 @@ js/
   EntityHandler.js
   ChartHandler.js
   BpfHandler.js
+  BusinessRuleHandler.js
   RelationshipHandler.js
   SiteMapHandler.js
   ContentSnippetHandler.js
