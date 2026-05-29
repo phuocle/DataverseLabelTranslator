@@ -1111,10 +1111,10 @@
                                 leafOnly: true,
                                 includeBranchRecords: ["bpf", "forms", "dashboards", "allInOne"].indexOf(XrmTranslator.GetType()) !== -1,
                                 selectAllOnly: true,
-                                excludeEmptySource: translateMissingVal !== "overwrite",
+                                excludeEmptySource: true,
                                 emptyMessage: translateMissingVal === "overwrite"
                                     ? "No records with source text found for the selected source language."
-                                    : "No matching records found. All records already have translations for the target language."
+                                    : "No matching records found. Records with empty source text are skipped, and the remaining records already have translations for the target language."
                             }
                         );
                     },

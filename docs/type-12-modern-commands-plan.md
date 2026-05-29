@@ -6,6 +6,8 @@ Add a new translation type named **12. Commands** for Power Apps command designe
 
 This type is entity/solution scoped, but it must **not** be added to **0. All-In-One**.
 
+Implementation result: `12. Commands` uses direct Dataverse Web API label actions on `appaction` records. It does not export/import translation packages and does not publish a model-driven app.
+
 Numbering note: classic ribbon labels are `11. Ribbons`; modern command designer labels are the separate `12. Commands` type.
 
 ## Microsoft References
@@ -41,33 +43,32 @@ Relevant command locations include:
 
 Do not merge this into `11. Ribbons`. `11. Ribbons` remains classic `RibbonDiffXml`. Commands is a separate handler.
 
-## Required Spike Before Coding
+## Completed Spike
 
-Create test commands in a dev solution:
+Test commands were created on `pl_salesorder` in the dev solution. The observed metadata shape is:
 
-1. Main grid command with label only.
-2. Main form command with label and tooltip.
-3. Dropdown/group command if possible.
-4. Replaced/customized OOB command if possible.
+- Table: `appaction`
+- Entity filter: `contextvalue eq 'pl_salesorder'`
+- Solution component type: `10298`
+- App actions may have `_appmoduleid_value = null`; do not require app publish.
+- Parent relationships use `_parentappactionid_value`.
+- Location/type values follow the command MCP code:
+  - location `0` Form, `1` Main Grid, `2` Sub Grid, `3` Associated Grid, `4` Quick Form, `5` Global Header, `6` Dashboard.
+  - type `0` Button, `1` Dropdown, `2` Split Button, `3` Group.
 
-For each command:
+Confirmed localizable fields:
 
-1. Query the `appaction` record.
-2. Test `RetrieveLocLabels` for each candidate localizable field.
-3. Test `SetLocLabels` on one non-base language field.
-4. Publish and verify the command designer/runtime shows the translated value.
-5. Export translations and verify the same command labels appear in `CrmTranslations.xml`.
+- `buttonlabeltext`
+- `buttontooltiptitle`
+- `buttontooltipdescription`
+- `buttonaccessibilitytext`
+- `grouptitle`
 
-Decision point:
-
-- Prefer direct `RetrieveLocLabels` / `SetLocLabels` if it works reliably for `appaction` localizable fields and respects solution layering.
-- Use translation package export/import only if direct label actions are incomplete or unstable.
-
-Record the chosen path in the implementation PR.
+`RetrieveLocLabels` worked for the above fields. Save uses `SetLocLabels` with the full localized label collection for the changed field.
 
 ## Handler Design
 
-Create `js\ModernCommandHandler.js`.
+Created `js\ModernCommandHandler.js`.
 
 Public methods:
 
@@ -79,8 +80,8 @@ Public methods:
 
 1. Require selected solution.
 2. If an entity is selected, filter commands to that entity where possible.
-3. Retrieve solution component ids for `appaction` records in the selected solution.
-4. Retrieve each `appaction` record with the fields needed for display and filtering.
+3. Retrieve solution component ids where `componenttype eq 10298` for the selected solution.
+4. Retrieve each matching `appaction` for `contextvalue eq <selected entity>`.
 5. For each localizable property, retrieve all language labels.
 6. Build parent rows for commands and child rows for label fields.
 
@@ -89,14 +90,9 @@ Public methods:
 1. Collect changed child rows.
 2. Group changes by `appactionid` and field name.
 3. For each changed field, call `SetLocLabels` with the full label collection for that field.
-4. Publish using the existing async publish guard when required.
+4. Publish the selected entity once with `XrmTranslator.Publish()`.
 
-`SaveOnly()` translation-package path:
-
-1. Re-export the selected solution translation package immediately before save.
-2. Apply only changed command rows to the fresh package.
-3. Import the translation package.
-4. Publish using the existing async publish guard.
+Translation package export/import is not used for Commands.
 
 ## Grid Shape
 
@@ -132,17 +128,16 @@ Hidden metadata on child rows:
 - `_isModernCommandLabelRow = true`
 - `_appActionId`
 - `_appActionUniqueName`
-- `_appActionLocation`
 - `_propertyName`
 - `_labelCollection`
 
 ## Query Strategy
 
-Start with solution-scoped query:
+Solution-scoped query:
 
 1. Use `solutioncomponent` for the selected solution.
-2. Filter to the component type used by `appaction`.
-3. Retrieve matching `appaction` records.
+2. Filter to component type `10298`.
+3. Retrieve matching active `appaction` records for the selected entity using `contextvalue`.
 
 If the component type is not available in the existing `XrmTranslator.ComponentType` map, add it after verifying the numeric value from Dataverse metadata/export.
 
@@ -155,37 +150,29 @@ Entity filter:
   - app/action location fields
   - any command designer metadata columns returned by `appaction`
 
-Do not rely on field names without verifying them in the target environment.
+Verified in the target environment. Do not use `contextentity` in Web API filters; lookup values are exposed as `_contextentity_value`, and the practical entity logical-name filter is `contextvalue`.
 
 ## Files To Update
 
 - `html\App.html`
-  - add `ModernCommandHandler.js`
-- `.codex\mapping.xml`
-  - add `ModernCommandHandler.js`
+  - load `ModernCommandHandler.js`
+- `.codex\mapping.xml` and `.claude\mapping.xml`
+  - map `ModernCommandHandler.js`
 - `js\XrmTranslator.js`
-  - add menu item `12. Commands`
-  - add type id to the correct visibility list
-  - route type to `ModernCommandHandler`
-  - update help/about text
+  - route type `12. Commands` to `ModernCommandHandler`
+  - add `XrmTranslator.ComponentType.AppAction = 10298`
+  - update help text
 - `README.md`
-  - update after implementation
-
-If the implementation chooses translation package import:
-
-- Reuse `js\TranslationPackageService.js` from Type 10 Business Rules if that service exists in a future implementation.
+  - document Type 12 as implemented
 
 ## Save And Publish UX
 
-Modern Commands can affect command bar runtime behavior. Use the same defensive UX principles as ribbon save:
+Modern Commands can affect command bar runtime behavior, but this implementation deliberately uses a simple entity-scoped publish:
 
-- Disable Save and Load while the handler is importing or publishing.
-- Show a banner during async publish.
-- Store publish job id in `localStorage`.
-- Poll until complete.
-- Clear stale lock after the same recovery rules already used by ribbon.
-
-If direct `SetLocLabels` does not return a publish job id, call the existing publish helper that gives the safest user feedback. Prefer async `PublishAllXml` if command changes are not visible with scoped publish.
+- Save changed fields using `SetLocLabels`.
+- Publish once at selected entity level with `PublishXml`.
+- Do not publish appmodule because this project/test setup does not require an app-scoped command publish.
+- Do not use `PublishAllXml` for Commands.
 
 ## Explicit Non-Goals
 
@@ -219,7 +206,7 @@ Functional checks:
 3. Confirm parent/child node shape.
 4. Edit target language `Text`, `Title`, and `Description`.
 5. Save.
-6. Confirm publish completes and Save/Load re-enable.
+6. Confirm entity publish completes and Save/Load re-enable.
 7. Switch language and verify command bar text.
 8. Test a blank description value can be created.
 9. Test a second command with same label does not collide.

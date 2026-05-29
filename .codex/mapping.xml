@@ -22,6 +22,7 @@
   <File LocalPath="js/FormHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/FormHandler.js" />
   <File LocalPath="js/FormMetaHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/FormMetaHandler.js" />
   <File LocalPath="js/GlobalOptionSetHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/GlobalOptionSetHandler.js" />
+  <File LocalPath="js/ModernCommandHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/ModernCommandHandler.js" />
   <File LocalPath="js/OptionSetHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/OptionSetHandler.js" />
   <File LocalPath="js/RelationshipHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/RelationshipHandler.js" />
   <File LocalPath="js/RibbonHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/RibbonHandler.js" />

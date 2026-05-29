@@ -6,9 +6,9 @@ Date: 2026-05-29
 
 The current app already covers most classic Dataverse metadata labels: tables, columns, choices, forms, views, form names, table metadata, relationship menu labels, charts, BPF stage/step labels, sitemap, dashboards, RESX/JSON web resources, global choices, content snippets, and classic ribbon labels.
 
-The biggest confirmed gap is **modern commands**. Microsoft documents modern commands as separate Dataverse solution objects, not classic `RibbonDiffXml`. They support standard solution translation export/import and expose localizable fields on the `appaction` table. This is the likely missing area behind "new/replace ribbon" command customization.
+Modern commands are now covered by **12. Commands**. Microsoft documents modern commands as separate Dataverse solution objects, not classic `RibbonDiffXml`; this project reads/saves their `appaction` labels directly with `RetrieveLocLabels` / `SetLocLabels`.
 
-The second confirmed gap is **Entity Messages / Display Strings**. Microsoft lists Entity Messages as exportable localizable solution components, and the Power Apps table designer exposes them under **Messages** for system tables. This app currently does not have a message/display-string handler.
+The biggest remaining confirmed gap is **Entity Messages / Display Strings**. Microsoft lists Entity Messages as exportable localizable solution components, and the Power Apps table designer exposes them under **Messages** for system tables. This app currently does not have a message/display-string handler.
 
 ## Current Coverage
 
@@ -26,14 +26,14 @@ The second confirmed gap is **Entity Messages / Display Strings**. Microsoft lis
 | Sitemap | Yes | `15. Sitemap`. Microsoft documents sitemap titles/descriptions as localized XML. |
 | Business rule messages | Yes | `10. Business Rules` reads/saves `workflow.xaml` `mcwo:StepLabel` values for rule messages and recommendation text. |
 | Classic ribbon labels | Yes | `11. Ribbons` reads/saves `RibbonDiffXml` `LocLabels` for entity-level classic ribbon labels. |
-| Modern commands | Planned placeholder | `12. Commands` menu exists; implementation is pending. |
+| Modern commands | Yes | `12. Commands` reads/saves `appaction` labels for modern command designer records in the selected solution and entity. |
 | Entity messages / display strings | Planned placeholder | `13. Entity Messages` menu exists; implementation is pending. |
 | RESX / JSON web resources | Mostly yes | `17. Web Resources` supports localized `.resx` and `.js` resources by LCID naming. |
 | Content snippets | Yes, legacy/special | `14. Content Snippets` is portal-specific, not a general Dataverse metadata label type. |
 
-## Confirmed Missing Items
+## Recently Implemented Items
 
-### P0 - Modern Commands
+### Completed - Modern Commands
 
 Modern commands are represented by the Dataverse `appaction` table and are managed through command designer. Microsoft says modern command localization is standardized through export/import translations, unlike classic ribbon localization.
 
@@ -55,9 +55,9 @@ Relevant command locations:
 - Global Header
 - Dashboard
 
-Recommended app feature:
+Implemented app feature:
 
-- Implement the existing planned placeholder type **12. Commands**.
+- Implemented type **12. Commands**.
 - Keep it separate from `11. Ribbons`; do not merge it into the classic ribbon handler.
 - Node design should mirror ribbon:
   - parent row: location + command type + command label/name
@@ -65,16 +65,18 @@ Recommended app feature:
   - always create editable child rows even when values are blank
 - Scope:
   - solution-scoped first, because modern commands are solution components
-  - optional entity filter when an entity is selected, based on `ContextEntity`, `ContextValue`, and solution membership
-- Save strategy needs a spike:
-  - Option A: use `SetLocLabels` on localizable `appaction` attributes.
-  - Option B: export `CrmTranslations.xml`, edit matching modern-command rows, then use `ImportTranslationRequest`.
-  - Microsoft docs are clearest for Option B. Option A is attractive for inline editing, but must be proven against real modern command labels and solution layering.
+  - entity filter uses `contextvalue` and solution membership
+- Save strategy:
+  - use `SetLocLabels` on localizable `appaction` attributes
+  - publish the selected entity once with `PublishXml`
+  - do not publish a model-driven app and do not use `PublishAllXml`
 
 Why this matters:
 
 - Classic `RibbonDiffXml` does not cover modern command designer objects.
 - Replaced/customized OOB commands can become modern commands and will not be handled by `11. Ribbons`.
+
+## Confirmed Missing Items
 
 ### P0 - Entity Messages / Display Strings
 
@@ -182,17 +184,17 @@ This service should be private/internal at first, then used by modern commands, 
 
 ### Phase 2 - Implement 12. Commands
 
-1. Create real test data:
+Status: completed.
+
+1. Created real test data:
    - one modern command on main grid
    - one modern command on main form
    - one replaced/customized OOB command if possible
    - one dropdown/group command
-2. Export translations and confirm rows for label, tooltip, description, accessibility, and group title.
-3. Decide save path:
-   - Prefer translation package import if rows map cleanly and layering works.
-   - Use direct `SetLocLabels` only after verifying Dataverse runtime and solution layering.
-4. Implement UI as command parent nodes with child rows.
-5. Keep it out of All-In-One until the UX and save behavior are stable.
+2. Confirmed `RetrieveLocLabels` for label, tooltip, description, accessibility, and group title.
+3. Chose direct `SetLocLabels` after verifying Dataverse accepts it for `appaction`.
+4. Implemented UI as command parent nodes with child rows.
+5. Kept it out of All-In-One by design.
 
 ### Phase 3 - Implement 13. Entity Messages
 

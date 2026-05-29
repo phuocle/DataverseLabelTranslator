@@ -1151,6 +1151,7 @@
         SimilarityRule: 165,
         CustomControl: 66,
         CustomControlDefaultConfig: 68,
+        AppAction: 10298,
     };
 
     XrmTranslator.GetSolution = function() {
@@ -1221,7 +1222,7 @@
             currentHandler = RibbonHandler;
         }
         else if (XrmTranslator.GetType() === "commands") {
-            currentHandler = CreatePlannedTypeHandler("12. Commands");
+            currentHandler = ModernCommandHandler;
         }
         else if (XrmTranslator.GetType() === "entityMessages") {
             currentHandler = CreatePlannedTypeHandler("13. Entity Messages");
@@ -2583,7 +2584,7 @@
             }
         });
 
-        if (recordFilter && filteredRecords.length === 0) {
+        if ((recordFilter || options.excludeEmptySource) && filteredRecords.length === 0) {
             w2alert(options.emptyMessage || "No matching records found. All records already have translations for the target language.");
             return;
         }
@@ -3147,7 +3148,7 @@
             '<li><b>9. Business Process Flows</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Process Flows &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '<li><b>10. Business Rules</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Rules &rarr; Load &rarr; Translate &rarr; Save. Save temporarily deactivates each changed rule, patches workflow XAML, then reactivates it.</li>' +
             '<li><b>11. Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load &rarr; Translate &rarr; Save. Save downloads a backup first, then starts Publish XML asynchronously.</li>' +
-            '<li><b>12. Commands</b> — Planned. Menu placeholder only; implementation is not available yet.</li>' +
+            '<li><b>12. Commands</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Commands &rarr; Load &rarr; Translate &rarr; Save. Loads modern command designer appaction labels and publishes the selected entity.</li>' +
             '<li><b>13. Entity Messages</b> — Planned. Menu placeholder only; implementation is not available yet.</li>' +
             '<li><b>14. Content Snippets</b> — Solution &rarr; Entity &rarr; Adx_contentsnippet &rarr; Type &rarr; 14. Content Snippets &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '</ul>' +
