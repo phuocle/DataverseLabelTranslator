@@ -9,6 +9,7 @@
         google: true,
         openAI: true
     };
+    var TRANSLATION_PROMPT_KEY = "DataverseLabelTranslator_TranslationPrompt";
     var translationProviders = [];
 
     function GetCurrentGridValue(record, lcid) {
@@ -48,10 +49,21 @@
     }
 
     function GetSavedTranslationPrompt() {
-        return null;
+        try {
+            var stored = localStorage.getItem(TRANSLATION_PROMPT_KEY);
+            return stored ? JSON.parse(stored) : null;
+        } catch(e) {
+            return null;
+        }
     }
 
     function SaveTranslationPrompt(values) {
+        try {
+            localStorage.setItem(TRANSLATION_PROMPT_KEY, JSON.stringify(values || {}));
+        } catch(e) {
+            return values;
+        }
+
         return values;
     }
 
@@ -955,6 +967,19 @@
         });
     }
 
+    function UpdateTranslationPromptProviderAvailability(hasAiProviders) {
+        var okButton = document.querySelector('#w2ui-popup button[name="ok"]');
+
+        if (okButton) {
+            okButton.disabled = !hasAiProviders;
+            if (hasAiProviders) {
+                okButton.classList.remove("xqt-button-disabled");
+            } else {
+                okButton.classList.add("xqt-button-disabled");
+            }
+        }
+    }
+
     function InitializeTranslationPrompt () {
         var languageItems = [];
         var availableLanguages = XrmTranslator.GetGrid().columns;
@@ -984,6 +1009,7 @@
         return GetTranslationProviderContext(true)
         .then(function (providerContext) {
             var apiProviderItems = providerContext.items;
+            var hasAiProviders = apiProviderItems.length > 0;
             var defaultApiProvider = GetTranslationProvider(providerContext.selectedProvider, providerContext.providers) || providerContext.providers[0];
             var defaultApiProviderItem = defaultApiProvider ? findItem(apiProviderItems, defaultApiProvider.id) : null;
             var savedRecord = {};
@@ -1002,6 +1028,10 @@
                 savedRecord.apiProvider = defaultApiProviderItem;
             }
 
+            if (w2ui.translationPrompt) {
+                w2ui.translationPrompt.destroy();
+            }
+
             if (!w2ui.translationPrompt)
             {
                 new w2form({
@@ -1009,6 +1039,7 @@
                 style: 'border: 0px; background-color: transparent;',
                 formHTML:
                     '<div class="w2ui-page page-0 xqt-translation-prompt-form">'+
+                    '    <div class="xqt-translation-prompt-warning" style="' + (hasAiProviders ? 'display:none;' : '') + '">No AI Provider has been set up. Open App Settings and configure an AI Provider.</div>'+
                     '    <div class="xqt-translation-prompt-row">'+
                     '        <label class="xqt-translation-prompt-label" for="sourceLcid">Source Lcid: <span class="xqt-required">*</span></label>'+
                     '        <div class="xqt-translation-prompt-control"><input name="sourceLcid" type="list" /></div>'+
@@ -1022,7 +1053,7 @@
                     '        <div class="xqt-translation-prompt-control"><input name="translateMissing" type="list" /></div>'+
                     '    </div>'+
                     '    <div class="xqt-translation-prompt-row">'+
-                    '        <label class="xqt-translation-prompt-label" for="apiProvider">API Provider:</label>'+
+                    '        <label class="xqt-translation-prompt-label" for="apiProvider">AI Provider:</label>'+
                     '        <div class="xqt-translation-prompt-control"><input name="apiProvider" type="list" /></div>'+
                     '    </div>'+
                     '    <div class="xqt-translation-prompt-row xqt-translation-prompt-check">'+
@@ -1044,7 +1075,15 @@
                 record: savedRecord,
                 actions: {
                     "ok": function () {
-                        this.validate();
+                        if (apiProviderItems.length === 0) {
+                            w2alert("No AI Provider has been set up. Open App Settings and configure an AI Provider.", "AI Translate");
+                            return;
+                        }
+
+                        if (this.validate().length > 0) {
+                            return;
+                        }
+
                         w2popup.close();
 
                         var sourceLcid = this.record.sourceLcid.id;
@@ -1095,48 +1134,45 @@
                 }
                 });
             }
-            else {
-                w2ui.translationPrompt.fields[0].options.items = languageItems;
-                w2ui.translationPrompt.fields[1].options.items = languageItems;
-                w2ui.translationPrompt.fields[2].options.items = translateMissingItems;
-                w2ui.translationPrompt.fields[3].options.items = apiProviderItems;
-                w2ui.translationPrompt.record = savedRecord;
-
-                w2ui.translationPrompt.refresh();
-            }
-
-            return {};
+            return {
+                hasAiProviders: hasAiProviders
+            };
         });
     }
 
     TranslationHandler.ShowTranslationPrompt = function() {
-        InitializeTranslationPrompt()
-        .then(function() {
-            w2popup.open({
-                title   : 'Choose translations source and destination',
-                name    : 'translationPopup',
-                body    : '<div id="form" class="xqt-translation-prompt-popup-form"></div>',
-                style   : 'padding: 0px; overflow-x: hidden;',
-                width   : 650,
-                height  : 360,
-                showMax : false,
-                onToggle: function (event) {
+        w2popup.open({
+            title   : 'Choose translations source and destination',
+            name    : 'translationPopup',
+            body    : '<div id="form" class="xqt-translation-prompt-popup-form"><div class="xqt-translation-prompt-loading">Loading AI translate settings...</div></div>',
+            style   : 'padding: 0px; overflow-x: hidden;',
+            width   : 650,
+            height  : 440,
+            showMax : false,
+            onToggle: function (event) {
+                if (w2ui.translationPrompt && w2ui.translationPrompt.box) {
                     w2ui.translationPrompt.box.style.display = 'none';
-                    event.onComplete = function () {
+                }
+                event.onComplete = function () {
+                    if (w2ui.translationPrompt && w2ui.translationPrompt.box) {
                         w2ui.translationPrompt.box.style.display = '';
                         w2ui.translationPrompt.resize();
                     }
-                },
-                onOpen: function (event) {
-                    event.onComplete = function () {
+                }
+            },
+            onOpen: function (event) {
+                event.onComplete = function () {
+                    InitializeTranslationPrompt()
+                    .then(function(context) {
                         // specifying an onOpen handler instead is equivalent to specifying an onBeforeOpen handler, which would make this code execute too early and hence not deliver.
                         w2ui.translationPrompt.render('#w2ui-popup #form');
-                    }
+                        UpdateTranslationPromptProviderAvailability(context.hasAiProviders);
+                    })
+                    .catch(function(error) {
+                        XrmTranslator.errorHandler(error);
+                    });
                 }
-            });
-        })
-        .catch(function(error) {
-            XrmTranslator.errorHandler(error);
+            }
         });
     }
 

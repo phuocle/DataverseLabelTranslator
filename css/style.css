@@ -363,12 +363,34 @@
     width: 100%;
 }
 
+.xqt-translation-prompt-loading {
+    align-items: center;
+    box-sizing: border-box;
+    color: #555;
+    display: flex;
+    font-size: 14px;
+    height: 100%;
+    justify-content: center;
+    width: 100%;
+}
+
 .xqt-translation-prompt-form {
     box-sizing: border-box;
     display: block;
     max-width: 100%;
     overflow: hidden !important;
-    padding: 26px 38px 8px;
+    padding: 30px 44px 8px !important;
+    width: 100%;
+}
+
+.xqt-translation-prompt-warning {
+    background-color: #fff4ce;
+    border: 1px solid #f1c232;
+    box-sizing: border-box;
+    color: #5f4700;
+    line-height: 1.35;
+    margin: 0 0 14px;
+    padding: 10px 12px;
     width: 100%;
 }
 
@@ -432,6 +454,12 @@
 
 .xqt-translation-prompt-check input[type="checkbox"] {
     margin: 0;
+}
+
+.w2ui-btn.xqt-button-disabled,
+.w2ui-btn:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.55;
 }
 
 .xqt-app-settings-popup-form {
@@ -558,7 +586,7 @@
     box-sizing: border-box;
     max-width: 100%;
     overflow: hidden !important;
-    padding: 30px 38px 8px;
+    padding: 30px 44px 8px !important;
     width: 100%;
 }
 
