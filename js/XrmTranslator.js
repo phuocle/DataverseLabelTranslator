@@ -37,22 +37,21 @@
     XrmTranslator.allEntities = [];
 
     var currentHandler = null;
-    var solutionEntityCache = {};
     var baseLanguageScopeDepth = 0;
     var baseLanguageRestoreLcid = null;
     var unfilteredRecords = null;
     var recordSelectorContext = null;
-    var PUBLISH_XML_JOB_STORAGE_KEY = "DataverseLabelTranslator.PublishXmlJob";
     var PUBLISH_XML_JOB_MAX_BLOCKED_ATTEMPTS = 10;
     var PUBLISH_XML_JOB_POLL_INTERVAL_MS = 30000;
     var IMPORT_JOB_POLL_INTERVAL_MS = 5000;
-    var OPERATION_STATE_STORAGE_KEY = "DataverseLabelTranslator.OperationState";
     var OPERATION_STATE_MAX_AGE_MS = 10 * 60 * 1000;
     var statusBannerAutoHideTimer = null;
     var publishXmlJobPollTimer = null;
     var publishXmlJobPollInFlight = false;
+    var publishXmlJobState = null;
     var importJobPollTimer = null;
     var importJobPollInFlight = false;
+    var operationState = null;
     var ENTITY_DEPENDENT_TYPE_ITEMS = [
         "type:allInOne",
         "type:entitySeparator",
@@ -210,28 +209,16 @@
     }
 
     function getStoredPublishXmlJob() {
-        if (!window.localStorage) {
+        if (!publishXmlJobState) {
             return null;
         }
 
-        var raw = localStorage.getItem(PUBLISH_XML_JOB_STORAGE_KEY);
-        if (!raw) {
+        if (publishXmlJobState.source !== "DataverseLabelTranslator" || !publishXmlJobState.jobId) {
+            publishXmlJobState = null;
             return null;
         }
 
-        try {
-            var job = JSON.parse(raw);
-            if (!job || job.source !== "DataverseLabelTranslator" || !job.jobId) {
-                localStorage.removeItem(PUBLISH_XML_JOB_STORAGE_KEY);
-                return null;
-            }
-
-            return job;
-        }
-        catch (e) {
-            localStorage.removeItem(PUBLISH_XML_JOB_STORAGE_KEY);
-            return null;
-        }
+        return Object.assign({}, publishXmlJobState);
     }
 
     function isNotFoundError(error) {
@@ -258,9 +245,7 @@
     }
 
     function persistPublishXmlJob(job) {
-        if (window.localStorage && job) {
-            localStorage.setItem(PUBLISH_XML_JOB_STORAGE_KEY, JSON.stringify(job));
-        }
+        publishXmlJobState = job ? Object.assign({}, job) : null;
     }
 
     function extractAsyncOperationId(response) {
@@ -291,45 +276,29 @@
     }
 
     function getStoredOperationState() {
-        if (!window.localStorage) {
+        if (!operationState) {
             return null;
         }
 
-        var raw = localStorage.getItem(OPERATION_STATE_STORAGE_KEY);
-        if (!raw) {
+        if (operationState.source !== "DataverseLabelTranslator" || !operationState.phase) {
+            operationState = null;
             return null;
         }
 
-        try {
-            var state = JSON.parse(raw);
-            if (!state || state.source !== "DataverseLabelTranslator" || !state.phase) {
-                localStorage.removeItem(OPERATION_STATE_STORAGE_KEY);
-                return null;
-            }
-
-            if (isOperationStateStale(state)) {
-                localStorage.removeItem(OPERATION_STATE_STORAGE_KEY);
-                return null;
-            }
-
-            return state;
-        }
-        catch (e) {
-            localStorage.removeItem(OPERATION_STATE_STORAGE_KEY);
+        if (isOperationStateStale(operationState)) {
+            operationState = null;
             return null;
         }
+
+        return Object.assign({}, operationState);
     }
 
     function persistOperationState(state) {
-        if (window.localStorage && state) {
-            localStorage.setItem(OPERATION_STATE_STORAGE_KEY, JSON.stringify(state));
-        }
+        operationState = state ? Object.assign({}, state) : null;
     }
 
     function clearStoredOperationState() {
-        if (window.localStorage) {
-            localStorage.removeItem(OPERATION_STATE_STORAGE_KEY);
-        }
+        operationState = null;
     }
 
     function isOperationStateStale(state) {
@@ -1708,10 +1677,6 @@
             throw new Error("Publish XML did not return a system job id.");
         }
 
-        if (!window.localStorage) {
-            throw new Error("Browser localStorage is not available. The Publish XML job cannot be guarded.");
-        }
-
         var storedJob = {
             jobId: job.jobId,
             source: "DataverseLabelTranslator",
@@ -1732,10 +1697,7 @@
     XrmTranslator.ClearPublishXmlJob = function(options) {
         options = options || {};
         clearPublishXmlJobPoll();
-
-        if (window.localStorage) {
-            localStorage.removeItem(PUBLISH_XML_JOB_STORAGE_KEY);
-        }
+        persistPublishXmlJob(null);
 
         var operationState = getStoredOperationState();
         if (operationState && operationState.phase === "publishing") {
@@ -3163,9 +3125,9 @@
             '<b>AI Translate:</b>' +
             '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
             '<li><b>Auto Translate</b> — Uses the selected enabled provider to translate labels from a source language to a target language. ' +
-            'Configure provider credentials via <i>AI Settings</i>.</li>' +
-            '<li><b>AI Settings</b> — Configure URLs, API keys, model names, and custom prompts for enabled providers. ' +
-            'Settings are stored in your browser\'s localStorage.</li>' +
+            'Configure provider credentials via <i>App Settings</i>.</li>' +
+            '<li><b>App Settings</b> — Configure URLs, API keys, model names, and custom prompts for enabled providers. ' +
+            'Settings are stored in the Dataverse app settings web resource.</li>' +
             '</ul>' +
             '<b>Dictionary:</b>' +
             '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
@@ -3300,7 +3262,7 @@
                 TranslationHandler.ShowTranslationPrompt();
                 break;
             case "aiSettings":
-                TranslationHandler.ShowAISettings();
+                TranslationHandler.ShowAppSettings();
                 break;
         }
     }
@@ -3385,7 +3347,7 @@
         );
 
         toolbarItems.push({ type: 'button', id: 'autoTranslate', text: '', tooltip: 'Auto Translate', icon: 'icon-translate' });
-        toolbarItems.push({ type: 'button', id: 'aiSettings', text: '', tooltip: 'AI Settings', icon: 'w2ui-icon-settings' });
+        toolbarItems.push({ type: 'button', id: 'aiSettings', text: '', tooltip: 'App Settings', icon: 'w2ui-icon-settings' });
 
         toolbarItems.push({ type: 'break' });
 
@@ -3610,10 +3572,6 @@
     }
 
     function GetSolutionEntities(solutionId) {
-        if (solutionEntityCache[solutionId]) {
-            return Promise.resolve(solutionEntityCache[solutionId]);
-        }
-
         return WebApiClient.Retrieve({
             entityName: "solutioncomponent",
             queryParams: "?$select=objectid&$filter=_solutionid_value eq " + solutionId + " and componenttype eq 1"
@@ -3622,7 +3580,6 @@
             var metadataIds = response.value.map(function(c) {
                 return c.objectid.toLowerCase();
             });
-            solutionEntityCache[solutionId] = metadataIds;
             return metadataIds;
         });
     }
@@ -3806,13 +3763,6 @@
                 XrmTranslator.LockGrid("Preparing dictionary storage...");
 
                 return TranslationDictionaryService.EnsureInitialized()
-                .then(function () {
-                    if (TranslationDictionaryService.PreloadCache) {
-                        return TranslationDictionaryService.PreloadCache();
-                    }
-
-                    return null;
-                })
                 .catch(function(error) {
                     if (window.console && window.console.warn) {
                         window.console.warn("Dictionary bootstrap failed.", error);

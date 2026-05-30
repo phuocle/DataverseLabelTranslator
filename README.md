@@ -63,11 +63,11 @@ Translate labels automatically using an enabled AI provider. Select a source lan
 
 | Provider | Notes |
 |----------|-------|
-| **Google Gemini** | Batch mode, custom prompt support, configurable model |
-| **OpenAI Compatible** | Configurable endpoint URL, API key, model name, and custom prompt |
-| **Azure Foundry** | OpenAI-compatible chat completions using `api-key` authentication |
+| **Google** | Gemini-compatible batch mode, custom prompt support, configurable model |
+| **OpenAI** | Configurable endpoint URL, API key, model name, and custom prompt |
+| **Azure** | OpenAI-compatible chat completions using `api-key` authentication |
 
-Provider credentials and model settings are managed through **AI Settings** and stored in browser `localStorage`.
+Provider credentials and model settings are managed through **App Settings** and stored in a Dataverse app settings web resource: `pl_/DataverseLabelTranslator/data/AppSettings.xml`.
 
 ### Translation Dictionary
 
@@ -93,7 +93,6 @@ Dictionary storage is Dataverse-backed, not browser-only:
 - Data is saved as `pl_/DataverseLabelTranslator/data/TranslationDictionary.xml`.
 - The XML web resource lives inside the unmanaged solution **Dataverse Label Translator Data** (`DataverseLabelTranslatorData`).
 - The data solution and dictionary web resource are auto-created on first use.
-- Browser `localStorage` is used only as a cache/remapping helper for finding the Dataverse storage resource faster.
 
 ### Other Capabilities
 

@@ -2,19 +2,13 @@
     "use strict";
 
     var locales = null;
-    var GEMINI_CONFIG_KEY = "DataverseLabelTranslator_GeminiConfig";
     var GEMINI_DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
-    var OPENAI_CONFIG_KEY = "DataverseLabelTranslator_OpenAIConfig";
-    var OPENAI_COMPATIBLE_CONFIG_KEY = "DataverseLabelTranslator_OpenAICompatibleConfig";
-    var AZURE_FOUNDRY_CONFIG_KEY = "DataverseLabelTranslator_AzureFoundryConfig";
-    var OPENAI_COMPATIBLE_PROVIDER_LABEL = "OpenAI Compatible";
+    var OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
     var AI_PROVIDER_VISIBILITY = {
-        azureFoundry: true,
-        gemini: true,
-        openAICompatible: true,
-        openAI: false
+        azure: true,
+        google: true,
+        openAI: true
     };
-    var TRANSLATION_PROMPT_KEY = "DataverseLabelTranslator_TranslationPrompt";
     var translationProviders = [];
 
     function GetCurrentGridValue(record, lcid) {
@@ -54,20 +48,16 @@
     }
 
     function GetSavedTranslationPrompt() {
-        try {
-            var stored = localStorage.getItem(TRANSLATION_PROMPT_KEY);
-            return stored ? JSON.parse(stored) : null;
-        } catch(e) {
-            return null;
-        }
+        return null;
     }
 
     function SaveTranslationPrompt(values) {
-        localStorage.setItem(TRANSLATION_PROMPT_KEY, JSON.stringify(values));
+        return values;
     }
 
     function CreateEmptyAIConfig() {
         return {
+            enabled: false,
             baseUrl: "",
             apiKey: "",
             modelName: "",
@@ -75,54 +65,82 @@
         };
     }
 
-    function GetStoredAIConfig(storageKey, defaults) {
-        try {
-            var stored = localStorage.getItem(storageKey);
-            var parsed = stored ? JSON.parse(stored) : {};
-            return Object.assign(CreateEmptyAIConfig(), defaults || {}, parsed || {});
-        } catch(e) {
-            return Object.assign(CreateEmptyAIConfig(), defaults || {});
+    function NormalizeProviderId(providerId) {
+        if (window.AppSettingsService && AppSettingsService.NormalizeProviderKey) {
+            return AppSettingsService.NormalizeProviderKey(providerId);
         }
+
+        var normalized = String(providerId || "").trim().toLowerCase();
+        if (normalized === "gemini" || normalized === "google-gemini") return "google";
+        if (normalized === "azure-foundry" || normalized === "azurefoundry") return "azure";
+        if (normalized === "openai-compatible" || normalized === "openai_compatible") return "openai";
+        return normalized;
     }
 
-    function SaveStoredAIConfig(storageKey, config, defaults) {
-        localStorage.setItem(storageKey, JSON.stringify(Object.assign(CreateEmptyAIConfig(), defaults || {}, config || {})));
+    function GetProviderConfig(providerId, forceRefresh) {
+        var normalizedProviderId = NormalizeProviderId(providerId);
+
+        if (!window.AppSettingsService || !AppSettingsService.GetProviderConfig) {
+            return Promise.resolve(CreateEmptyAIConfig());
+        }
+
+        return AppSettingsService.GetProviderConfig(normalizedProviderId, !!forceRefresh)
+        .then(function (config) {
+            return Object.assign(CreateEmptyAIConfig(), config || {});
+        });
     }
 
-    function GetGeminiConfig() {
-        var config = GetStoredAIConfig(GEMINI_CONFIG_KEY, { baseUrl: GEMINI_DEFAULT_BASE_URL });
-        config.baseUrl = config.baseUrl || GEMINI_DEFAULT_BASE_URL;
-        return config;
-    }
+    function GetTranslationProviderContext(forceRefresh) {
+        var settingsPromise = (window.AppSettingsService && AppSettingsService.GetAISettings)
+            ? AppSettingsService.GetAISettings(!!forceRefresh)
+            : Promise.resolve({
+                selectedProvider: "google",
+                providers: {}
+            });
 
-    function SaveGeminiConfig(config) {
-        var geminiConfig = Object.assign({}, config || {});
-        geminiConfig.baseUrl = geminiConfig.baseUrl || GEMINI_DEFAULT_BASE_URL;
-        SaveStoredAIConfig(GEMINI_CONFIG_KEY, geminiConfig, { baseUrl: GEMINI_DEFAULT_BASE_URL });
-    }
+        return settingsPromise
+        .then(function (aiSettings) {
+            aiSettings = aiSettings || {};
+            var providerSettings = aiSettings.providers || {};
+            var selectedProvider = NormalizeProviderId(aiSettings.selectedProvider || "google");
+            var providers = [];
 
-    function GetOpenAIConfig() {
-        return GetStoredAIConfig(OPENAI_CONFIG_KEY);
-    }
+            for (var i = 0; i < translationProviders.length; i++) {
+                var provider = translationProviders[i];
+                var providerId = NormalizeProviderId(provider.id);
+                var providerConfig = providerSettings[providerId] || {};
 
-    function SaveOpenAIConfig(config) {
-        SaveStoredAIConfig(OPENAI_CONFIG_KEY, config);
-    }
+                if (providerConfig.enabled !== true) {
+                    continue;
+                }
 
-    function GetOpenAICompatibleConfig() {
-        return GetStoredAIConfig(OPENAI_COMPATIBLE_CONFIG_KEY);
-    }
+                if (!providerConfig.baseUrl || !providerConfig.apiKey || !providerConfig.modelName) {
+                    continue;
+                }
 
-    function SaveOpenAICompatibleConfig(config) {
-        SaveStoredAIConfig(OPENAI_COMPATIBLE_CONFIG_KEY, config);
-    }
+                if (provider.enabled && !provider.enabled()) {
+                    continue;
+                }
 
-    function GetAzureFoundryConfig() {
-        return GetStoredAIConfig(AZURE_FOUNDRY_CONFIG_KEY);
-    }
+                providers.push(provider);
+            }
 
-    function SaveAzureFoundryConfig(config) {
-        SaveStoredAIConfig(AZURE_FOUNDRY_CONFIG_KEY, config);
+            if (!GetTranslationProvider(selectedProvider, providers) && providers.length > 0) {
+                selectedProvider = providers[0].id;
+            }
+
+            return {
+                aiSettings: aiSettings,
+                selectedProvider: selectedProvider,
+                providers: providers,
+                items: providers.map(function (provider) {
+                    return {
+                        id: provider.id,
+                        text: provider.text
+                    };
+                })
+            };
+        });
     }
 
     function normalizeBoolean(value, defaultValue) {
@@ -154,12 +172,12 @@
         return IsConfiguredProviderEnabled("openAI");
     }
 
-    function IsOpenAICompatibleEnabled() {
-        return IsConfiguredProviderEnabled("openAICompatible");
+    function IsGoogleEnabled() {
+        return IsConfiguredProviderEnabled("google");
     }
 
-    function IsAzureFoundryEnabled() {
-        return IsConfiguredProviderEnabled("azureFoundry");
+    function IsAzureEnabled() {
+        return IsConfiguredProviderEnabled("azure");
     }
 
     function IsProviderEnabled(provider) {
@@ -222,36 +240,18 @@
         translationProviders.push(provider);
     }
 
-    function GetTranslationProvider(providerId) {
-        var normalized = String(providerId || "").trim().toLowerCase();
+    function GetTranslationProvider(providerId, providers) {
+        var normalized = NormalizeProviderId(providerId);
+        var candidates = providers || translationProviders;
 
-        for (var i = 0; i < translationProviders.length; i++) {
-            var provider = translationProviders[i];
-            if (IsProviderEnabled(provider) && String(provider.id).toLowerCase() === normalized) {
+        for (var i = 0; i < candidates.length; i++) {
+            var provider = candidates[i];
+            if (NormalizeProviderId(provider.id) === normalized) {
                 return provider;
             }
         }
 
         return null;
-    }
-
-    function GetDefaultTranslationProvider() {
-        for (var i = 0; i < translationProviders.length; i++) {
-            if (IsProviderEnabled(translationProviders[i])) {
-                return translationProviders[i];
-            }
-        }
-
-        return null;
-    }
-
-    function GetTranslationProviderItems() {
-        return translationProviders.filter(IsProviderEnabled).map(function(provider) {
-            return {
-                id: provider.id,
-                text: provider.text
-            };
-        });
     }
 
     function GetColumnDisplayText(column) {
@@ -342,32 +342,30 @@
     };
 
     RegisterTranslationProvider({
-        id: "gemini",
-        text: "Gemini AI",
-        validate: function() {
-            var geminiConfig = GetGeminiConfig();
-
-            if (!geminiConfig || !geminiConfig.apiKey) {
-                return "Gemini: API Key is missing. Please configure it via AI Settings.";
+        id: "google",
+        text: "Google",
+        enabled: IsGoogleEnabled,
+        validate: function(config) {
+            if (!config || !config.apiKey) {
+                return "Google: API Key is missing. Please configure it via App Settings.";
             }
 
-            if (!geminiConfig.baseUrl) {
-                return "Gemini: URL is missing. Please configure it via AI Settings.";
+            if (!config.baseUrl) {
+                return "Google: URL is missing. Please configure it via App Settings.";
             }
 
-            if (!geminiConfig.modelName) {
-                return "Gemini: Model Name is missing. Please configure it via AI Settings.";
+            if (!config.modelName) {
+                return "Google: Model Name is missing. Please configure it via App Settings.";
             }
 
             return null;
         },
-        create: function() {
-            var geminiConfig = GetGeminiConfig();
+        create: function(config) {
             return new geminiTranslator(
-                geminiConfig.baseUrl,
-                geminiConfig.apiKey,
-                geminiConfig.modelName,
-                geminiConfig.customPrompt
+                config.baseUrl,
+                config.apiKey,
+                config.modelName,
+                config.customPrompt
             );
         }
     });
@@ -476,106 +474,69 @@
         return new openAICompatibleTranslator("OpenAI", baseUrl, apiKey, modelName, customPrompt);
     };
 
-    const openAICompatibleProviderTranslator = function (baseUrl, apiKey, modelName, customPrompt) {
-        return new openAICompatibleTranslator(OPENAI_COMPATIBLE_PROVIDER_LABEL, baseUrl, apiKey, modelName, customPrompt);
+    const azureTranslator = function (baseUrl, apiKey, modelName, customPrompt) {
+        return new openAICompatibleTranslator("Azure", baseUrl, apiKey, modelName, customPrompt, "api-key");
     };
-
-    const azureFoundryTranslator = function (baseUrl, apiKey, modelName, customPrompt) {
-        return new openAICompatibleTranslator("Azure Foundry", baseUrl, apiKey, modelName, customPrompt, "api-key");
-    };
-
-    RegisterTranslationProvider({
-        id: "openai-compatible",
-        text: OPENAI_COMPATIBLE_PROVIDER_LABEL,
-        enabled: IsOpenAICompatibleEnabled,
-        validate: function() {
-            var openAICompatibleConfig = GetOpenAICompatibleConfig();
-
-            if (!openAICompatibleConfig || !openAICompatibleConfig.baseUrl) {
-                return OPENAI_COMPATIBLE_PROVIDER_LABEL + ": URL is missing. Please configure it via AI Settings.";
-            }
-
-            if (typeof window !== "undefined" && window.location && window.location.protocol === "https:" && /^http:\/\//i.test(openAICompatibleConfig.baseUrl)) {
-                return OPENAI_COMPATIBLE_PROVIDER_LABEL + ": URL uses HTTP, but Dynamics is loaded over HTTPS. Browser blocks this mixed-content request. Please expose the endpoint over HTTPS and update URL.";
-            }
-
-            if (!openAICompatibleConfig.apiKey) {
-                return OPENAI_COMPATIBLE_PROVIDER_LABEL + ": API Key is missing. Please configure it via AI Settings.";
-            }
-
-            if (!openAICompatibleConfig.modelName) {
-                return OPENAI_COMPATIBLE_PROVIDER_LABEL + ": Model Name is missing. Please configure it via AI Settings.";
-            }
-
-            return null;
-        },
-        create: function() {
-            var openAICompatibleConfig = GetOpenAICompatibleConfig();
-            return new openAICompatibleProviderTranslator(
-                openAICompatibleConfig.baseUrl,
-                openAICompatibleConfig.apiKey,
-                openAICompatibleConfig.modelName,
-                openAICompatibleConfig.customPrompt
-            );
-        }
-    });
-
-    RegisterTranslationProvider({
-        id: "azure-foundry",
-        text: "Azure Foundry",
-        enabled: IsAzureFoundryEnabled,
-        validate: function() {
-            var azureFoundryConfig = GetAzureFoundryConfig();
-
-            if (!azureFoundryConfig || !azureFoundryConfig.baseUrl) {
-                return "Azure Foundry: URL is missing. Please configure it via AI Settings.";
-            }
-
-            if (!azureFoundryConfig.apiKey) {
-                return "Azure Foundry: API Key is missing. Please configure it via AI Settings.";
-            }
-
-            if (!azureFoundryConfig.modelName) {
-                return "Azure Foundry: Model Name is missing. Please configure it via AI Settings.";
-            }
-
-            return null;
-        },
-        create: function() {
-            var azureFoundryConfig = GetAzureFoundryConfig();
-            return new azureFoundryTranslator(
-                azureFoundryConfig.baseUrl,
-                azureFoundryConfig.apiKey,
-                azureFoundryConfig.modelName,
-                azureFoundryConfig.customPrompt
-            );
-        }
-    });
 
     RegisterTranslationProvider({
         id: "openai",
         text: "OpenAI",
         enabled: IsOpenAIEnabled,
-        validate: function() {
-            var openAIConfig = GetOpenAIConfig();
-
-            if (!openAIConfig || !openAIConfig.apiKey) {
-                return "OpenAI: API Key is missing. Please configure it via AI Settings.";
+        validate: function(config) {
+            if (!config || !config.baseUrl) {
+                return "OpenAI: URL is missing. Please configure it via App Settings.";
             }
 
-            if (!openAIConfig.baseUrl) {
-                return "OpenAI: URL is missing. Please configure it via AI Settings.";
+            if (typeof window !== "undefined" && window.location && window.location.protocol === "https:" && /^http:\/\//i.test(config.baseUrl)) {
+                return "OpenAI: URL uses HTTP, but Dynamics is loaded over HTTPS. Browser blocks this mixed-content request. Please expose the endpoint over HTTPS and update URL.";
             }
 
-            if (!openAIConfig.modelName) {
-                return "OpenAI: Model Name is missing. Please configure it via AI Settings.";
+            if (!config.apiKey) {
+                return "OpenAI: API Key is missing. Please configure it via App Settings.";
+            }
+
+            if (!config.modelName) {
+                return "OpenAI: Model Name is missing. Please configure it via App Settings.";
             }
 
             return null;
         },
-        create: function() {
-            var openAIConfig = GetOpenAIConfig();
-            return new openAITranslator(openAIConfig.baseUrl, openAIConfig.apiKey, openAIConfig.modelName, openAIConfig.customPrompt);
+        create: function(config) {
+            return new openAITranslator(
+                config.baseUrl,
+                config.apiKey,
+                config.modelName,
+                config.customPrompt
+            );
+        }
+    });
+
+    RegisterTranslationProvider({
+        id: "azure",
+        text: "Azure",
+        enabled: IsAzureEnabled,
+        validate: function(config) {
+            if (!config || !config.baseUrl) {
+                return "Azure: URL is missing. Please configure it via App Settings.";
+            }
+
+            if (!config.apiKey) {
+                return "Azure: API Key is missing. Please configure it via App Settings.";
+            }
+
+            if (!config.modelName) {
+                return "Azure: Model Name is missing. Please configure it via App Settings.";
+            }
+
+            return null;
+        },
+        create: function(config) {
+            return new azureTranslator(
+                config.baseUrl,
+                config.apiKey,
+                config.modelName,
+                config.customPrompt
+            );
         }
     });
 
@@ -833,33 +794,41 @@
     }
 
     function FindTranslator(fromLcid, destLcid, apiProviderId) {
-        var provider = GetTranslationProvider(apiProviderId) || GetDefaultTranslationProvider();
+        return GetTranslationProviderContext(true)
+        .then(function (providerContext) {
+            var provider = GetTranslationProvider(apiProviderId, providerContext.providers) ||
+                GetTranslationProvider(providerContext.selectedProvider, providerContext.providers) ||
+                providerContext.providers[0];
 
-        if (!provider) {
-            return WebApiClient.Promise.resolve([null, "No translation provider registered."]);
-        }
-
-        var validationError = provider.validate ? provider.validate() : null;
-        if (validationError) {
-            return WebApiClient.Promise.resolve([null, validationError]);
-        }
-
-        var translator = provider.create();
-        if (!translator) {
-            return WebApiClient.Promise.resolve([null, provider.text + ": Failed to initialize translator."]);
-        }
-
-        if (!translator.CanTranslate) {
-            return WebApiClient.Promise.resolve([translator]);
-        }
-
-        return translator.CanTranslate(fromLcid, destLcid)
-        .then(function(canTranslate) {
-            if (canTranslate[fromLcid] && canTranslate[destLcid]) {
-                return [translator];
+            if (!provider) {
+                return [null, "No translation provider registered."];
             }
 
-            return [null, provider.text + " does not support the current languages: " + fromLcid + "(" + canTranslate[fromLcid] + "), " + destLcid + "(" + canTranslate[destLcid] + ")"];
+            return GetProviderConfig(provider.id, true)
+            .then(function (config) {
+                var validationError = provider.validate ? provider.validate(config) : null;
+                if (validationError) {
+                    return [null, validationError];
+                }
+
+                var translator = provider.create(config);
+                if (!translator) {
+                    return [null, provider.text + ": Failed to initialize translator."];
+                }
+
+                if (!translator.CanTranslate) {
+                    return [translator];
+                }
+
+                return translator.CanTranslate(fromLcid, destLcid)
+                .then(function(canTranslate) {
+                    if (canTranslate[fromLcid] && canTranslate[destLcid]) {
+                        return [translator];
+                    }
+
+                    return [null, provider.text + " does not support the current languages: " + fromLcid + "(" + canTranslate[fromLcid] + "), " + destLcid + "(" + canTranslate[destLcid] + ")"];
+                });
+            });
         });
     }
 
@@ -1003,9 +972,6 @@
             { id: "missing", text: "All Missing" },
             { id: "overwrite", text: "All Overwrite" }
         ];
-        var apiProviderItems = GetTranslationProviderItems();
-        var defaultApiProvider = GetDefaultTranslationProvider();
-        var defaultApiProviderItem = defaultApiProvider ? findItem(apiProviderItems, defaultApiProvider.id) : null;
 
         function findItem(items, id) {
             if (!id) return null;
@@ -1015,25 +981,30 @@
             return null;
         }
 
-        var savedRecord = {};
-        savedRecord.useDictionaryFirst = normalizeBoolean(saved && saved.useDictionaryFirst, true);
+        return GetTranslationProviderContext(true)
+        .then(function (providerContext) {
+            var apiProviderItems = providerContext.items;
+            var defaultApiProvider = GetTranslationProvider(providerContext.selectedProvider, providerContext.providers) || providerContext.providers[0];
+            var defaultApiProviderItem = defaultApiProvider ? findItem(apiProviderItems, defaultApiProvider.id) : null;
+            var savedRecord = {};
+            savedRecord.useDictionaryFirst = normalizeBoolean(saved && saved.useDictionaryFirst, true);
 
-        if (saved) {
-            var srcItem = findItem(languageItems, saved.sourceLcid);
-            var tgtItem = findItem(languageItems, saved.targetLcid);
-            if (srcItem) savedRecord.sourceLcid = srcItem;
-            if (tgtItem) savedRecord.targetLcid = tgtItem;
-            savedRecord.translateMissing = findItem(translateMissingItems, saved.translateMissing) || translateMissingItems[0];
-            savedRecord.apiProvider = findItem(apiProviderItems, saved.apiProvider) || defaultApiProviderItem;
-        }
+            if (saved) {
+                var srcItem = findItem(languageItems, saved.sourceLcid);
+                var tgtItem = findItem(languageItems, saved.targetLcid);
+                if (srcItem) savedRecord.sourceLcid = srcItem;
+                if (tgtItem) savedRecord.targetLcid = tgtItem;
+                savedRecord.translateMissing = findItem(translateMissingItems, saved.translateMissing) || translateMissingItems[0];
+                savedRecord.apiProvider = findItem(apiProviderItems, saved.apiProvider) || defaultApiProviderItem;
+            }
 
-        if (!savedRecord.apiProvider && defaultApiProviderItem) {
-            savedRecord.apiProvider = defaultApiProviderItem;
-        }
+            if (!savedRecord.apiProvider && defaultApiProviderItem) {
+                savedRecord.apiProvider = defaultApiProviderItem;
+            }
 
-        if (!w2ui.translationPrompt)
-        {
-            new w2form({
+            if (!w2ui.translationPrompt)
+            {
+                new w2form({
                 name: 'translationPrompt',
                 style: 'border: 0px; background-color: transparent;',
                 formHTML:
@@ -1122,22 +1093,20 @@
                         w2popup.close();
                     }
                 }
-            });
-        }
-        else {
-            w2ui.translationPrompt.fields[0].options.items = languageItems;
-            w2ui.translationPrompt.fields[1].options.items = languageItems;
-            w2ui.translationPrompt.fields[2].options.items = translateMissingItems;
-            w2ui.translationPrompt.fields[3].options.items = apiProviderItems;
-
-            if (saved) {
+                });
+            }
+            else {
+                w2ui.translationPrompt.fields[0].options.items = languageItems;
+                w2ui.translationPrompt.fields[1].options.items = languageItems;
+                w2ui.translationPrompt.fields[2].options.items = translateMissingItems;
+                w2ui.translationPrompt.fields[3].options.items = apiProviderItems;
                 w2ui.translationPrompt.record = savedRecord;
+
+                w2ui.translationPrompt.refresh();
             }
 
-            w2ui.translationPrompt.refresh();
-        }
-
-        return Promise.resolve({});
+            return {};
+        });
     }
 
     TranslationHandler.ShowTranslationPrompt = function() {
@@ -1165,6 +1134,9 @@
                     }
                 }
             });
+        })
+        .catch(function(error) {
+            XrmTranslator.errorHandler(error);
         });
     }
 
@@ -1173,263 +1145,472 @@
         return key.substring(0, 5) + new Array(key.length - 4).join('*');
     }
 
-    function InitializeAISettingsForm() {
-        var geminiConfig = GetGeminiConfig();
-        var openAICompatibleConfig = GetOpenAICompatibleConfig();
-        var azureFoundryConfig = GetAzureFoundryConfig();
-        var openaiConfig = GetOpenAIConfig();
-        var maskedGeminiKey = MaskApiKey(geminiConfig.apiKey);
-        var maskedOpenAICompatibleKey = MaskApiKey(openAICompatibleConfig.apiKey);
-        var maskedAzureFoundryKey = MaskApiKey(azureFoundryConfig.apiKey);
-        var maskedOpenaiKey = MaskApiKey(openaiConfig.apiKey);
-        var nextPageIndex = 1;
-        var aiSettingsTabs = [
-            { id: 'tab-google', text: 'Google' }
+    function IsMaskedApiKey(value) {
+        return String(value || "").indexOf("*") !== -1;
+    }
+
+    function GetProviderSettings(aiSettings, providerKey) {
+        var providers = aiSettings && aiSettings.providers ? aiSettings.providers : {};
+        return providers[providerKey] || {};
+    }
+
+    function ResolveApiKey(value, existingValue) {
+        if (IsMaskedApiKey(value) && existingValue) {
+            return existingValue;
+        }
+
+        return value || "";
+    }
+
+    function IsProviderEnabledInRecord(record, prefix) {
+        return !!(record && record[prefix + "Enabled"]);
+    }
+
+    function SetProviderRequiredFields(providerKey, required) {
+        if (!w2ui.appSettings || !w2ui.appSettings.fields) {
+            return;
+        }
+
+        var requiredFields = [
+            providerKey + "BaseUrl",
+            providerKey + "ApiKey",
+            providerKey + "ModelName"
         ];
-        var aiSettingsFormHTML =
-            '<div class="w2ui-page page-0" style="padding: 15px 25px;">'+
-            '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-            '        <label style="min-width: 120px; white-space: nowrap;">URL: <span style="color: red;">*</span></label>'+
-            '        <input name="geminiBaseUrl" type="text" readonly="readonly" style="flex: 1; width: 100%;"/>'+
-            '    </div>'+
-            '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-            '        <label style="min-width: 120px; white-space: nowrap;">API Key: <span style="color: red;">*</span></label>'+
-            '        <input name="geminiApiKey" type="password" style="flex: 1; width: 100%;"/>'+
-            '    </div>'+
-            '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-            '        <label style="min-width: 120px; white-space: nowrap;">Model Name: <span style="color: red;">*</span></label>'+
-            '        <input name="geminiModelName" type="text" style="flex: 1; width: 100%;"/>'+
-            '    </div>'+
-            '    <div style="display: flex; align-items: flex-start; margin-bottom: 10px;">'+
-            '        <label style="min-width: 120px; white-space: nowrap; padding-top: 5px;">Custom Prompt:</label>'+
-            '        <textarea name="geminiCustomPrompt" style="flex: 1; width: 100%; height: 80px;"></textarea>'+
-            '    </div>'+
-            '</div>';
-        var aiSettingsFields = [
-            { field: 'geminiBaseUrl', type: 'text', html: { page: 0 } },
-            { field: 'geminiApiKey', type: 'text', html: { page: 0 } },
-            { field: 'geminiModelName', type: 'text', html: { page: 0 } },
-            { field: 'geminiCustomPrompt', type: 'text', html: { page: 0 } }
+
+        for (var i = 0; i < w2ui.appSettings.fields.length; i++) {
+            if (requiredFields.indexOf(w2ui.appSettings.fields[i].field) !== -1) {
+                w2ui.appSettings.fields[i].required = !!required;
+            }
+        }
+    }
+
+    function SetProviderInputsEnabled(providerKey, enabled) {
+        var fields = [
+            providerKey + "BaseUrl",
+            providerKey + "ApiKey",
+            providerKey + "ModelName",
+            providerKey + "CustomPrompt"
         ];
-        var aiSettingsRecord = {
-            geminiBaseUrl: geminiConfig.baseUrl || GEMINI_DEFAULT_BASE_URL,
-            geminiApiKey: maskedGeminiKey,
-            geminiModelName: geminiConfig.modelName || "",
-            geminiCustomPrompt: geminiConfig.customPrompt || ""
+        var popup = document.querySelector("#w2ui-popup");
+
+        if (!popup) {
+            return;
+        }
+
+        for (var i = 0; i < fields.length; i++) {
+            var input = popup.querySelector('[name="' + fields[i] + '"]');
+            if (input) {
+                input.disabled = !enabled;
+                input.readOnly = !enabled;
+            }
+        }
+    }
+
+    function SetProviderRequiredMarks(providerKey, enabled) {
+        var page = document.querySelector('#w2ui-popup .xqt-app-settings-provider-page[data-provider="' + providerKey + '"]');
+        var marks;
+
+        if (!page) {
+            return;
+        }
+
+        marks = page.querySelectorAll(".xqt-app-settings-required");
+        for (var i = 0; i < marks.length; i++) {
+            marks[i].style.display = enabled ? "" : "none";
+        }
+    }
+
+    function UpdateProviderEnabledState(providerKey) {
+        var enabled = IsProviderEnabledInRecord(w2ui.appSettings && w2ui.appSettings.record, providerKey);
+
+        SetProviderRequiredFields(providerKey, enabled);
+        SetProviderInputsEnabled(providerKey, enabled);
+        SetProviderRequiredMarks(providerKey, enabled);
+    }
+
+    function UpdateAllProviderEnabledStates() {
+        UpdateProviderEnabledState("google");
+        UpdateProviderEnabledState("openai");
+        UpdateProviderEnabledState("azure");
+    }
+
+    function ValidateAppSettingsRecord(record) {
+        var providers = [
+            { key: "google", label: "Google" },
+            { key: "openai", label: "OpenAI" },
+            { key: "azure", label: "Azure" }
+        ];
+        var requiredFields = [
+            { suffix: "BaseUrl", label: "URL" },
+            { suffix: "ApiKey", label: "API Key" },
+            { suffix: "ModelName", label: "Model Name" }
+        ];
+        var errors = [];
+
+        for (var i = 0; i < providers.length; i++) {
+            var provider = providers[i];
+            if (!IsProviderEnabledInRecord(record, provider.key)) {
+                continue;
+            }
+
+            for (var j = 0; j < requiredFields.length; j++) {
+                var field = requiredFields[j];
+                var value = record[provider.key + field.suffix];
+                if (!String(value || "").trim()) {
+                    errors.push(provider.label + ": " + field.label + " is required.");
+                }
+            }
+        }
+
+        return errors;
+    }
+
+    function ActivateAppSettingsTab(tabId, providerId) {
+        if (!w2ui.appSettings || typeof w2ui.appSettings.goto !== "function") {
+            return;
+        }
+
+        if (tabId === "tab-ai") {
+            w2ui.appSettings.goto(1);
+            RenderAppSettingsProviderTabsAfterVisible(providerId);
+            return;
+        }
+
+        w2ui.appSettings.goto(0);
+    }
+
+    function ShowAppSettingsProviderPage(providerId) {
+        var normalizedProviderId = NormalizeProviderId(providerId) || "google";
+        var pages = document.querySelectorAll("#w2ui-popup .xqt-app-settings-provider-page");
+
+        for (var i = 0; i < pages.length; i++) {
+            pages[i].style.display = pages[i].getAttribute("data-provider") === normalizedProviderId ? "block" : "none";
+        }
+
+        if (w2ui.appSettings && w2ui.appSettings.record) {
+            w2ui.appSettings.record.selectedProvider = normalizedProviderId;
+        }
+    }
+
+    function RenderAppSettingsProviderTabs(providerId) {
+        var target = document.querySelector("#w2ui-popup #app-settings-ai-tabs");
+        var activeProvider = NormalizeProviderId(providerId) || "google";
+
+        if (!target) {
+            return;
+        }
+
+        if (!w2ui.appSettingsAiProviderTabs) {
+            new w2tabs({
+                name: "appSettingsAiProviderTabs",
+                active: activeProvider,
+                tabs: [
+                    { id: "google", text: "Google" },
+                    { id: "openai", text: "OpenAI" },
+                    { id: "azure", text: "Azure" }
+                ],
+                onClick: function (event) {
+                    ShowAppSettingsProviderPage(event.target);
+                }
+            });
+            w2ui.appSettingsAiProviderTabs.render(target);
+        } else {
+            if (w2ui.appSettingsAiProviderTabs.box !== target) {
+                w2ui.appSettingsAiProviderTabs.render(target);
+            }
+
+            if (w2ui.appSettingsAiProviderTabs.active !== activeProvider) {
+                w2ui.appSettingsAiProviderTabs.click(activeProvider);
+            } else {
+                w2ui.appSettingsAiProviderTabs.refresh();
+            }
+        }
+
+        ShowAppSettingsProviderPage(activeProvider);
+    }
+
+    function RenderAppSettingsProviderTabsAfterVisible(providerId) {
+        var render = function () {
+            RenderAppSettingsProviderTabs(providerId);
         };
 
-        if (IsOpenAICompatibleEnabled()) {
-            var openAICompatiblePageIndex = nextPageIndex++;
-            aiSettingsTabs.push({ id: 'tab-openai-compatible', text: OPENAI_COMPATIBLE_PROVIDER_LABEL });
-            aiSettingsFormHTML +=
-                '<div class="w2ui-page page-' + openAICompatiblePageIndex + '" style="padding: 15px 25px;">'+
-                '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap;">URL: <span style="color: red;">*</span></label>'+
-                '        <input name="openAICompatibleBaseUrl" type="text" style="flex: 1; width: 100%;"/>'+
-                '    </div>'+
-                '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap;">API Key: <span style="color: red;">*</span></label>'+
-                '        <input name="openAICompatibleApiKey" type="password" style="flex: 1; width: 100%;"/>'+
-                '    </div>'+
-                '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap;">Model Name: <span style="color: red;">*</span></label>'+
-                '        <input name="openAICompatibleModelName" type="text" style="flex: 1; width: 100%;"/>'+
-                '    </div>'+
-                '    <div style="display: flex; align-items: flex-start; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap; padding-top: 5px;">Custom Prompt:</label>'+
-                '        <textarea name="openAICompatibleCustomPrompt" style="flex: 1; width: 100%; height: 80px;"></textarea>'+
-                '    </div>'+
-                '</div>';
-            aiSettingsFields.push(
-                { field: 'openAICompatibleBaseUrl', type: 'text', html: { page: openAICompatiblePageIndex } },
-                { field: 'openAICompatibleApiKey', type: 'text', html: { page: openAICompatiblePageIndex } },
-                { field: 'openAICompatibleModelName', type: 'text', html: { page: openAICompatiblePageIndex } },
-                { field: 'openAICompatibleCustomPrompt', type: 'text', html: { page: openAICompatiblePageIndex } }
-            );
-            aiSettingsRecord.openAICompatibleBaseUrl = openAICompatibleConfig.baseUrl || "";
-            aiSettingsRecord.openAICompatibleApiKey = maskedOpenAICompatibleKey;
-            aiSettingsRecord.openAICompatibleModelName = openAICompatibleConfig.modelName || "";
-            aiSettingsRecord.openAICompatibleCustomPrompt = openAICompatibleConfig.customPrompt || "";
+        if (window.requestAnimationFrame) {
+            window.requestAnimationFrame(render);
+            return;
         }
 
-        if (IsAzureFoundryEnabled()) {
-            var azureFoundryPageIndex = nextPageIndex++;
-            aiSettingsTabs.push({ id: 'tab-azure-foundry', text: 'Azure Foundry' });
-            aiSettingsFormHTML +=
-                '<div class="w2ui-page page-' + azureFoundryPageIndex + '" style="padding: 15px 25px;">'+
-                '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap;">URL: <span style="color: red;">*</span></label>'+
-                '        <input name="azureFoundryBaseUrl" type="text" style="flex: 1; width: 100%;"/>'+
-                '    </div>'+
-                '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap;">API Key: <span style="color: red;">*</span></label>'+
-                '        <input name="azureFoundryApiKey" type="password" style="flex: 1; width: 100%;"/>'+
-                '    </div>'+
-                '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap;">Model Name: <span style="color: red;">*</span></label>'+
-                '        <input name="azureFoundryModelName" type="text" style="flex: 1; width: 100%;"/>'+
-                '    </div>'+
-                '    <div style="display: flex; align-items: flex-start; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap; padding-top: 5px;">Custom Prompt:</label>'+
-                '        <textarea name="azureFoundryCustomPrompt" style="flex: 1; width: 100%; height: 80px;"></textarea>'+
-                '    </div>'+
-                '</div>';
-            aiSettingsFields.push(
-                { field: 'azureFoundryBaseUrl', type: 'text', html: { page: azureFoundryPageIndex } },
-                { field: 'azureFoundryApiKey', type: 'text', html: { page: azureFoundryPageIndex } },
-                { field: 'azureFoundryModelName', type: 'text', html: { page: azureFoundryPageIndex } },
-                { field: 'azureFoundryCustomPrompt', type: 'text', html: { page: azureFoundryPageIndex } }
-            );
-            aiSettingsRecord.azureFoundryBaseUrl = azureFoundryConfig.baseUrl || "";
-            aiSettingsRecord.azureFoundryApiKey = maskedAzureFoundryKey;
-            aiSettingsRecord.azureFoundryModelName = azureFoundryConfig.modelName || "";
-            aiSettingsRecord.azureFoundryCustomPrompt = azureFoundryConfig.customPrompt || "";
+        setTimeout(render, 0);
+    }
+
+    function DestroyAppSettingsProviderTabs() {
+        if (w2ui.appSettingsAiProviderTabs) {
+            w2ui.appSettingsAiProviderTabs.destroy();
+        }
+    }
+
+    function BindAppSettingsTopTabs(providerId) {
+        if (!w2ui.appSettings || !w2ui.appSettings.tabs || typeof w2ui.appSettings.tabs.on !== "function") {
+            return;
         }
 
-        if (IsOpenAIEnabled()) {
-            var openaiPageIndex = nextPageIndex++;
-            aiSettingsTabs.push({ id: 'tab-openai', text: 'OpenAI' });
-            aiSettingsFormHTML +=
-                '<div class="w2ui-page page-' + openaiPageIndex + '" style="padding: 15px 25px;">'+
-                '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap;">URL: <span style="color: red;">*</span></label>'+
-                '        <input name="openaiBaseUrl" type="text" style="flex: 1; width: 100%;"/>'+
-                '    </div>'+
-                '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap;">API Key: <span style="color: red;">*</span></label>'+
-                '        <input name="openaiApiKey" type="password" style="flex: 1; width: 100%;"/>'+
-                '    </div>'+
-                '    <div style="display: flex; align-items: center; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap;">Model Name: <span style="color: red;">*</span></label>'+
-                '        <input name="openaiModelName" type="text" style="flex: 1; width: 100%;"/>'+
-                '    </div>'+
-                '    <div style="display: flex; align-items: flex-start; margin-bottom: 10px;">'+
-                '        <label style="min-width: 120px; white-space: nowrap; padding-top: 5px;">Custom Prompt:</label>'+
-                '        <textarea name="openaiCustomPrompt" style="flex: 1; width: 100%; height: 80px;"></textarea>'+
-                '    </div>'+
-                '</div>';
-            aiSettingsFields.push(
-                { field: 'openaiBaseUrl', type: 'text', html: { page: openaiPageIndex } },
-                { field: 'openaiApiKey', type: 'text', html: { page: openaiPageIndex } },
-                { field: 'openaiModelName', type: 'text', html: { page: openaiPageIndex } },
-                { field: 'openaiCustomPrompt', type: 'text', html: { page: openaiPageIndex } }
-            );
-            aiSettingsRecord.openaiBaseUrl = openaiConfig.baseUrl || "";
-            aiSettingsRecord.openaiApiKey = maskedOpenaiKey;
-            aiSettingsRecord.openaiModelName = openaiConfig.modelName || "";
-            aiSettingsRecord.openaiCustomPrompt = openaiConfig.customPrompt || "";
+        if (w2ui.appSettings.tabs._appSettingsProviderTabsBound) {
+            return;
         }
 
-        aiSettingsFormHTML +=
-            '<div class="w2ui-buttons">'+
-            '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
-            '    <button class="w2ui-btn" name="save">Save</button>'+
+        w2ui.appSettings.tabs._appSettingsProviderTabsBound = true;
+        w2ui.appSettings.tabs.on("click", function (event) {
+            if (event.target === "tab-ai") {
+                RenderAppSettingsProviderTabsAfterVisible(
+                    w2ui.appSettings && w2ui.appSettings.record
+                        ? w2ui.appSettings.record.selectedProvider
+                        : providerId
+                );
+            }
+        });
+    }
+
+    function BuildProviderFormHtml(providerKey, prefix) {
+        return ''+
+            '<div class="xqt-app-settings-provider-page" data-provider="' + providerKey + '">'+
+            '    <div class="xqt-app-settings-row xqt-app-settings-row-checkbox">'+
+            '        <label class="xqt-app-settings-label" for="' + prefix + 'Enabled">Enable:</label>'+
+            '        <div class="xqt-app-settings-control"><input name="' + prefix + 'Enabled" type="checkbox" /></div>'+
+            '    </div>'+
+            '    <div class="xqt-app-settings-row">'+
+            '        <label class="xqt-app-settings-label" for="' + prefix + 'BaseUrl">URL: <span class="xqt-required xqt-app-settings-required">*</span></label>'+
+            '        <div class="xqt-app-settings-control"><input name="' + prefix + 'BaseUrl" type="text" /></div>'+
+            '    </div>'+
+            '    <div class="xqt-app-settings-row">'+
+            '        <label class="xqt-app-settings-label" for="' + prefix + 'ApiKey">API Key: <span class="xqt-required xqt-app-settings-required">*</span></label>'+
+            '        <div class="xqt-app-settings-control"><input name="' + prefix + 'ApiKey" type="password" /></div>'+
+            '    </div>'+
+            '    <div class="xqt-app-settings-row">'+
+            '        <label class="xqt-app-settings-label" for="' + prefix + 'ModelName">Model Name: <span class="xqt-required xqt-app-settings-required">*</span></label>'+
+            '        <div class="xqt-app-settings-control"><input name="' + prefix + 'ModelName" type="text" /></div>'+
+            '    </div>'+
+            '    <div class="xqt-app-settings-row xqt-app-settings-row-textarea">'+
+            '        <label class="xqt-app-settings-label" for="' + prefix + 'CustomPrompt">Custom Prompt:</label>'+
+            '        <div class="xqt-app-settings-control"><textarea name="' + prefix + 'CustomPrompt"></textarea></div>'+
+            '    </div>'+
             '</div>';
+    }
 
-        if (w2ui.aiSettings) {
-            w2ui.aiSettings.destroy();
-        }
+    function BuildAISettingsFromRecord(record, currentAISettings) {
+        var currentGoogle = GetProviderSettings(currentAISettings, "google");
+        var currentOpenAI = GetProviderSettings(currentAISettings, "openai");
+        var currentAzure = GetProviderSettings(currentAISettings, "azure");
 
-        if (!w2ui.aiSettings) {
+        return {
+            selectedProvider: NormalizeProviderId(record && record.selectedProvider) || NormalizeProviderId(currentAISettings && currentAISettings.selectedProvider) || "google",
+            providers: {
+                google: {
+                    enabled: IsProviderEnabledInRecord(record, "google"),
+                    baseUrl: record.googleBaseUrl || "",
+                    apiKey: ResolveApiKey(record.googleApiKey, currentGoogle.apiKey),
+                    modelName: record.googleModelName || "",
+                    customPrompt: record.googleCustomPrompt || ""
+                },
+                openai: {
+                    enabled: IsProviderEnabledInRecord(record, "openai"),
+                    baseUrl: record.openaiBaseUrl || "",
+                    apiKey: ResolveApiKey(record.openaiApiKey, currentOpenAI.apiKey),
+                    modelName: record.openaiModelName || "",
+                    customPrompt: record.openaiCustomPrompt || ""
+                },
+                azure: {
+                    enabled: IsProviderEnabledInRecord(record, "azure"),
+                    baseUrl: record.azureBaseUrl || "",
+                    apiKey: ResolveApiKey(record.azureApiKey, currentAzure.apiKey),
+                    modelName: record.azureModelName || "",
+                    customPrompt: record.azureCustomPrompt || ""
+                }
+            }
+        };
+    }
+
+    function InitializeAppSettingsForm() {
+        return AppSettingsService.GetAISettings(true)
+        .then(function (aiSettings) {
+            var googleConfig = GetProviderSettings(aiSettings, "google");
+            var openaiConfig = GetProviderSettings(aiSettings, "openai");
+            var azureConfig = GetProviderSettings(aiSettings, "azure");
+            var appSettingsFormHTML =
+                '<div class="w2ui-page page-0 xqt-app-settings-general">'+
+                '    <div class="xqt-app-settings-row xqt-app-settings-row-checkbox">'+
+                '        <label class="xqt-app-settings-label" for="generalDummy">Dummy:</label>'+
+                '        <div class="xqt-app-settings-control"><input name="generalDummy" type="checkbox" /></div>'+
+                '    </div>'+
+                '</div>'+
+                '<div class="w2ui-page page-1 xqt-app-settings-ai">'+
+                '    <div id="app-settings-ai-tabs" class="xqt-app-settings-provider-tabs"></div>'+
+                     BuildProviderFormHtml("google", "google")+
+                     BuildProviderFormHtml("openai", "openai")+
+                     BuildProviderFormHtml("azure", "azure")+
+                '</div>'+
+                '<div class="w2ui-buttons">'+
+                '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
+                '    <button class="w2ui-btn" name="save">Save</button>'+
+                '</div>';
+            var appSettingsFields = [
+                { field: 'generalDummy', type: 'checkbox', html: { page: 0 } },
+                { field: 'googleEnabled', type: 'checkbox', html: { page: 1 } },
+                { field: 'googleBaseUrl', type: 'text', required: false, html: { page: 1 } },
+                { field: 'googleApiKey', type: 'text', required: false, html: { page: 1 } },
+                { field: 'googleModelName', type: 'text', required: false, html: { page: 1 } },
+                { field: 'googleCustomPrompt', type: 'text', html: { page: 1 } },
+                { field: 'openaiEnabled', type: 'checkbox', html: { page: 1 } },
+                { field: 'openaiBaseUrl', type: 'text', required: false, html: { page: 1 } },
+                { field: 'openaiApiKey', type: 'text', required: false, html: { page: 1 } },
+                { field: 'openaiModelName', type: 'text', required: false, html: { page: 1 } },
+                { field: 'openaiCustomPrompt', type: 'text', html: { page: 1 } },
+                { field: 'azureEnabled', type: 'checkbox', html: { page: 1 } },
+                { field: 'azureBaseUrl', type: 'text', required: false, html: { page: 1 } },
+                { field: 'azureApiKey', type: 'text', required: false, html: { page: 1 } },
+                { field: 'azureModelName', type: 'text', required: false, html: { page: 1 } },
+                { field: 'azureCustomPrompt', type: 'text', html: { page: 1 } }
+            ];
+            var appSettingsRecord = {
+                generalDummy: false,
+                googleEnabled: googleConfig.enabled === true && !!(googleConfig.baseUrl || googleConfig.apiKey || googleConfig.modelName),
+                googleBaseUrl: googleConfig.baseUrl || "",
+                googleApiKey: MaskApiKey(googleConfig.apiKey),
+                googleModelName: googleConfig.modelName || "",
+                googleCustomPrompt: googleConfig.customPrompt || "",
+                openaiEnabled: openaiConfig.enabled === true && !!(openaiConfig.baseUrl || openaiConfig.apiKey || openaiConfig.modelName),
+                openaiBaseUrl: openaiConfig.baseUrl || "",
+                openaiApiKey: MaskApiKey(openaiConfig.apiKey),
+                openaiModelName: openaiConfig.modelName || "",
+                openaiCustomPrompt: openaiConfig.customPrompt || "",
+                azureEnabled: azureConfig.enabled === true && !!(azureConfig.baseUrl || azureConfig.apiKey || azureConfig.modelName),
+                azureBaseUrl: azureConfig.baseUrl || "",
+                azureApiKey: MaskApiKey(azureConfig.apiKey),
+                azureModelName: azureConfig.modelName || "",
+                azureCustomPrompt: azureConfig.customPrompt || "",
+                selectedProvider: NormalizeProviderId(aiSettings.selectedProvider) || "google"
+            };
+
+            if (w2ui.appSettings) {
+                w2ui.appSettings.destroy();
+            }
+
             new w2form({
-                name: 'aiSettings',
+                name: 'appSettings',
                 style: 'border: 0px; background-color: transparent;',
-                tabs: aiSettingsTabs,
-                formHTML: aiSettingsFormHTML,
-                fields: aiSettingsFields,
-                record: aiSettingsRecord,
+                focus: -1,
+                tabs: [
+                    { id: 'tab-general', text: 'General' },
+                    { id: 'tab-ai', text: 'AI' }
+                ],
+                onClick: function (event) {
+                    ActivateAppSettingsTab(event.target, appSettingsRecord.selectedProvider);
+                },
+                formHTML: appSettingsFormHTML,
+                fields: appSettingsFields,
+                record: appSettingsRecord,
+                onChange: function (event) {
+                    var target = event.target || "";
+                    var providerKey = null;
+
+                    if (target === "googleEnabled") providerKey = "google";
+                    if (target === "openaiEnabled") providerKey = "openai";
+                    if (target === "azureEnabled") providerKey = "azure";
+
+                    if (providerKey) {
+                        event.onComplete = function () {
+                            UpdateProviderEnabledState(providerKey);
+                        };
+                    }
+                },
                 actions: {
                     "save": function () {
-                        var currentGemini = GetGeminiConfig();
-                        var geminiKeyToSave = this.record.geminiApiKey;
-                        if (geminiKeyToSave && geminiKeyToSave.indexOf("*") !== -1 && currentGemini && currentGemini.apiKey) {
-                            geminiKeyToSave = currentGemini.apiKey;
+                        var form = this;
+                        var validationErrors = ValidateAppSettingsRecord(form.record);
+
+                        if (validationErrors.length > 0) {
+                            w2alert(validationErrors.join("<br>"), "App Settings");
+                            return;
                         }
-                        SaveGeminiConfig({
-                            baseUrl: this.record.geminiBaseUrl || GEMINI_DEFAULT_BASE_URL,
-                            apiKey: geminiKeyToSave || "",
-                            modelName: this.record.geminiModelName || "",
-                            customPrompt: this.record.geminiCustomPrompt || ""
+
+                        w2popup.lock("Saving...", true);
+
+                        AppSettingsService.GetAISettings(true)
+                        .then(function (latestAISettings) {
+                            var settingsToSave = BuildAISettingsFromRecord(form.record, latestAISettings);
+                            return AppSettingsService.SaveAISettings(settingsToSave);
+                        })
+                        .then(function () {
+                            w2popup.unlock();
+                            w2popup.close();
+                            w2alert("App settings saved successfully.");
+                        })
+                        .catch(function (error) {
+                            w2popup.unlock();
+                            var message = error && error.message ? error.message : String(error);
+                            if (window.DialogHelper && DialogHelper.alert) {
+                                return DialogHelper.alert(message, { title: "App Settings" });
+                            }
+
+                            w2alert(message);
+                            return null;
                         });
-
-                        if (IsOpenAICompatibleEnabled()) {
-                            var currentOpenAICompatible = GetOpenAICompatibleConfig();
-                            var openAICompatibleKeyToSave = this.record.openAICompatibleApiKey;
-                            if (openAICompatibleKeyToSave && openAICompatibleKeyToSave.indexOf("*") !== -1 && currentOpenAICompatible && currentOpenAICompatible.apiKey) {
-                                openAICompatibleKeyToSave = currentOpenAICompatible.apiKey;
-                            }
-                            SaveOpenAICompatibleConfig({
-                                baseUrl: this.record.openAICompatibleBaseUrl || "",
-                                apiKey: openAICompatibleKeyToSave || "",
-                                modelName: this.record.openAICompatibleModelName || "",
-                                customPrompt: this.record.openAICompatibleCustomPrompt || ""
-                            });
-                        }
-
-                        if (IsAzureFoundryEnabled()) {
-                            var currentAzureFoundry = GetAzureFoundryConfig();
-                            var azureFoundryKeyToSave = this.record.azureFoundryApiKey;
-                            if (azureFoundryKeyToSave && azureFoundryKeyToSave.indexOf("*") !== -1 && currentAzureFoundry && currentAzureFoundry.apiKey) {
-                                azureFoundryKeyToSave = currentAzureFoundry.apiKey;
-                            }
-                            SaveAzureFoundryConfig({
-                                baseUrl: this.record.azureFoundryBaseUrl || "",
-                                apiKey: azureFoundryKeyToSave || "",
-                                modelName: this.record.azureFoundryModelName || "",
-                                customPrompt: this.record.azureFoundryCustomPrompt || ""
-                            });
-                        }
-
-                        if (IsOpenAIEnabled()) {
-                            var currentOpenai = GetOpenAIConfig();
-                            var openaiKeyToSave = this.record.openaiApiKey;
-                            if (openaiKeyToSave && openaiKeyToSave.indexOf("*") !== -1 && currentOpenai && currentOpenai.apiKey) {
-                                openaiKeyToSave = currentOpenai.apiKey;
-                            }
-                            SaveOpenAIConfig({
-                                baseUrl: this.record.openaiBaseUrl || "",
-                                apiKey: openaiKeyToSave || "",
-                                modelName: this.record.openaiModelName || "",
-                                customPrompt: this.record.openaiCustomPrompt || ""
-                            });
-                        }
-
-                        w2popup.close();
-                        w2alert("AI settings saved successfully.");
                     },
                     "cancel": function () {
                         w2popup.close();
                     }
                 }
             });
-        }
-        else {
-            w2ui.aiSettings.record = aiSettingsRecord;
-            w2ui.aiSettings.refresh();
-        }
 
-        return Promise.resolve({});
-    }
-
-    TranslationHandler.ShowAISettings = function() {
-        InitializeAISettingsForm()
-        .then(function() {
-            w2popup.open({
-                title   : 'AI Translation Settings',
-                name    : 'aiSettingsPopup',
-                body    : '<div id="form" style="width: 100%; height: 100%;"></div>',
-                style   : 'padding: 15px 0px 0px 0px',
-                width   : 650,
-                height  : 420,
-                showMax : false,
-                onOpen: function (event) {
-                    event.onComplete = function () {
-                        w2ui.aiSettings.render('#w2ui-popup #form');
-                    }
-                }
-            });
+            return {
+                selectedProvider: NormalizeProviderId(aiSettings.selectedProvider) || "google"
+            };
         });
     }
+
+    TranslationHandler.ShowAppSettings = function() {
+        DestroyAppSettingsProviderTabs();
+        w2popup.open({
+            title   : 'App Settings',
+            name    : 'appSettingsPopup',
+            body    : '<div id="form" class="xqt-app-settings-popup-form"><div class="xqt-app-settings-loading">Loading app settings...</div></div>',
+            style   : 'padding: 0px; overflow-x: hidden;',
+            width   : 760,
+            height  : 540,
+            showMax : false,
+            onOpen: function (event) {
+                event.onComplete = function () {
+                    InitializeAppSettingsForm()
+                    .then(function(context) {
+                        w2ui.appSettings.render('#w2ui-popup #form');
+                        BindAppSettingsTopTabs(context.selectedProvider);
+                        ActivateAppSettingsTab("tab-general", context.selectedProvider);
+                        UpdateAllProviderEnabledStates();
+                        w2ui.appSettings.resize();
+                    })
+                    .catch(function(error) {
+                        XrmTranslator.errorHandler(error);
+                    });
+                };
+            },
+            onToggle: function (event) {
+                if (w2ui.appSettings && w2ui.appSettings.box) {
+                    w2ui.appSettings.box.style.display = 'none';
+                }
+                event.onComplete = function () {
+                    if (w2ui.appSettings && w2ui.appSettings.box) {
+                        w2ui.appSettings.box.style.display = '';
+                        w2ui.appSettings.resize();
+                    }
+                };
+            },
+            onClose: function () {
+                DestroyAppSettingsProviderTabs();
+            }
+        });
+    };
+
+    TranslationHandler.ShowAISettings = function() {
+        return TranslationHandler.ShowAppSettings();
+    };
 
     TranslationHandler.ShowApplyDictionaryPrompt = function() {
         var applyModeItems = [

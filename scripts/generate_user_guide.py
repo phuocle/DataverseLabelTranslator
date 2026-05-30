@@ -273,7 +273,7 @@ def build_document():
     
     add_heading_2(doc, "3.1 Component Guide")
     add_body_text(doc, "The main workspace is divided into three key areas:")
-    add_body_text(doc, "Contains configuration options including Solution dropdown, Entity picker, Component Type dropdown, and action buttons like Load, Save, AI Settings, and Manage Dictionary.", bold_prefix="1. Top Control Bar: ", bullet=True)
+    add_body_text(doc, "Contains configuration options including Solution dropdown, Entity picker, Component Type dropdown, and action buttons like Load, Save, App Settings, and Manage Dictionary.", bold_prefix="1. Top Control Bar: ", bullet=True)
     add_body_text(doc, "Displays loaded translation records with columns for CRM unique key, type description, source base language text, and editable text fields for each installed language in your Dataverse environment.", bold_prefix="2. Main Translation Grid: ", bullet=True)
     add_body_text(doc, "Provides contextual search, regex filters, toggles to show only untranslated/missing fields, grid statistics, and lock language controls.", bold_prefix="3. Grid Helper Panel (Toolbar): ", bullet=True)
     
@@ -365,16 +365,16 @@ def build_document():
     add_body_text(doc, "Dataverse Label Translator integrates with state-of-the-art LLMs to translate labels in bulk. Rather than typing translations row-by-row, you can let the AI generate high-quality translation proposals for all empty cells in seconds.")
     
     add_heading_2(doc, "6.1 Setting Up AI Provider Credentials")
-    add_body_text(doc, "1. Click on the AI Settings button in the top toolbar to open the settings dialog.")
+    add_body_text(doc, "1. Click on the App Settings button in the top toolbar to open the settings dialog.")
     add_body_text(doc, "2. Select your preferred AI Provider:")
     add_body_text(doc, "Requires a Google Gemini API Key. Uses high-performing Gemini models with direct prompt engineering optimized for software terminology.", bold_prefix="- Google Gemini: ", bullet=True)
-    add_body_text(doc, "Requires your custom endpoint URL, model name, and API key. Works with local and cloud OpenAI-compliant endpoints.", bold_prefix="- OpenAI Compatible: ", bullet=True)
-    add_body_text(doc, "Connects to Azure AI Foundry endpoints using your API key.", bold_prefix="- Azure Foundry: ", bullet=True)
+    add_body_text(doc, "Requires your endpoint URL, model name, and API key. Works with OpenAI chat-completions endpoints.", bold_prefix="- OpenAI: ", bullet=True)
+    add_body_text(doc, "Connects to Azure AI endpoints using your API key.", bold_prefix="- Azure: ", bullet=True)
     add_body_text(doc, "3. Enter your API Key and customize the target Model name if desired.")
     add_body_text(doc, "4. (Optional) Custom Prompt: You can write instructions for the AI (e.g., 'Translate technical terms literally, do not translate acronyms, use formal Vietnamese').")
-    add_body_text(doc, "5. Click Save. Your credentials are saved securely in your browser's local storage.")
+    add_body_text(doc, "5. Click Save. Your credentials are saved in the Dataverse app settings web resource for this environment.")
     
-    add_callout(doc, "Anh Phước hãy click mở nút AI Settings trên toolbar, chụp ảnh màn hình Popup điền API Key và cấu hình AI Settings để paste vào đây.", "📷 HÌNH ẢNH: HƯỚNG DẪN CẤU HÌNH AI SETTINGS", COLOR_SCREENSHOT_BG, is_screenshot=True)
+    add_callout(doc, "Anh Phước hãy click mở nút App Settings trên toolbar, chụp ảnh màn hình Popup điền API Key và cấu hình App Settings để paste vào đây.", "📷 HÌNH ẢNH: HƯỚNG DẪN CẤU HÌNH APP SETTINGS", COLOR_SCREENSHOT_BG, is_screenshot=True)
     
     add_heading_2(doc, "6.2 Running Auto Translate")
     add_body_text(doc, "Once configured, you can auto-translate loaded labels:")

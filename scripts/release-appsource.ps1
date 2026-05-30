@@ -350,7 +350,7 @@ function New-GeneratedImages {
         Draw-TextBox $g "User browser" 130 140 300 100 "#EAF6FF" "#6AA9D8" 23 $true
         Draw-TextBox $g "Dataverse Web API" 650 140 300 100 "#ECF8EF" "#71B982" 23 $true
         Draw-TextBox $g "Configured AI provider" 1170 140 300 100 "#FFF8E2" "#E8C14A" 23 $true
-        Draw-TextBox $g "AI settings may be stored in browser localStorage" 95 420 370 120 "#F7FAFD" "#B9CBE0" 19 $false
+        Draw-TextBox $g "AI settings are stored in Dataverse app settings" 95 420 370 120 "#F7FAFD" "#B9CBE0" 19 $false
         Draw-TextBox $g "Dictionary data stays in customer's Dataverse environment" 615 420 370 120 "#F7FAFD" "#B9CBE0" 19 $false
         Draw-TextBox $g "Selected labels are sent directly to the user-configured endpoint" 1135 420 390 120 "#F7FAFD" "#B9CBE0" 19 $false
         Draw-TextBox $g "No customer labels, API keys, telemetry, or usage data are sent to a PhuocLe publisher server." 260 690 1080 110 "#FFF4F1" "#D88A72" 25 $true
@@ -660,7 +660,7 @@ p, li {
       <p>Open the Dataverse Label Translator model-driven app in Power Apps or Dynamics 365 to begin translating metadata labels.</p>
       <ul>
         <li>Confirm installed languages are enabled in the target environment.</li>
-        <li>Configure AI Settings before running Auto Translate.</li>
+        <li>Configure App Settings before running Auto Translate.</li>
         <li>Use Manage Dictionary for approved terminology and consistency.</li>
       </ul>
       <div class="notice">No data is sent to a PhuocLe publisher server by this package.</div>
@@ -686,8 +686,8 @@ p, li {
   <p>The app does not send customer data, labels, metadata, API keys, telemetry, or usage data to a PhuocLe or Dataverse Label Translator publisher server. The app has no publisher-controlled backend server for data collection.</p>
   <h2>AI-Assisted Translation</h2>
   <p>When you run Auto Translate, selected labels and metadata text may be sent directly from your browser or client to the AI provider endpoint configured by you. AI provider endpoint, model, key, cost, quota, retention, privacy, security, and compliance are your responsibility. Use AI output at your own risk and review translations before saving.</p>
-  <h2>Local Storage</h2>
-  <p>AI settings may be stored in browser localStorage for convenience. Treat values stored in localStorage as sensitive according to your organization policy.</p>
+  <h2>App Settings Storage</h2>
+  <p>AI settings are stored in the customer's Dataverse environment as an app settings web resource. Treat configured provider values as sensitive according to your organization policy.</p>
   <h2>Dictionary Data</h2>
   <p>Translation dictionary data is stored in your Dataverse environment. You are responsible for cleanup and governance of customer-owned data.</p>
   <h2>No Warranty</h2>
@@ -717,7 +717,7 @@ Dataverse Label Translator is a free Dataverse and Dynamics 365 admin utility by
 
 The app does not send customer data, labels, metadata, API keys, telemetry, or usage data to a PhuocLe or Dataverse Label Translator publisher server. There is no publisher-controlled backend server for data collection.
 
-When Auto Translate is used, selected label and metadata text is sent directly from the user's browser or client to the AI provider endpoint configured by the user. AI settings may be stored in browser localStorage for convenience.
+When Auto Translate is used, selected label and metadata text is sent directly from the user's browser or client to the AI provider endpoint configured by the user. AI settings are stored in the customer's Dataverse environment as an app settings web resource.
 
 Users are responsible for AI provider selection, endpoint security, API keys, model behavior, output quality, cost, quota, retention, privacy, security, and compliance. Use AI output at your own risk and review translations before saving.
 

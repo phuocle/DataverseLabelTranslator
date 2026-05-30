@@ -1,17 +1,17 @@
 (function (TranslationDictionaryService, undefined) {
     "use strict";
 
-    var BASE_SOLUTION_UNIQUE_NAME = "DataverseLabelTranslator";
-    var DATA_SOLUTION_DISPLAY_NAME = "Dataverse Label Translator Data";
-    var DATA_SOLUTION_UNIQUE_NAME = "DataverseLabelTranslatorData";
     var DICTIONARY_WEBRESOURCE_UNIQUE_NAME = "pl_/DataverseLabelTranslator/data/TranslationDictionary.xml";
-    var DICTIONARY_WEBRESOURCE_DISPLAY_NAME = "Dataverse Label Translator Translation Dictionary";
+    var DICTIONARY_WEBRESOURCE_DISPLAY_NAME = "Translation Dictionary";
     var DICTIONARY_WEBRESOURCE_DESCRIPTION = "Stores customer dictionary whitelist for Dataverse Label Translator.";
-    var CACHE_KEY = "DataverseLabelTranslator_DictionaryStorage_v1";
+    var dictionaryStorageOptions = {
+        uniqueName: DICTIONARY_WEBRESOURCE_UNIQUE_NAME,
+        displayName: DICTIONARY_WEBRESOURCE_DISPLAY_NAME,
+        description: DICTIONARY_WEBRESOURCE_DESCRIPTION,
+        webResourceType: 4,
+        defaultContent: getDefaultDictionaryXml()
+    };
 
-    var storageInfo = null;
-    var initPromise = null;
-    var dictionaryModelCache = null;
     var dictionaryGridContext = null;
     var dictionaryBaselineSignature = null;
     var dictionaryAllowCloseWithoutPrompt = false;
@@ -24,100 +24,6 @@
         return;
     }
 
-    function getOrgUrl() {
-        try {
-            if (window.Xrm && Xrm.Page && Xrm.Page.context && Xrm.Page.context.getClientUrl) {
-                return Xrm.Page.context.getClientUrl().toLowerCase();
-            }
-        } catch (e) {
-            logWarn("Failed to read org URL from Xrm.Page context", e);
-        }
-
-        return "";
-    }
-
-    function escapeODataString(value) {
-        return String(value || "").replace(/'/g, "''");
-    }
-
-    function b64EncodeUnicode(str) {
-        return btoa(unescape(encodeURIComponent(str)));
-    }
-
-    function b64DecodeUnicode(str) {
-        return decodeURIComponent(escape(atob(str || "")));
-    }
-
-    function parseGuidFromCreateResponse(createResponse) {
-        if (!createResponse) {
-            return null;
-        }
-
-        if (typeof createResponse === "string") {
-            var match = createResponse.match(/[0-9a-fA-F-]{36}/);
-            return match ? match[0] : null;
-        }
-
-        if (createResponse.id) {
-            return createResponse.id;
-        }
-
-        return null;
-    }
-
-    function normalizePublisherPrefix(prefix) {
-        var sanitized = String(prefix || "new")
-            .replace(/[^A-Za-z0-9]/g, "")
-            .toLowerCase();
-
-        if (!sanitized) {
-            return "new";
-        }
-
-        return sanitized.substring(0, 8);
-    }
-
-    function buildPublisherPrefixCandidates(basePrefix) {
-        var primary = normalizePublisherPrefix(basePrefix);
-        var secondary = normalizePublisherPrefix(primary + "d");
-
-        if (primary === secondary) {
-            return [primary];
-        }
-
-        return [primary, secondary];
-    }
-
-    function toWebResourcePrefix(publisherPrefix) {
-        var prefix = String(publisherPrefix || "new")
-            .replace(/[^A-Za-z0-9_]/g, "")
-            .toLowerCase();
-
-        if (!prefix) {
-            prefix = "new";
-        }
-
-        if (prefix.charAt(prefix.length - 1) !== "_") {
-            prefix += "_";
-        }
-
-        return prefix;
-    }
-
-    function loadCache() {
-        try {
-            var value = localStorage.getItem(CACHE_KEY);
-            return value ? JSON.parse(value) : null;
-        } catch (e) {
-            logWarn("Failed to parse dictionary cache", e);
-            return null;
-        }
-    }
-
-    function saveCache(info) {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(info));
-    }
-
     function getDefaultDictionaryXml() {
         return [
             "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
@@ -128,354 +34,12 @@
         ].join("\n");
     }
 
-    function findBaseSolutionByName(solutionUniqueName) {
-        return WebApiClient.Retrieve({
-            entityName: "solution",
-            queryParams: "?$select=solutionid,uniquename,friendlyname,_publisherid_value&$filter=uniquename eq '" + escapeODataString(solutionUniqueName) + "'"
-        })
-        .then(function (response) {
-            if (response && response.value && response.value.length > 0) {
-                return response.value[0];
-            }
-
-            return null;
-        });
-    }
-
-    function findBaseSolution() {
-        return findBaseSolutionByName(BASE_SOLUTION_UNIQUE_NAME)
-        .then(function (solution) {
-            if (!solution) {
-                throw new Error("Base solution " + BASE_SOLUTION_UNIQUE_NAME + " not found.");
-            }
-
-            return solution;
-        });
-    }
-
-    function findPublisherByUniqueName(uniqueName) {
-        return WebApiClient.Retrieve({
-            entityName: "publisher",
-            queryParams: "?$select=publisherid,uniquename,friendlyname,customizationprefix&$filter=uniquename eq '" + escapeODataString(uniqueName) + "'"
-        })
-        .then(function (response) {
-            if (response && response.value && response.value.length > 0) {
-                return response.value[0];
-            }
-
-            return null;
-        });
-    }
-
-    function getPublisherById(publisherId) {
-        return WebApiClient.Retrieve({
-            entityName: "publisher",
-            entityId: publisherId,
-            queryParams: "?$select=publisherid,uniquename,friendlyname,customizationprefix"
-        });
-    }
-
-    function tryCreateDataPublisher(uniqueName, friendlyName, prefixCandidates, index) {
-        if (index >= prefixCandidates.length) {
-            throw new Error("Failed to create data publisher for dictionary storage.");
-        }
-
-        return WebApiClient.Create({
-            entityName: "publisher",
-            entity: {
-                uniquename: uniqueName,
-                friendlyname: friendlyName,
-                customizationprefix: prefixCandidates[index]
-            }
-        })
-        .then(function (createResponse) {
-            var publisherId = parseGuidFromCreateResponse(createResponse);
-            if (!publisherId) {
-                return findPublisherByUniqueName(uniqueName);
-            }
-
-            return getPublisherById(publisherId);
-        })
-        .catch(function () {
-            return tryCreateDataPublisher(uniqueName, friendlyName, prefixCandidates, index + 1);
-        });
-    }
-
-    function ensureDataPublisher(basePublisher) {
-        var dataPublisherUniqueName = (basePublisher.uniquename || BASE_SOLUTION_UNIQUE_NAME) + "Data";
-        var dataPublisherFriendlyName = (basePublisher.friendlyname || BASE_SOLUTION_UNIQUE_NAME) + " Data";
-
-        return findPublisherByUniqueName(dataPublisherUniqueName)
-        .then(function (existingPublisher) {
-            if (existingPublisher) {
-                return existingPublisher;
-            }
-
-            var prefixCandidates = buildPublisherPrefixCandidates(basePublisher.customizationprefix);
-            return tryCreateDataPublisher(dataPublisherUniqueName, dataPublisherFriendlyName, prefixCandidates, 0);
-        });
-    }
-
-    function findDataSolution() {
-        return WebApiClient.Retrieve({
-            entityName: "solution",
-            queryParams: "?$select=solutionid,uniquename,friendlyname,_publisherid_value,version&$filter=uniquename eq '" + DATA_SOLUTION_UNIQUE_NAME + "'"
-        })
-        .then(function (response) {
-            if (response && response.value && response.value.length > 0) {
-                return response.value[0];
-            }
-
-            return null;
-        });
-    }
-
-    function createDataSolution(publisherId) {
-        return WebApiClient.Create({
-            entityName: "solution",
-            entity: {
-                friendlyname: DATA_SOLUTION_DISPLAY_NAME,
-                uniquename: DATA_SOLUTION_UNIQUE_NAME,
-                version: "1.0.0.0",
-                "publisherid@odata.bind": "/publishers(" + publisherId + ")"
-            }
-        })
-        .then(function () {
-            return findDataSolution();
-        });
-    }
-
-    function ensureDataSolution(publisherId) {
-        return findDataSolution()
-        .then(function (solution) {
-            if (solution) {
-                return solution;
-            }
-
-            return createDataSolution(publisherId);
-        });
-    }
-
-    function getDictionaryWebResourceName(basePublisherPrefix) {
-        return DICTIONARY_WEBRESOURCE_UNIQUE_NAME;
-    }
-
-    function findWebResourceByName(webResourceName) {
-        return WebApiClient.Retrieve({
-            overriddenSetName: "webresourceset",
-            queryParams: "?$select=webresourceid,name,content,modifiedon&$filter=name eq '" + escapeODataString(webResourceName) + "'"
-        })
-        .then(function (response) {
-            if (response && response.value && response.value.length > 0) {
-                return response.value[0];
-            }
-
-            return null;
-        });
-    }
-
-    function findDictionaryWebResourceByName() {
-        return findWebResourceByName(DICTIONARY_WEBRESOURCE_UNIQUE_NAME);
-    }
-
-    function getWebResourceById(webResourceId) {
-        return WebApiClient.Retrieve({
-            overriddenSetName: "webresourceset",
-            entityId: webResourceId,
-            queryParams: "?$select=webresourceid,name,content,modifiedon"
-        });
-    }
-
-    function findDictionaryWebResourceCandidates() {
-        return WebApiClient.Retrieve({
-            overriddenSetName: "webresourceset",
-            queryParams: "?$select=webresourceid,name,content,modifiedon&$filter=contains(name,'TranslationDictionary.xml')&$orderby=modifiedon desc"
-        })
-        .then(function (response) {
-            return response && response.value ? response.value : [];
-        });
-    }
-
-    function createDictionaryWebResource(webResourceName) {
-        return WebApiClient.Create({
-            overriddenSetName: "webresourceset",
-            entity: {
-                name: webResourceName,
-                displayname: DICTIONARY_WEBRESOURCE_DISPLAY_NAME,
-                description: DICTIONARY_WEBRESOURCE_DESCRIPTION,
-                webresourcetype: 4,
-                content: b64EncodeUnicode(getDefaultDictionaryXml())
-            }
-        })
-        .then(function (createResponse) {
-            var webResourceId = parseGuidFromCreateResponse(createResponse);
-            if (!webResourceId) {
-                return findWebResourceByName(webResourceName);
-            }
-
-            return getWebResourceById(webResourceId);
-        });
-    }
-
-    function ensureDictionaryWebResource(webResourceName) {
-        return findWebResourceByName(webResourceName)
-        .then(function (existing) {
-            if (existing) {
-                return existing;
-            }
-
-            return createDictionaryWebResource(webResourceName);
-        });
-    }
-
-    function isWebResourceInSolution(solutionId, webResourceId) {
-        return WebApiClient.Retrieve({
-            entityName: "solutioncomponent",
-            queryParams: "?$select=solutioncomponentid&$filter=_solutionid_value eq " + solutionId + " and componenttype eq 61 and objectid eq " + webResourceId
-        })
-        .then(function (response) {
-            return !!(response && response.value && response.value.length > 0);
-        });
-    }
-
-    function addWebResourceToSolution(solutionUniqueName, webResourceId) {
-        var request = WebApiClient.Requests.AddSolutionComponentRequest.with({
-            payload: {
-                ComponentId: webResourceId,
-                ComponentType: 61,
-                SolutionUniqueName: solutionUniqueName,
-                AddRequiredComponents: false,
-                IncludedComponentSettingsValues: null,
-                DoNotIncludeSubcomponents: false
-            }
-        });
-
-        return WebApiClient.Execute(request);
-    }
-
-    function ensureWebResourceInSolution(solution, webResourceId) {
-        return isWebResourceInSolution(solution.solutionid, webResourceId)
-        .then(function (isAdded) {
-            if (isAdded) {
-                return null;
-            }
-
-            return addWebResourceToSolution(solution.uniquename, webResourceId);
-        });
-    }
-
-    function bootstrapStorage() {
-        var result = {};
-
-        return findBaseSolution()
-        .then(function (baseSolution) {
-            result.baseSolution = baseSolution;
-            return getPublisherById(baseSolution._publisherid_value);
-        })
-        .then(function (basePublisher) {
-            result.basePublisher = basePublisher;
-            return ensureDataPublisher(basePublisher);
-        })
-        .then(function (dataPublisher) {
-            result.dataPublisher = dataPublisher;
-            return ensureDataSolution(dataPublisher.publisherid);
-        })
-        .then(function (dataSolution) {
-            result.dataSolution = dataSolution;
-            result.webResourceName = getDictionaryWebResourceName(result.basePublisher.customizationprefix);
-            return ensureDictionaryWebResource(result.webResourceName);
-        })
-        .then(function (webResource) {
-            result.webResource = webResource;
-            return ensureWebResourceInSolution(result.dataSolution, webResource.webresourceid);
-        })
-        .then(function () {
-            return {
-                orgUrl: getOrgUrl(),
-                solutionUniqueName: DATA_SOLUTION_UNIQUE_NAME,
-                solutionId: result.dataSolution.solutionid,
-                publisherId: result.dataPublisher.publisherid,
-                webResourceId: result.webResource.webresourceid,
-                webResourceName: result.webResource.name,
-                initializedOn: new Date().toISOString(),
-                schemaVersion: 1
-            };
-        });
-    }
-
-    function validateCachedStorage(cachedInfo) {
-        if (!cachedInfo || !cachedInfo.webResourceId) {
-            return Promise.resolve(false);
-        }
-
-        if (cachedInfo.orgUrl !== getOrgUrl()) {
-            return Promise.resolve(false);
-        }
-
-        return getWebResourceById(cachedInfo.webResourceId)
-        .then(function () {
-            return true;
-        })
-        .catch(function () {
-            return false;
-        });
-    }
-
     function runEnsureInitialized(forceRefresh) {
-        if (storageInfo && !forceRefresh) {
-            return Promise.resolve(storageInfo);
-        }
-
-        return Promise.resolve()
-        .then(function () {
-            if (forceRefresh) {
-                return null;
-            }
-
-            var cachedInfo = loadCache();
-            if (!cachedInfo) {
-                return null;
-            }
-
-            return validateCachedStorage(cachedInfo)
-            .then(function (isValid) {
-                if (isValid) {
-                    storageInfo = cachedInfo;
-                    return cachedInfo;
-                }
-
-                return null;
-            });
-        })
-        .then(function (cachedInfo) {
-            if (cachedInfo) {
-                return cachedInfo;
-            }
-
-            return bootstrapStorage()
-            .then(function (createdInfo) {
-                storageInfo = createdInfo;
-                saveCache(createdInfo);
-                return createdInfo;
-            });
-        });
+        return DataverseDataWebResourceService.EnsureTextWebResource(dictionaryStorageOptions);
     }
 
     function ensureInitialized(forceRefresh) {
-        if (initPromise && !forceRefresh) {
-            return initPromise;
-        }
-
-        initPromise = runEnsureInitialized(forceRefresh)
-        .then(function (info) {
-            initPromise = null;
-            return info;
-        }, function (error) {
-            initPromise = null;
-            throw error;
-        });
-
-        return initPromise;
+        return runEnsureInitialized(forceRefresh);
     }
 
     function readTagValue(entryNode, tagName) {
@@ -906,12 +470,10 @@
         dictionaryAllowCloseWithoutPrompt = false;
     }
 
-    function refreshDictionaryCacheFromWebResource(context) {
+    function refreshDictionaryFromWebResource(context) {
         return loadDictionaryModel(true, context || {})
         .then(function (latestModel) {
-            dictionaryModelCache = latestModel;
-
-            logDebug("refreshDictionaryCacheFromWebResource:done", {
+            logDebug("refreshDictionaryFromWebResource:done", {
                 sourceLcid: latestModel && latestModel.sourceLcid,
                 entries: latestModel && latestModel.entries ? latestModel.entries.length : 0
             });
@@ -919,7 +481,7 @@
             return latestModel;
         })
         .catch(function (error) {
-            logWarn("Failed to refresh dictionary cache from web resource on close.", error);
+            logWarn("Failed to refresh dictionary from web resource on close.", error);
             return null;
         });
     }
@@ -957,40 +519,6 @@
     }
 
     function loadDictionaryModel(forceRefresh, context) {
-        if (dictionaryModelCache && !forceRefresh) {
-            logDebug("loadDictionaryModel:cache-hit", {
-                forceRefresh: forceRefresh,
-                entries: dictionaryModelCache.entries ? dictionaryModelCache.entries.length : 0
-            });
-            return Promise.resolve(dictionaryModelCache);
-        }
-
-        function tryDecodeContent(rawContent) {
-            if (!rawContent) {
-                logDebug("loadDictionaryModel:empty-content", null);
-                return getDefaultDictionaryXml();
-            }
-
-            try {
-                var decoded = b64DecodeUnicode(rawContent);
-                logDebug("loadDictionaryModel:decoded-base64", {
-                    rawLength: String(rawContent).length,
-                    decodedLength: decoded.length,
-                    decodedPreview: decoded.substring(0, 400)
-                });
-                return decoded;
-            } catch (decodeError) {
-                // Some orgs may return plain XML content.
-                logWarn("Could not decode base64 content, using raw XML content.", decodeError);
-                var fallback = String(rawContent);
-                logDebug("loadDictionaryModel:raw-content", {
-                    rawLength: fallback.length,
-                    rawPreview: fallback.substring(0, 400)
-                });
-                return fallback;
-            }
-        }
-
         function tryParseWithFallbacks(content, parseContext) {
             var parsed = parseDictionaryXml(content, parseContext);
 
@@ -1027,51 +555,17 @@
         return ensureInitialized(false)
         .then(function (info) {
             logDebug("loadDictionaryModel:storage", info);
-
-            // Always use fixed dictionary webresource name as source of truth.
-            return findDictionaryWebResourceByName()
-            .then(function (webResourceByName) {
-                if (!webResourceByName) {
-                    logWarn("Dictionary webresource not found by fixed name.", DICTIONARY_WEBRESOURCE_UNIQUE_NAME);
-                    return {
-                        info: info,
-                        webResource: null
-                    };
-                }
-
-                if (info && (String(info.webResourceId) !== String(webResourceByName.webresourceid) || String(info.webResourceName) !== String(webResourceByName.name))) {
-                    logWarn("Storage cache remapped from fixed dictionary webresource name.", {
-                        previousId: info.webResourceId,
-                        previousName: info.webResourceName,
-                        newId: webResourceByName.webresourceid,
-                        newName: webResourceByName.name
-                    });
-
-                    info.webResourceId = webResourceByName.webresourceid;
-                    info.webResourceName = webResourceByName.name;
-                    storageInfo = info;
-                    saveCache(info);
-                }
-
-                return {
-                    info: info,
-                    webResource: webResourceByName
-                };
-            });
+            return DataverseDataWebResourceService.ReadText(dictionaryStorageOptions);
         })
-        .then(function (loadResult) {
-            var webResource = loadResult.webResource;
-
-            logDebug("loadDictionaryModel:webresource", {
-                id: webResource && webResource.webresourceid,
-                name: webResource && webResource.name,
-                contentLength: webResource && webResource.content ? String(webResource.content).length : 0
+        .then(function (content) {
+            content = content || getDefaultDictionaryXml();
+            logDebug("loadDictionaryModel:content", {
+                contentLength: content.length,
+                contentPreview: content.substring(0, 400)
             });
 
-            var content = webResource && webResource.content ? tryDecodeContent(webResource.content) : getDefaultDictionaryXml();
             var primaryModel = tryParseWithFallbacks(content, context || {});
-            dictionaryModelCache = primaryModel;
-            return dictionaryModelCache;
+            return primaryModel;
         })
         .then(function (finalModel) {
             logDebug("loadDictionaryModel:final-model", {
@@ -1100,79 +594,16 @@
         return ensureInitialized(false)
         .then(function (info) {
             logDebug("saveDictionaryModel:storage", info);
-
-            function publishDictionaryWebResource(webResourceId) {
-                if (!webResourceId) {
-                    return Promise.resolve(null);
-                }
-
-                if (window.XrmTranslator && typeof XrmTranslator.PublishWebResources === "function") {
-                    return XrmTranslator.PublishWebResources([webResourceId]);
-                }
-
-                var xmlPayload = "<importexportxml><webresources><webresource>" + webResourceId + "</webresource></webresources></importexportxml>";
-                var request = WebApiClient.Requests.PublishXmlRequest.with({
-                    payload: {
-                        ParameterXml: xmlPayload
-                    }
-                });
-
-                return WebApiClient.Execute(request);
-            }
-
-            return findDictionaryWebResourceByName()
-            .then(function (webResourceByName) {
-                if (!webResourceByName) {
-                    throw new Error("Dictionary webresource not found by fixed name: " + DICTIONARY_WEBRESOURCE_UNIQUE_NAME);
-                }
-
-                if (info && (String(info.webResourceId) !== String(webResourceByName.webresourceid) || String(info.webResourceName) !== String(webResourceByName.name))) {
-                    info.webResourceId = webResourceByName.webresourceid;
-                    info.webResourceName = webResourceByName.name;
-                    storageInfo = info;
-                    saveCache(info);
-                }
-
-                return webResourceByName;
-            })
-            .then(function (targetWebResource) {
-                var targetId = targetWebResource.webresourceid;
-
-                return WebApiClient.Update({
-                    overriddenSetName: "webresourceset",
-                    entityId: targetId,
-                    entity: {
-                        content: b64EncodeUnicode(xml)
-                    }
-                })
-                .then(function () {
-                    return publishDictionaryWebResource(targetId);
-                })
-                .then(function () {
-                    return getWebResourceById(targetId)
-                    .then(function (updatedWebResource) {
-                        var readback = "";
-
-                        try {
-                            readback = b64DecodeUnicode((updatedWebResource && updatedWebResource.content) || "");
-                        } catch (decodeError) {
-                            logWarn("Post-save readback decode failed.", decodeError);
-                            readback = String((updatedWebResource && updatedWebResource.content) || "");
-                        }
-
-                        logDebug("saveDictionaryModel:readback", {
-                            id: updatedWebResource && updatedWebResource.webresourceid,
-                            name: updatedWebResource && updatedWebResource.name,
-                            contentLength: updatedWebResource && updatedWebResource.content ? String(updatedWebResource.content).length : 0,
-                            decodedLength: readback.length,
-                            decodedPreview: readback.substring(0, 400)
-                        });
-                    });
+            return DataverseDataWebResourceService.WriteText(dictionaryStorageOptions, xml)
+            .then(function (updatedWebResource) {
+                logDebug("saveDictionaryModel:readback", {
+                    id: updatedWebResource && updatedWebResource.webresourceid,
+                    name: updatedWebResource && updatedWebResource.name,
+                    contentLength: updatedWebResource && updatedWebResource.content ? String(updatedWebResource.content).length : 0
                 });
             });
         })
         .then(function () {
-            dictionaryModelCache = model;
             return model;
         });
     }
@@ -1399,19 +830,8 @@
         return ensureInitialized(!!forceRefresh);
     };
 
-    TranslationDictionaryService.PreloadCache = function () {
-        return buildDictionaryGridContext()
-        .then(function (context) {
-            return loadDictionaryModel(true, context)
-            .then(function (model) {
-                dictionaryModelCache = model;
-                return model;
-            });
-        });
-    };
-
     TranslationDictionaryService.GetStorageInfo = function () {
-        return storageInfo;
+        return null;
     };
 
     TranslationDictionaryService.UpsertEntries = function (entries) {
@@ -1594,7 +1014,7 @@
                             } : {};
 
                             cleanupDictionaryPromptState();
-                            refreshDictionaryCacheFromWebResource(finalContext);
+                            refreshDictionaryFromWebResource(finalContext);
                             return;
                         }
 
@@ -1607,7 +1027,7 @@
 
                             dictionaryAllowCloseWithoutPrompt = true;
                             cleanupDictionaryPromptState();
-                            refreshDictionaryCacheFromWebResource(cleanContext);
+                            refreshDictionaryFromWebResource(cleanContext);
                             return;
                         }
 
