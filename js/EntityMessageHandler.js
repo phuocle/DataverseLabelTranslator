@@ -12,10 +12,6 @@
         return normalize(value).replace(/[^a-z0-9]/g, "");
     }
 
-    function escapeODataString(value) {
-        return String(value || "").replace(/'/g, "''");
-    }
-
     function getCellText(row, index) {
         var cell = row && row.cells ? row.cells[index] : null;
         return cell ? (cell.text || "") : "";
@@ -50,13 +46,14 @@
         return WebApiClient.Retrieve({
             entityName: "EntityDefinition",
             entityId: XrmTranslator.GetEntityId(),
-            queryParams: "?$select=LogicalName,ObjectTypeCode,SchemaName,DisplayName,DisplayCollectionName"
+            queryParams: "?$select=LogicalName,ObjectTypeCode,SchemaName,DisplayName,DisplayCollectionName,IsCustomEntity"
         })
         .then(function (entity) {
             return {
                 logicalName: logicalName,
                 metadataId: XrmTranslator.GetEntityId(),
                 objectTypeCode: entity.ObjectTypeCode,
+                isCustomEntity: entity.IsCustomEntity === true,
                 schemaName: entity.SchemaName || logicalName,
                 displayName: getLocalizedMetadataLabel(entity.DisplayName),
                 displayCollectionName: getLocalizedMetadataLabel(entity.DisplayCollectionName)
@@ -78,15 +75,18 @@
     }
 
     function getDisplayStringIdentitySet(entityInfo) {
+        if (entityInfo.objectTypeCode == null) {
+            return Promise.reject(new Error("Could not resolve object type code for " + entityInfo.logicalName + "."));
+        }
+
         var fetchXml =
             "<fetch distinct='true'>" +
             "  <entity name='displaystring'>" +
             "    <attribute name='displaystringid' />" +
             "    <attribute name='displaystringkey' />" +
             "    <link-entity name='displaystringmap' from='displaystringid' to='displaystringid' alias='dsm'>" +
-            "      <filter type='or'>" +
-            "        <condition attribute='objecttypecode' operator='eq' value='" + escapeODataString(entityInfo.schemaName || entityInfo.logicalName) + "' />" +
-            "        <condition attribute='objecttypecode' operator='eq' value='" + escapeODataString(entityInfo.logicalName) + "' />" +
+            "      <filter>" +
+            "        <condition attribute='objecttypecode' operator='eq' value='" + entityInfo.objectTypeCode + "' />" +
             "      </filter>" +
             "    </link-entity>" +
             "  </entity>" +
@@ -206,8 +206,8 @@
 
     function rowMatchesEntity(row, headerMap, identitySet, entityInfo) {
         var idColumn = findColumn(headerMap, ["displaystringid", "display string id", "custom display string id"]);
-        var keyColumn = findColumn(headerMap, ["displaystringkey", "resource key", "key", "name"]);
-        var objectTypeColumn = findColumn(headerMap, ["objecttypecode", "object type code", "entity", "table"]);
+        var keyColumn = findColumn(headerMap, ["displaystringkey", "display string key", "resource key"]);
+        var objectTypeColumn = findColumn(headerMap, ["objecttypecode", "object type code"]);
         var logical = normalize(entityInfo.logicalName);
         var schema = normalize(entityInfo.schemaName);
 
@@ -237,26 +237,26 @@
 
     function buildRowKey(row, headerMap) {
         var idColumn = findColumn(headerMap, ["displaystringid", "display string id", "custom display string id"]);
-        var keyColumn = findColumn(headerMap, ["displaystringkey", "resource key", "key", "name"]);
+        var keyColumn = findColumn(headerMap, ["displaystringkey", "display string key", "resource key"]);
         var fallbackParts = [];
 
         if (idColumn >= 0 && getCellText(row, idColumn)) {
-            return "id:" + normalize(getCellText(row, idColumn));
+            return "id:" + normalize(getCellText(row, idColumn)) + "~row:" + row.index;
         }
 
         if (keyColumn >= 0 && getCellText(row, keyColumn)) {
-            return "key:" + normalize(getCellText(row, keyColumn));
+            return "key:" + normalize(getCellText(row, keyColumn)) + "~row:" + row.index;
         }
 
         for (var i = 0; i < row.cells.length; i++) {
             fallbackParts.push(getCellText(row, i));
         }
 
-        return "row:" + normalize(fallbackParts.join("|"));
+        return "row:" + row.index + ":" + normalize(fallbackParts.join("|"));
     }
 
     function getRecordName(row, headerMap) {
-        var keyColumn = findColumn(headerMap, ["displaystringkey", "resource key", "key", "name"]);
+        var keyColumn = findColumn(headerMap, ["displaystringkey", "display string key", "resource key"]);
         var defaultColumn = findColumn(headerMap, ["default", "default display string", "default text"]);
         var customColumn = findColumn(headerMap, ["custom", "custom display string", "custom text"]);
 
@@ -415,9 +415,25 @@
             solutionUniqueName = resolved[0];
             entityInfo = resolved[1];
 
+            if (entityInfo.isCustomEntity) {
+                state = {
+                    solutionUniqueName: solutionUniqueName,
+                    entityInfo: entityInfo,
+                    identitySet: { ids: {}, keys: {} },
+                    rowCount: 0
+                };
+                XrmTranslator.metadata = [];
+                fillTable([]);
+                return null;
+            }
+
             return getDisplayStringIdentitySet(entityInfo);
         })
         .then(function (identitySet) {
+            if (!identitySet) {
+                return null;
+            }
+
             return TranslationPackageService.ExportTranslations(solutionUniqueName)
             .then(TranslationPackageService.LoadPackage)
             .then(function (packageData) {

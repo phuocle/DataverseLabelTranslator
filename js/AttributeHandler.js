@@ -142,6 +142,8 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.SetLoadButtonDisabled(false);
+        XrmTranslator.SetSaveButtonDisabled(false);
     }
 
     AttributeHandler.Load = function() {
@@ -171,7 +173,7 @@
         var entityUrl = WebApiClient.GetApiUrl() + "EntityDefinitions(" + XrmTranslator.GetEntityId() + ")/Attributes(";
 
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving attribute batches",
+            progressLabel: "Saving 1. Attributes",
             batchNamePrefix: "batch_updateattributes",
             changeSetNamePrefix: "changeset_updateattributes",
             buildRequest: function(update) {
@@ -189,17 +191,53 @@
     }
 
     AttributeHandler.Save = function() {
-        XrmTranslator.LockGrid("Saving");
+        var toolbarType = XrmTranslator.GetCurrentToolbarTypeText ? XrmTranslator.GetCurrentToolbarTypeText() : "1. Attributes";
+        var publishMinimumMs = 5000;
+        var publishedMessageMs = 5000;
+
+        function delay(ms) {
+            return new Promise(function (resolve) {
+                setTimeout(resolve, ms);
+            });
+        }
+
+        XrmTranslator.LockGrid("Saving " + toolbarType);
 
         return AttributeHandler.SaveOnly()
             .then(function () {
-                XrmTranslator.LockGrid("Publishing");
-                return XrmTranslator.Publish();
+                XrmTranslator.UnlockGrid();
+                XrmTranslator.ShowStatusBanner({
+                    tone: "info",
+                    message: "Publishing " + toolbarType + "..."
+                });
+                XrmTranslator.SetLoadButtonDisabled(true);
+                XrmTranslator.SetSaveButtonDisabled(true);
+                return Promise.all([
+                    XrmTranslator.Publish(),
+                    delay(publishMinimumMs)
+                ]);
             })
             .then(function () {
-                XrmTranslator.LockGrid("Reloading");
+                XrmTranslator.ShowStatusBanner({
+                    tone: "success",
+                    message: "Published " + toolbarType
+                });
+                return delay(publishedMessageMs);
+            })
+            .then(function () {
+                XrmTranslator.HideStatusBanner();
+                XrmTranslator.LockGrid("Reloading " + toolbarType);
                 return AttributeHandler.Load();
             })
-            .catch(XrmTranslator.errorHandler);
+            .then(function () {
+                XrmTranslator.SetLoadButtonDisabled(false);
+                XrmTranslator.SetSaveButtonDisabled(false);
+            })
+            .catch(function (error) {
+                XrmTranslator.HideStatusBanner();
+                XrmTranslator.SetLoadButtonDisabled(false);
+                XrmTranslator.SetSaveButtonDisabled(false);
+                XrmTranslator.errorHandler(error);
+            });
     }
 } (window.AttributeHandler = window.AttributeHandler || {}));

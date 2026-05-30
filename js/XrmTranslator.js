@@ -52,6 +52,8 @@
     var importJobPollTimer = null;
     var importJobPollInFlight = false;
     var operationState = null;
+    var appLoadingActive = false;
+    var appLoadingToolbarState = null;
     var ENTITY_DEPENDENT_TYPE_ITEMS = [
         "type:allInOne",
         "type:entitySeparator",
@@ -445,7 +447,7 @@
     }
 
     function applyOperationButtons() {
-        XrmTranslator.SetSaveButtonDisabled(!safeHasPendingChanges());
+        XrmTranslator.SetSaveButtonDisabled(false);
         XrmTranslator.SetLoadButtonDisabled(false);
     }
 
@@ -847,6 +849,48 @@
                 toolbar.disable(ids[i]);
             }
         }
+    }
+
+    function captureToolbarDisabledState() {
+        var toolbar = GetToolbar();
+        var state = {};
+
+        if (!toolbar || !toolbar.items) {
+            return state;
+        }
+
+        for (var i = 0; i < toolbar.items.length; i++) {
+            var item = toolbar.items[i];
+            if (item && item.id) {
+                state[item.id] = !!item.disabled;
+            }
+        }
+
+        return state;
+    }
+
+    function restoreToolbarDisabledState(state) {
+        var toolbar = GetToolbar();
+
+        if (!toolbar || !toolbar.items || !state) {
+            return;
+        }
+
+        for (var i = 0; i < toolbar.items.length; i++) {
+            var item = toolbar.items[i];
+            if (!item || !item.id || !Object.prototype.hasOwnProperty.call(state, item.id)) {
+                continue;
+            }
+
+            if (state[item.id]) {
+                toolbar.disable(item.id);
+            }
+            else {
+                toolbar.enable(item.id);
+            }
+        }
+
+        RefreshToolbar();
     }
 
     function DisableAllToolbarItems() {
@@ -1294,6 +1338,9 @@
 
     XrmTranslator.LockGrid = function (message) {
         var grid = w2ui && w2ui.grid ? w2ui.grid : null;
+        if (appLoadingActive) {
+            message = "App Loading";
+        }
         if (grid) {
             grid.lock(message, true);
         }
@@ -1307,6 +1354,38 @@
             RemoveGridLockDom(grid);
         }
         SetToolbarLocked(false);
+    };
+
+    XrmTranslator.StartAppLoading = function () {
+        appLoadingActive = true;
+        appLoadingToolbarState = captureToolbarDisabledState();
+        XrmTranslator.LockGrid("App Loading");
+        DisableAllToolbarItems();
+        XrmTranslator.SetLoadButtonDisabled(true);
+        XrmTranslator.SetSaveButtonDisabled(true);
+    };
+
+    XrmTranslator.ClearAppLoading = function () {
+        var toolbarState = appLoadingToolbarState;
+        appLoadingActive = false;
+        appLoadingToolbarState = null;
+        XrmTranslator.UnlockGrid();
+        restoreToolbarDisabledState(toolbarState);
+    };
+
+    XrmTranslator.GetCurrentToolbarTypeText = function () {
+        var toolbar = GetToolbar();
+        var typeItem = toolbar ? toolbar.get("type") : null;
+        var selected = typeItem ? typeItem.selected : null;
+        var items = typeItem && typeItem.items ? typeItem.items : [];
+
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].id === selected) {
+                return items[i].text || selected || "";
+            }
+        }
+
+        return selected || "";
     };
 
     XrmTranslator.SetUserLanguage = function (userId, language) {
@@ -1638,7 +1717,7 @@
         }
 
         XrmTranslator.SetLoadButtonDisabled(false);
-        XrmTranslator.SetSaveButtonDisabled(options.enableSaveAfterClear ? false : !safeHasPendingChanges());
+        XrmTranslator.SetSaveButtonDisabled(false);
     };
 
     XrmTranslator.ApplyStoredOperationStatus = function() {
@@ -1720,7 +1799,7 @@
             enableSaveButtonSoon();
         }
         else {
-            XrmTranslator.SetSaveButtonDisabled(!safeHasPendingChanges());
+            XrmTranslator.SetSaveButtonDisabled(false);
         }
     };
 
@@ -2110,7 +2189,7 @@
         }
 
         if (savable) {
-            XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+            XrmTranslator.SetSaveButtonDisabled(false);
         }
     }
 
@@ -3183,7 +3262,7 @@
             }
 
             if (publishState && publishState.cleared) {
-                XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                XrmTranslator.SetSaveButtonDisabled(false);
             }
 
             return publishState;
@@ -3197,7 +3276,10 @@
             XrmTranslator.entity = entity;
             SetHandler();
 
-            if (XrmTranslator.GetType() !== "allInOne" && XrmTranslator.GetType() !== "ribbons") {
+            if (XrmTranslator.GetType() === "attributes") {
+                XrmTranslator.LockGrid("Loading " + XrmTranslator.GetCurrentToolbarTypeText());
+            }
+            else if (XrmTranslator.GetType() !== "allInOne" && XrmTranslator.GetType() !== "ribbons") {
                 XrmTranslator.LockGrid("Loading " + entity + " attributes");
             }
 
@@ -3433,12 +3515,19 @@
                 })
                 .then(function(canSave) {
                     if (!canSave) {
-                        XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                        XrmTranslator.SetSaveButtonDisabled(false);
                         return;
                     }
 
                     if (!XrmTranslator.HasPendingChanges()) {
                         grid.refresh();
+                        XrmTranslator.ShowStatusBanner({
+                            tone: "info",
+                            message: "No changes to save.",
+                            autoHideMs: 3000
+                        });
+                        XrmTranslator.SetLoadButtonDisabled(false);
+                        XrmTranslator.SetSaveButtonDisabled(false);
                         return;
                     }
 
@@ -3449,7 +3538,7 @@
                     return currentHandler.Save();
                 })
                 .catch(function(error) {
-                    XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                    XrmTranslator.SetSaveButtonDisabled(false);
                     XrmTranslator.errorHandler(error);
                 });
             },
@@ -3460,25 +3549,26 @@
                         w2ui.grid.refreshRow(normalizedRecords[i].recid);
                     }
 
-                    XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                    XrmTranslator.SetSaveButtonDisabled(false);
                     XrmTranslator.UpdateChangedCellFooter(event);
-                    EnforceToolbarOperationButtonsSoon();
                 };
             },
             onClick: function (event) {
                 event.onComplete = function () {
                     XrmTranslator.UpdateChangedCellFooter(event);
-                    EnforceToolbarOperationButtonsSoon();
+                    XrmTranslator.SetSaveButtonDisabled(false);
                 };
             },
             onDblClick: function (event) {
                 event.onComplete = function () {
                     XrmTranslator.UpdateChangedCellFooter(event);
-                    EnforceToolbarOperationButtonsSoon();
+                    XrmTranslator.SetSaveButtonDisabled(false);
                 };
             },
             onEditField: function (event) {
-                event.onComplete = EnforceToolbarOperationButtonsSoon;
+                event.onComplete = function () {
+                    XrmTranslator.SetSaveButtonDisabled(false);
+                };
             },
             onSearch: function (event) {
                 event.onComplete = NormalizeGridSearchUiSoon;
@@ -3520,7 +3610,7 @@
         PatchToolbarOperationGuard();
         PatchGridToolbarLock();
         NormalizeGridSearchUiSoon();
-        XrmTranslator.LockGrid("Loading entities");
+        XrmTranslator.StartAppLoading();
     }
 
     function FillEntitySelector (entities) {
@@ -3720,7 +3810,7 @@
 
         if (XrmTranslator.hasAllowedRole === false) {
             InitializeGrid();
-            XrmTranslator.UnlockGrid();
+            XrmTranslator.ClearAppLoading();
             DisableAllToolbarItems();
             return;
         }
@@ -3773,11 +3863,12 @@
             return null;
         })
         .then(function () {
-            XrmTranslator.UnlockGrid();
+            XrmTranslator.ClearAppLoading();
             XrmTranslator.ApplyStoredOperationStatus();
             return XrmTranslator.RefreshPublishXmlJobState({ silent: true, countAttempt: false, notifyForcedClear: false });
         })
         .catch(function (error) {
+            XrmTranslator.ClearAppLoading();
             XrmTranslator.errorHandler(error);
         });
     }
