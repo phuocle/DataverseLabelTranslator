@@ -21,6 +21,7 @@
   <File LocalPath="js/DataverseDataWebResourceService.js" UniqueName="pl_/DataverseLabelTranslator/js/DataverseDataWebResourceService.js" />
   <File LocalPath="js/DialogHelper.js" UniqueName="pl_/DataverseLabelTranslator/js/DialogHelper.js" />
   <File LocalPath="js/EntityHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/EntityHandler.js" />
+  <File LocalPath="js/EntityMessageHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/EntityMessageHandler.js" />
   <File LocalPath="js/FormHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/FormHandler.js" />
   <File LocalPath="js/FormMetaHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/FormMetaHandler.js" />
   <File LocalPath="js/GlobalOptionSetHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/GlobalOptionSetHandler.js" />
@@ -32,6 +33,7 @@
   <File LocalPath="js/SiteMapHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/SiteMapHandler.js" />
   <File LocalPath="js/TranslationDictionaryService.js" UniqueName="pl_/DataverseLabelTranslator/js/TranslationDictionaryService.js" />
   <File LocalPath="js/TranslationHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/TranslationHandler.js" />
+  <File LocalPath="js/TranslationPackageService.js" UniqueName="pl_/DataverseLabelTranslator/js/TranslationPackageService.js" />
   <File LocalPath="js/ViewHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/ViewHandler.js" />
   <File LocalPath="js/WebResourceHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/WebResourceHandler.js" />
   <File LocalPath="js/XrmTranslator.js" UniqueName="pl_/DataverseLabelTranslator/js/XrmTranslator.js" />

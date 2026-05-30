@@ -27,7 +27,7 @@ Translate UI labels for Dataverse components using the same type menu shown in t
 | **10. Business Rules** | Entity | Business rule error messages and recommendation text stored in workflow XAML |
 | **11. Ribbons** | Entity | Classic ribbon / command bar button text, tooltip title, and tooltip description labels |
 | **12. Commands** | Entity | Modern command designer appaction labels: text, title, description, accessibility text, and group title |
-| **13. Entity Messages** | Entity | Planned placeholder for entity messages/display strings |
+| **13. Entity Messages** | Entity | System table messages/display strings from solution translation packages |
 | **15. Sitemap** | None | App navigation areas, groups, and subareas |
 | **16. Dashboards** | None | Dashboard form labels |
 | **17. Web Resources** | None | Text content within web resources |
@@ -56,6 +56,10 @@ When available, **14. Content Snippets** loads `adx_contentsnippet` records grou
 ### Modern Command Labels
 
 **12. Commands** loads modern command designer records from `appaction` components in the selected solution and selected entity. Each command is shown as a parent node with `Text`, `Title`, `Description`, `Accessibility Text`, and `Group Title` child rows. Save writes changed labels with Dataverse `SetLocLabels` and publishes the selected entity once; it does not publish a model-driven app or add Commands to All-In-One.
+
+### Entity Messages
+
+**13. Entity Messages** loads Dataverse table messages/display strings from the selected solution translation package, filtered to the selected entity. This uses the official translation export/import flow rather than directly patching `displaystring` records. Save re-exports a fresh translation package, applies only changed message rows, imports translations, and publishes the selected entity so the imported messages become visible. Entity Messages is intentionally not included in All-In-One.
 
 ### AI Translation
 

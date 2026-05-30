@@ -1194,7 +1194,7 @@
             currentHandler = ModernCommandHandler;
         }
         else if (XrmTranslator.GetType() === "entityMessages") {
-            currentHandler = CreatePlannedTypeHandler("13. Entity Messages");
+            currentHandler = EntityMessageHandler;
         }
         else if (XrmTranslator.GetType() === "content") {
             w2ui.grid.show.selectColumn = true;
@@ -3111,7 +3111,7 @@
             '<li><b>10. Business Rules</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Rules &rarr; Load &rarr; Translate &rarr; Save. Save temporarily deactivates each changed rule, patches workflow XAML, then reactivates it.</li>' +
             '<li><b>11. Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load &rarr; Translate &rarr; Save. Save downloads a backup first, then starts Publish XML asynchronously.</li>' +
             '<li><b>12. Commands</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Commands &rarr; Load &rarr; Translate &rarr; Save. Loads modern command designer appaction labels and publishes the selected entity.</li>' +
-            '<li><b>13. Entity Messages</b> — Planned. Menu placeholder only; implementation is not available yet.</li>' +
+            '<li><b>13. Entity Messages</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Entity Messages &rarr; Load &rarr; Translate &rarr; Save. Loads table messages/display strings from the selected solution translation package, imports changed translations, then publishes the selected entity.</li>' +
             '<li><b>14. Content Snippets</b> — Solution &rarr; Entity &rarr; Adx_contentsnippet &rarr; Type &rarr; 14. Content Snippets &rarr; Load &rarr; Translate &rarr; Save</li>' +
             '</ul>' +
             '<b>Entity-independent types</b> (set Entity to None):' +
