@@ -68,6 +68,14 @@ powershell -ExecutionPolicy Bypass -File scripts\check-ai-config.ps1
 `scripts\sync-ai-config.ps1` regenerates Claude project skills and GitHub Copilot prompt wrappers from `.agents/skills/`.
 `scripts\check-ai-config.ps1` fails when adapters drift, deprecated files reappear, required local-secret files are not ignored, or tracked files contain DevKit/SAS secret-like values. CI runs the check through `.github/workflows/ai-config.yml`.
 
+## Code Quality
+
+Run quality gates after code edits:
+
+- Run `npm run lint` after JavaScript or test changes.
+- Run `npm run format -- <changed-files>` for files edited in the current task. Do not run repo-wide formatting unless the user explicitly asks for it.
+- Run `npm test` for unit test verification, and `npm run test:coverage` when coverage is part of the requested work.
+
 ### /pl-ai-sync
 Regenerate and validate AI tool adapters from canonical `.agents/skills/pl-*/SKILL.md`. Do not commit or push automatically.
 

@@ -28,27 +28,30 @@ function createGrid() {
 }
 
 function optionSet(overrides) {
-  return Object.assign({
-    MetadataId: "os1",
-    Name: "pl_globalchoice",
-    IsCustomizable: { Value: true },
-    IsGlobal: true,
-    Options: [
-      {
-        Value: 222220000,
-        Label: { LocalizedLabels: [{ LanguageCode: 1033, Label: "A" }] },
-        Description: { LocalizedLabels: [{ LanguageCode: 1041, Label: "Desc JA" }] }
-      },
-      {
-        Value: 222220001,
-        Label: { LocalizedLabels: [{ LanguageCode: 1041, Label: "B" }] },
-        Description: { LocalizedLabels: [] }
-      }
-    ],
-    Description: { LocalizedLabels: [{ LanguageCode: 1033, Label: "Parent desc" }] },
-    "@odata.context": "context",
-    "@odata.etag": "etag"
-  }, overrides || {});
+  return Object.assign(
+    {
+      MetadataId: "os1",
+      Name: "pl_globalchoice",
+      IsCustomizable: { Value: true },
+      IsGlobal: true,
+      Options: [
+        {
+          Value: 222220000,
+          Label: { LocalizedLabels: [{ LanguageCode: 1033, Label: "A" }] },
+          Description: { LocalizedLabels: [{ LanguageCode: 1041, Label: "Desc JA" }] }
+        },
+        {
+          Value: 222220001,
+          Label: { LocalizedLabels: [{ LanguageCode: 1041, Label: "B" }] },
+          Description: { LocalizedLabels: [] }
+        }
+      ],
+      Description: { LocalizedLabels: [{ LanguageCode: 1033, Label: "Parent desc" }] },
+      "@odata.context": "context",
+      "@odata.etag": "etag"
+    },
+    overrides || {}
+  );
 }
 
 function createBatchRequest(options) {
@@ -71,15 +74,27 @@ function createHarness(options) {
     baseLanguage: Object.prototype.hasOwnProperty.call(options, "baseLanguage") ? options.baseLanguage : 1033,
     metadata: [],
     ComponentType: { OptionSet: 9 },
-    GetComponent: vi.fn(function () { return state.component; }),
-    GetGrid: vi.fn(function () { return grid; }),
-    GetSolution: vi.fn(function () { return state.solution; }),
+    GetComponent: vi.fn(function () {
+      return state.component;
+    }),
+    GetGrid: vi.fn(function () {
+      return grid;
+    }),
+    GetSolution: vi.fn(function () {
+      return state.solution;
+    }),
     AddSummary: vi.fn(),
     EnableLoadAndSave: vi.fn(),
     errorHandler: vi.fn(),
-    GetAllRecords: vi.fn(function () { return state.records; }),
-    GetAttributeById: vi.fn(function (id) { return state.metadataById[id] || null; }),
-    GetCurrentToolbarTypeText: vi.fn(function () { return "18. Global Option Sets"; }),
+    GetAllRecords: vi.fn(function () {
+      return state.records;
+    }),
+    GetAttributeById: vi.fn(function (id) {
+      return state.metadataById[id] || null;
+    }),
+    GetCurrentToolbarTypeText: vi.fn(function () {
+      return "18. Global Option Sets";
+    }),
     ExecuteChangeSetBatches: vi.fn(function (updates, batchOptions) {
       var requests = updates.map(function (update, index) {
         return batchOptions.buildRequest(update, { contentId: index + 1 });
@@ -109,13 +124,21 @@ function createHarness(options) {
 
   var webApiClient = {
     Promise: Promise,
-    Retrieve: vi.fn(options.retrieve || function () {
-      return Promise.resolve({ value: [{ objectid: "os1" }] });
+    Retrieve: vi.fn(
+      options.retrieve ||
+        function () {
+          return Promise.resolve({ value: [{ objectid: "os1" }] });
+        }
+    ),
+    SendRequest: vi.fn(
+      options.sendRequest ||
+        function () {
+          return Promise.resolve(optionSet());
+        }
+    ),
+    GetApiUrl: vi.fn(function () {
+      return "https://example.crm/api/data/v9.2/";
     }),
-    SendRequest: vi.fn(options.sendRequest || function () {
-      return Promise.resolve(optionSet());
-    }),
-    GetApiUrl: vi.fn(function () { return "https://example.crm/api/data/v9.2/"; }),
     BatchRequest: createBatchRequest,
     Requests: {
       PublishXmlRequest: {
@@ -145,7 +168,7 @@ function createHarness(options) {
 }
 
 async function loadHandler(harness) {
-  await import("../js/GlobalOptionSetHandler.js?test=" + (++importCounter));
+  await import("../js/GlobalOptionSetHandler.js?test=" + ++importCounter);
   return {
     handler: globalThis.window.GlobalOptionSetHandler,
     harness: harness
@@ -215,7 +238,9 @@ describe("GlobalOptionSetHandler.Load", function () {
       component: "DisplayText",
       retrieve: function () {
         return Promise.resolve({
-          value: responses.map(function (_, index) { return { objectid: "id" + index }; })
+          value: responses.map(function (_, index) {
+            return { objectid: "id" + index };
+          })
         });
       },
       sendRequest: function () {
@@ -230,7 +255,11 @@ describe("GlobalOptionSetHandler.Load", function () {
       queryParams: "?$select=objectid&$filter=_solutionid_value eq solution-1 and componenttype eq 9"
     });
     expect(context.WebApiClient.SendRequest).toHaveBeenCalledTimes(5);
-    expect(context.XrmTranslator.metadata.map(function (os) { return os.Name; })).toEqual(["pl_boolean", "pl_picklist"]);
+    expect(
+      context.XrmTranslator.metadata.map(function (os) {
+        return os.Name;
+      })
+    ).toEqual(["pl_boolean", "pl_picklist"]);
 
     var records = context.grid.add.mock.calls[0][0];
     expect(records[0].schemaName).toBe("pl_boolean");
@@ -251,14 +280,23 @@ describe("GlobalOptionSetHandler.Load", function () {
     var context = await setup({
       component: "Description",
       retrieve: function () {
-        return Promise.resolve({ value: [{ objectid: "empty" }, { objectid: "withoutDescription" }, { objectid: "withOption" }] });
+        return Promise.resolve({
+          value: [{ objectid: "empty" }, { objectid: "withoutDescription" }, { objectid: "withOption" }]
+        });
       },
       sendRequest: function (_, url) {
         if (url.indexOf("empty") !== -1) {
           return Promise.resolve(optionSet({ MetadataId: "empty", Name: "pl_empty", Options: [] }));
         }
         if (url.indexOf("withoutDescription") !== -1) {
-          return Promise.resolve(optionSet({ MetadataId: "withoutDescription", Name: "pl_without_description", Description: null, Options: undefined }));
+          return Promise.resolve(
+            optionSet({
+              MetadataId: "withoutDescription",
+              Name: "pl_without_description",
+              Description: null,
+              Options: undefined
+            })
+          );
         }
         return Promise.resolve(optionSet({ MetadataId: "withOption", Name: "pl_with_option" }));
       }
@@ -267,9 +305,15 @@ describe("GlobalOptionSetHandler.Load", function () {
     await context.handler.Load();
 
     var records = context.grid.add.mock.calls[0][0];
-    var empty = records.find(function (record) { return record.schemaName === "pl_empty"; });
-    var withoutDescription = records.find(function (record) { return record.schemaName === "pl_without_description"; });
-    var withOption = records.find(function (record) { return record.schemaName === "pl_with_option"; });
+    var empty = records.find(function (record) {
+      return record.schemaName === "pl_empty";
+    });
+    var withoutDescription = records.find(function (record) {
+      return record.schemaName === "pl_without_description";
+    });
+    var withOption = records.find(function (record) {
+      return record.schemaName === "pl_with_option";
+    });
 
     expect(records).toHaveLength(3);
     expect(empty._emptyEditablePlaceholder).toBe("Add description");
@@ -304,16 +348,18 @@ describe("GlobalOptionSetHandler.Load", function () {
         return Promise.resolve({ value: [{ objectid: "other" }] });
       },
       sendRequest: function () {
-        return Promise.resolve(optionSet({
-          MetadataId: "other",
-          Name: "pl_other",
-          Options: [
-            {
-              Value: 222220000,
-              Other: { LocalizedLabels: [{ LanguageCode: 1033, Label: "Other text" }] }
-            }
-          ]
-        }));
+        return Promise.resolve(
+          optionSet({
+            MetadataId: "other",
+            Name: "pl_other",
+            Options: [
+              {
+                Value: 222220000,
+                Other: { LocalizedLabels: [{ LanguageCode: 1033, Label: "Other text" }] }
+              }
+            ]
+          })
+        );
       }
     });
 
@@ -333,23 +379,24 @@ describe("GlobalOptionSetHandler.Load", function () {
       },
       sendRequest: function (_, url) {
         if (url.indexOf("unnamed") !== -1) {
-          return Promise.resolve(optionSet({
-            MetadataId: "unnamed",
-            Name: undefined,
-            Options: [
-              { Value: 1 },
-              { Value: 2, Label: {} }
-            ]
-          }));
+          return Promise.resolve(
+            optionSet({
+              MetadataId: "unnamed",
+              Name: undefined,
+              Options: [{ Value: 1 }, { Value: 2, Label: {} }]
+            })
+          );
         }
         if (url.indexOf("boolean") !== -1) {
-          return Promise.resolve(optionSet({
-            MetadataId: "boolean",
-            Name: "pl_boolean_fallback",
-            Options: undefined,
-            TrueOption: { Value: 1 },
-            FalseOption: { Value: 0, Label: {} }
-          }));
+          return Promise.resolve(
+            optionSet({
+              MetadataId: "boolean",
+              Name: "pl_boolean_fallback",
+              Options: undefined,
+              TrueOption: { Value: 1 },
+              FalseOption: { Value: 0, Label: {} }
+            })
+          );
         }
         return Promise.resolve(optionSet({ MetadataId: "named", Name: "pl_named", Options: [] }));
       }
@@ -358,8 +405,12 @@ describe("GlobalOptionSetHandler.Load", function () {
     await context.handler.Load();
 
     var records = context.grid.add.mock.calls[0][0];
-    var unnamed = records.find(function (record) { return record.recid === "unnamed"; });
-    var boolean = records.find(function (record) { return record.recid === "boolean"; });
+    var unnamed = records.find(function (record) {
+      return record.recid === "unnamed";
+    });
+    var boolean = records.find(function (record) {
+      return record.recid === "boolean";
+    });
     expect(unnamed.schemaName).toBeUndefined();
     expect(unnamed.w2ui.children[0]["1033"]).toBeUndefined();
     expect(unnamed.w2ui.children[1]["1033"]).toBeUndefined();
@@ -388,25 +439,23 @@ describe("GlobalOptionSetHandler.Load", function () {
       baseLanguage: 1041,
       grid: grid,
       metadataById: { os1: option },
-      records: [
-        { recid: "os1|1", schemaName: "1", w2ui: { changes: { "1041": "" } } }
-      ]
+      records: [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 1041: "" } } }]
     });
 
     await expect(context.handler.Save()).rejects.toThrow("Japanese (ja-jp) (1041)");
 
     context.XrmTranslator.baseLanguage = 1066;
-    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { "1066": "" } } }];
+    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 1066: "" } } }];
     await expect(context.handler.Save()).rejects.toThrow("Vietnamese (vi-vn) (1066)");
 
     grid.columns.push({ field: "7777" });
     context.XrmTranslator.baseLanguage = 7777;
-    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { "7777": "" } } }];
+    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 7777: "" } } }];
     await expect(context.handler.Save()).rejects.toThrow("base language (7777)");
 
     grid.columns = undefined;
     context.XrmTranslator.baseLanguage = 8888;
-    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { "8888": "" } } }];
+    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 8888: "" } } }];
     await expect(context.handler.Save()).rejects.toThrow("base language (8888)");
   });
 
@@ -417,12 +466,14 @@ describe("GlobalOptionSetHandler.Load", function () {
         return Promise.resolve({ value: [{ objectid: "description" }] });
       },
       sendRequest: function () {
-        return Promise.resolve(optionSet({
-          MetadataId: "description",
-          Name: "pl_description",
-          Description: {},
-          Options: []
-        }));
+        return Promise.resolve(
+          optionSet({
+            MetadataId: "description",
+            Name: "pl_description",
+            Description: {},
+            Options: []
+          })
+        );
       }
     });
 
@@ -451,15 +502,15 @@ describe("GlobalOptionSetHandler.Load", function () {
 describe("GlobalOptionSetHandler.Save", function () {
   it("returns no option set names when no valid changes exist", async function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
-    var inheritedChanges = Object.create({ "1041": "Inherited" });
+    var inheritedChanges = Object.create({ 1041: "Inherited" });
     var context = await setup({
       component: "Description",
       metadataById: { os1: option },
       records: [
         {},
-        { recid: "missing|222220000", schemaName: "222220000", w2ui: { changes: { "1041": "X" } } },
+        { recid: "missing|222220000", schemaName: "222220000", w2ui: { changes: { 1041: "X" } } },
         { recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: inheritedChanges } },
-        { recid: "os1|bad", schemaName: "not-a-number", w2ui: { changes: { "1041": "X" } } }
+        { recid: "os1|bad", schemaName: "not-a-number", w2ui: { changes: { 1041: "X" } } }
       ]
     });
 
@@ -476,8 +527,12 @@ describe("GlobalOptionSetHandler.Save", function () {
       component: "DisplayText",
       metadataById: { os1: option },
       records: [
-        { recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { "1033": "A updated", "1041": "", "1066": null } } },
-        { recid: "os1|222220001", schemaName: "222220001", w2ui: { changes: { "1041": "B updated" } } }
+        {
+          recid: "os1|222220000",
+          schemaName: "222220000",
+          w2ui: { changes: { 1033: "A updated", 1041: "", 1066: null } }
+        },
+        { recid: "os1|222220001", schemaName: "222220001", w2ui: { changes: { 1041: "B updated" } } }
       ]
     });
 
@@ -511,7 +566,10 @@ describe("GlobalOptionSetHandler.Save", function () {
       url: "https://example.crm/api/data/v9.2/UpdateOptionValue"
     });
     expect(context.WebApiClient.Requests.PublishXmlRequest.with).toHaveBeenCalledWith({
-      payload: { ParameterXml: "<importexportxml><optionsets><optionset>pl_globalchoice</optionset></optionsets></importexportxml>" }
+      payload: {
+        ParameterXml:
+          "<importexportxml><optionsets><optionset>pl_globalchoice</optionset></optionsets></importexportxml>"
+      }
     });
     expect(context.WebApiClient.Execute).toHaveBeenCalledOnce();
     expect(context.XrmTranslator.RunAsBaseLanguage).toHaveBeenCalledOnce();
@@ -522,9 +580,7 @@ describe("GlobalOptionSetHandler.Save", function () {
     var context = await setup({
       component: "DisplayText",
       metadataById: { os1: option },
-      records: [
-        { recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { "1033": "   " } } }
-      ]
+      records: [{ recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { 1033: "   " } } }]
     });
 
     await expect(context.handler.Save()).rejects.toThrow(
@@ -543,9 +599,9 @@ describe("GlobalOptionSetHandler.Save", function () {
         unknown: optionSet({ MetadataId: "unknown", Name: "" })
       },
       records: [
-        { recid: "same", schemaName: "pl_same", w2ui: { changes: { "9999": "" } } },
-        { recid: "optionOnly|abc", schemaName: null, w2ui: { changes: { "9999": "" } } },
-        { recid: "unknown|abc", schemaName: null, w2ui: { changes: { "9999": "" } } }
+        { recid: "same", schemaName: "pl_same", w2ui: { changes: { 9999: "" } } },
+        { recid: "optionOnly|abc", schemaName: null, w2ui: { changes: { 9999: "" } } },
+        { recid: "unknown|abc", schemaName: null, w2ui: { changes: { 9999: "" } } }
       ]
     });
 
@@ -570,9 +626,7 @@ describe("GlobalOptionSetHandler.Save", function () {
       component: "DisplayText",
       baseLanguage: null,
       metadataById: { os1: option },
-      records: [
-        { recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { "1033": "" } } }
-      ]
+      records: [{ recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { 1033: "" } } }]
     });
 
     await context.handler.Save();
@@ -588,8 +642,8 @@ describe("GlobalOptionSetHandler.Save", function () {
       component: "Description",
       metadataById: { os1: option },
       records: [
-        { recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { "1033": "", "1041": "Parent JA" } } },
-        { recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { "1041": "" } } }
+        { recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { 1033: "", 1041: "Parent JA" } } },
+        { recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { 1041: "" } } }
       ],
       retrieve: function () {
         return Promise.resolve({ value: [] });
@@ -628,9 +682,7 @@ describe("GlobalOptionSetHandler.Save", function () {
     var context = await setup({
       component: "Description",
       metadataById: { os1: option },
-      records: [
-        { recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { "1041": "Parent JA" } } }
-      ]
+      records: [{ recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { 1041: "Parent JA" } } }]
     });
 
     var result = await context.handler.Save();
@@ -639,7 +691,10 @@ describe("GlobalOptionSetHandler.Save", function () {
     expect(context.state.changeSetRequests).toHaveLength(1);
     expect(context.state.changeSetRequests[0].batchOptions.batchNamePrefix).toBe("batch_updateglobaloptionset");
     expect(context.WebApiClient.Requests.PublishXmlRequest.with).toHaveBeenCalledWith({
-      payload: { ParameterXml: "<importexportxml><optionsets><optionset>pl_globalchoice</optionset></optionsets></importexportxml>" }
+      payload: {
+        ParameterXml:
+          "<importexportxml><optionsets><optionset>pl_globalchoice</optionset></optionsets></importexportxml>"
+      }
     });
   });
 
@@ -648,9 +703,7 @@ describe("GlobalOptionSetHandler.Save", function () {
     var context = await setup({
       component: "Description",
       metadataById: { os1: option },
-      records: [
-        { recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { "1041": "Parent JA" } } }
-      ]
+      records: [{ recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { 1041: "Parent JA" } } }]
     });
 
     await context.handler.Save();
@@ -683,9 +736,7 @@ describe("GlobalOptionSetHandler.Save", function () {
     var context = await setup({
       component: "DisplayText",
       metadataById: { os1: option },
-      records: [
-        { recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { "1041": "Ignored parent label" } } }
-      ]
+      records: [{ recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { 1041: "Ignored parent label" } } }]
     });
 
     var result = await context.handler.Save();
@@ -700,9 +751,9 @@ describe("GlobalOptionSetHandler.Save", function () {
       component: "Other",
       metadataById: { os1: option },
       records: [
-        { recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { "1041": "" } } },
-        { recid: "os1|222220002", schemaName: "222220002", w2ui: { changes: { "1041": null } } },
-        { recid: "os1|222220001", schemaName: "222220001", w2ui: { changes: { "1041": "Other value" } } }
+        { recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { 1041: "" } } },
+        { recid: "os1|222220002", schemaName: "222220002", w2ui: { changes: { 1041: null } } },
+        { recid: "os1|222220001", schemaName: "222220001", w2ui: { changes: { 1041: "Other value" } } }
       ]
     });
 
