@@ -866,15 +866,6 @@
         return !!solutionId && solutionId !== "all";
     }
 
-    function IsDebugToolbarEnabled() {
-        try {
-            return sessionStorage.getItem("DataverseLabelTranslatorDebug") === "true";
-        }
-        catch (e) {
-            return false;
-        }
-    }
-
     function SetToolbarItemsEnabled(ids, enabled) {
         var toolbar = GetToolbar();
         if (!toolbar) {
@@ -3692,15 +3683,6 @@
 
         toolbarItems.push({ type: 'spacer' });
 
-        if (IsDebugToolbarEnabled()) {
-            toolbarItems.push({ type: 'button', id: 'debugAutofill', text: 'DEBUG', tooltip: 'Apply debug translations', icon: 'icon-debug', onClick: function () {
-                TranslationHandler.ApplyDebugTranslations();
-            } });
-            toolbarItems.push({ type: 'button', id: 'debugEmpty', text: 'DEBUG EMPTY', tooltip: 'Clear translated columns', icon: 'icon-eraser', onClick: function () {
-                TranslationHandler.ApplyDebugEmptyTranslations();
-            } });
-        }
-
         toolbarItems.push(
             { type: 'button', id: 'about', text: '', tooltip: 'About', icon: 'icon-about' },
             { type: 'button', id: 'help', text: '', tooltip: 'Help', icon:'icon-help' }
@@ -3837,7 +3819,7 @@
             OpenFindAndReplaceDialog();
         } });
 
-        // Move Save button to the far right (after DEBUG)
+        // Move Save button to the far right.
         var saveBtn = gridToolbar.get('w2ui-save');
         if (saveBtn) {
             saveBtn.text = 'Save';
