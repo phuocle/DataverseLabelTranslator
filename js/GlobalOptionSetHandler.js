@@ -11,9 +11,55 @@
         return component;
     }
 
+    function IsDescriptionComponent() {
+        return XrmTranslator.GetComponent() === "Description";
+    }
+
+    function AddLocalizedLabelsToRecord(record, localizedLabels) {
+        localizedLabels = localizedLabels || [];
+
+        for (var i = 0; i < localizedLabels.length; i++) {
+            record[localizedLabels[i].LanguageCode.toString()] = localizedLabels[i].Label;
+        }
+    }
+
+    function GetChangedLabels(changes, allowEmpty) {
+        var labels = [];
+
+        for (var change in changes) {
+            if (!changes.hasOwnProperty(change)) {
+                continue;
+            }
+
+            if (changes[change] == null || (!allowEmpty && !changes[change])) {
+                continue;
+            }
+
+            labels.push({ LanguageCode: change, Label: changes[change] });
+        }
+
+        return labels;
+    }
+
+    function BuildOptionSetDescriptionUpdate(optionSet, labels) {
+        var update = JSON.parse(JSON.stringify(optionSet));
+        delete update["@odata.context"];
+        delete update["@odata.etag"];
+
+        update.Description = update.Description || {};
+        update.Description.LocalizedLabels = labels;
+
+        return {
+            metadataId: optionSet.MetadataId,
+            optionSetName: optionSet.Name,
+            payload: update
+        };
+    }
+
     function GetUpdates() {
         var records = XrmTranslator.GetAllRecords();
-        var updates = [];
+        var optionValueUpdates = [];
+        var optionSetDescriptionUpdates = [];
 
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
@@ -29,26 +75,34 @@
                 continue;
             }
 
+            var changes = record.w2ui.changes;
+            var labels;
+
+            if (parts.length === 1) {
+                if (!IsDescriptionComponent()) {
+                    continue;
+                }
+
+                labels = GetChangedLabels(changes, true);
+                if (labels.length < 1) {
+                    continue;
+                }
+
+                optionSetDescriptionUpdates.push(BuildOptionSetDescriptionUpdate(optionSet, labels));
+                continue;
+            }
+
             var optionValue = parseInt(record.schemaName);
             if (isNaN(optionValue)) {
                 continue;
             }
 
-            var changes = record.w2ui.changes;
-            var labels = [];
-
-            for (var change in changes) {
-                if (!changes.hasOwnProperty(change) || !changes[change]) {
-                    continue;
-                }
-                labels.push({ LanguageCode: change, Label: changes[change] });
-            }
-
+            labels = GetChangedLabels(changes, false);
             if (labels.length < 1) {
                 continue;
             }
 
-            updates.push({
+            optionValueUpdates.push({
                 Value: optionValue,
                 [GetComponent()]: { LocalizedLabels: labels },
                 MergeLabels: true,
@@ -56,13 +110,17 @@
             });
         }
 
-        return updates;
+        return {
+            optionValueUpdates: optionValueUpdates,
+            optionSetDescriptionUpdates: optionSetDescriptionUpdates
+        };
     }
 
     function FillTable() {
         var grid = XrmTranslator.GetGrid();
         grid.clear();
         var records = [];
+        var isDescription = IsDescriptionComponent();
 
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var optionSet = XrmTranslator.metadata[i];
@@ -70,39 +128,43 @@
             var parent = {
                 recid: optionSet.MetadataId,
                 schemaName: optionSet.Name,
-                w2ui: { editable: false, children: [] }
+                w2ui: { editable: isDescription, children: [] }
             };
+
+            if (isDescription && optionSet.Description) {
+                AddLocalizedLabelsToRecord(parent, optionSet.Description.LocalizedLabels);
+            }
 
             if (!!optionSet.TrueOption) {
                 var options = [optionSet.TrueOption, optionSet.FalseOption];
                 for (var j = 0; j < options.length; j++) {
                     var option = options[j];
-                    var labels = option[GetComponent()].LocalizedLabels;
+                    var component = option[GetComponent()] || {};
+                    var labels = component.LocalizedLabels || [];
                     var child = {
                         recid: optionSet.MetadataId + idSeparator + option.Value,
                         schemaName: option.Value.toString()
                     };
-                    for (var k = 0; k < labels.length; k++) {
-                        child[labels[k].LanguageCode.toString()] = labels[k].Label;
-                    }
+                    AddLocalizedLabelsToRecord(child, labels);
                     parent.w2ui.children.push(child);
                 }
             }
             else {
                 var options = optionSet.Options;
                 if (!options || options.length === 0) {
-                    continue;
+                    if (!isDescription) {
+                        continue;
+                    }
                 }
-                for (var j = 0; j < options.length; j++) {
+                for (var j = 0; options && j < options.length; j++) {
                     var option = options[j];
-                    var labels = option[GetComponent()].LocalizedLabels;
+                    var component = option[GetComponent()] || {};
+                    var labels = component.LocalizedLabels || [];
                     var child = {
                         recid: optionSet.MetadataId + idSeparator + option.Value,
                         schemaName: option.Value.toString()
                     };
-                    for (var k = 0; k < labels.length; k++) {
-                        child[labels[k].LanguageCode.toString()] = labels[k].Label;
-                    }
+                    AddLocalizedLabelsToRecord(child, labels);
                     parent.w2ui.children.push(child);
                 }
             }
@@ -170,33 +232,65 @@
         return XrmTranslator.RunTypeSaveFlow({
             saveAction: function () {
                 var updates = GetUpdates();
+                var optionValueUpdates = updates.optionValueUpdates || [];
+                var optionSetDescriptionUpdates = updates.optionSetDescriptionUpdates || [];
 
-                if (!updates || updates.length === 0) {
+                if (optionValueUpdates.length === 0 && optionSetDescriptionUpdates.length === 0) {
                     return {
-                        optionSetNames: [],
-                        optionSetIds: []
+                        optionSetNames: []
                     };
                 }
 
                 var optionSetNames = [];
-                updates.forEach(function (u) {
+                optionValueUpdates.forEach(function (u) {
                     if (optionSetNames.indexOf(u.OptionSetName) === -1) {
                         optionSetNames.push(u.OptionSetName);
                     }
                 });
-
-                return XrmTranslator.ExecuteChangeSetBatches(updates, {
-                    progressLabel: "Saving " + XrmTranslator.GetCurrentToolbarTypeText(),
-                    batchNamePrefix: "batch_updateglobaloptionvalue",
-                    changeSetNamePrefix: "changeset_updateglobaloptionvalue",
-                    buildRequest: function(payload) {
-                        return new WebApiClient.BatchRequest({
-                            method: "POST",
-                            url: WebApiClient.GetApiUrl() + "UpdateOptionValue",
-                            payload: payload
-                        });
+                optionSetDescriptionUpdates.forEach(function (u) {
+                    if (optionSetNames.indexOf(u.optionSetName) === -1) {
+                        optionSetNames.push(u.optionSetName);
                     }
-                })
+                });
+
+                var saveChain = Promise.resolve();
+
+                if (optionSetDescriptionUpdates.length > 0) {
+                    saveChain = saveChain.then(function () {
+                        return XrmTranslator.ExecuteChangeSetBatches(optionSetDescriptionUpdates, {
+                            progressLabel: "Saving " + XrmTranslator.GetCurrentToolbarTypeText(),
+                            batchNamePrefix: "batch_updateglobaloptionset",
+                            changeSetNamePrefix: "changeset_updateglobaloptionset",
+                            buildRequest: function(update) {
+                                return new WebApiClient.BatchRequest({
+                                    method: "PUT",
+                                    url: WebApiClient.GetApiUrl() + "GlobalOptionSetDefinitions(" + update.metadataId + ")",
+                                    payload: update.payload,
+                                    headers: [{ key: "MSCRM.MergeLabels", value: "true" }]
+                                });
+                            }
+                        });
+                    });
+                }
+
+                if (optionValueUpdates.length > 0) {
+                    saveChain = saveChain.then(function () {
+                        return XrmTranslator.ExecuteChangeSetBatches(optionValueUpdates, {
+                            progressLabel: "Saving " + XrmTranslator.GetCurrentToolbarTypeText(),
+                            batchNamePrefix: "batch_updateglobaloptionvalue",
+                            changeSetNamePrefix: "changeset_updateglobaloptionvalue",
+                            buildRequest: function(payload) {
+                                return new WebApiClient.BatchRequest({
+                                    method: "POST",
+                                    url: WebApiClient.GetApiUrl() + "UpdateOptionValue",
+                                    payload: payload
+                                });
+                            }
+                        });
+                    });
+                }
+
+                return saveChain
                 .then(function () {
                     return {
                         optionSetNames: optionSetNames
