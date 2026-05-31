@@ -156,10 +156,7 @@
                     }
                 });
             }
-        })
-            .then(function () {
-                return XrmTranslator.AddToSolution(updates.map(function(u) { return u.recid; }), XrmTranslator.ComponentType.SavedQueryVisualization);
-            });
+        });
     }
 
     ChartHandler.Save = function () {

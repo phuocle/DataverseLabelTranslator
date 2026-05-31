@@ -1,10 +1,6 @@
 (function (RibbonHandler, undefined) {
     "use strict";
 
-    var BASE_SOLUTION_UNIQUE_NAME = "DataverseLabelTranslator";
-    var DATA_SOLUTION_UNIQUE_NAME = "DataverseLabelTranslatorData";
-    var HELPER_SOLUTION_DISPLAY_NAME = "translate-ribbon";
-    var HELPER_SOLUTION_UNIQUE_NAME = "translate_ribbon";
     var idSeparator = "|";
     var translatableAttributes = ["LabelText", "ToolTipTitle", "ToolTipDescription"];
     var propertyDisplayNames = {
@@ -16,162 +12,24 @@
     var ribbonLoadReleaseTimer = null;
     var ribbonLoadStatusSuppressed = false;
 
-    function escapeODataString(value) {
-        return String(value || "").replace(/'/g, "''");
-    }
+    function getSelectedSolution() {
+        var solutionId = XrmTranslator.GetSolution();
 
-    function parseGuidFromCreateResponse(createResponse) {
-        if (!createResponse) {
-            return null;
+        if (!solutionId || solutionId === "all") {
+            return Promise.reject(new Error("Please select a solution before loading ribbon labels."));
         }
 
-        if (typeof createResponse === "string") {
-            var match = createResponse.match(/[0-9a-fA-F-]{36}/);
-            return match ? match[0] : null;
-        }
-
-        return createResponse.id || null;
-    }
-
-    function normalizePublisherPrefix(prefix) {
-        var sanitized = String(prefix || "new")
-            .replace(/[^A-Za-z0-9]/g, "")
-            .toLowerCase();
-
-        if (!sanitized) {
-            return "new";
-        }
-
-        return sanitized.substring(0, 8);
-    }
-
-    function buildPublisherPrefixCandidates(basePrefix) {
-        var primary = normalizePublisherPrefix(basePrefix);
-        var secondary = normalizePublisherPrefix(primary + "d");
-
-        if (primary === secondary) {
-            return [primary];
-        }
-
-        return [primary, secondary];
-    }
-
-    function findSolution(uniqueName) {
         return WebApiClient.Retrieve({
             entityName: "solution",
-            queryParams: "?$select=solutionid,uniquename,friendlyname,_publisherid_value,version&$filter=uniquename eq '" + escapeODataString(uniqueName) + "'"
+            entityId: solutionId,
+            queryParams: "?$select=solutionid,uniquename,friendlyname,version"
         })
-        .then(function (response) {
-            return response && response.value && response.value.length > 0 ? response.value[0] : null;
-        });
-    }
-
-    function findBaseSolution() {
-        return findSolution(BASE_SOLUTION_UNIQUE_NAME)
-        .then(function (solution) {
-            if (!solution) {
-                throw new Error("Base solution " + BASE_SOLUTION_UNIQUE_NAME + " not found.");
-            }
-
-            return solution;
-        });
-    }
-
-    function getPublisherById(publisherId) {
-        return WebApiClient.Retrieve({
-            entityName: "publisher",
-            entityId: publisherId,
-            queryParams: "?$select=publisherid,uniquename,friendlyname,customizationprefix"
-        });
-    }
-
-    function findPublisherByUniqueName(uniqueName) {
-        return WebApiClient.Retrieve({
-            entityName: "publisher",
-            queryParams: "?$select=publisherid,uniquename,friendlyname,customizationprefix&$filter=uniquename eq '" + escapeODataString(uniqueName) + "'"
-        })
-        .then(function (response) {
-            return response && response.value && response.value.length > 0 ? response.value[0] : null;
-        });
-    }
-
-    function tryCreateDataPublisher(uniqueName, friendlyName, prefixCandidates, index) {
-        if (index >= prefixCandidates.length) {
-            throw new Error("Failed to create data publisher for ribbon helper solution.");
-        }
-
-        return WebApiClient.Create({
-            entityName: "publisher",
-            entity: {
-                uniquename: uniqueName,
-                friendlyname: friendlyName,
-                customizationprefix: prefixCandidates[index]
-            }
-        })
-        .then(function (createResponse) {
-            var publisherId = parseGuidFromCreateResponse(createResponse);
-            return publisherId ? getPublisherById(publisherId) : findPublisherByUniqueName(uniqueName);
-        })
-        .catch(function () {
-            return tryCreateDataPublisher(uniqueName, friendlyName, prefixCandidates, index + 1);
-        });
-    }
-
-    function ensureDataPublisher(basePublisher) {
-        var dataPublisherUniqueName = (basePublisher.uniquename || BASE_SOLUTION_UNIQUE_NAME) + "Data";
-        var dataPublisherFriendlyName = (basePublisher.friendlyname || BASE_SOLUTION_UNIQUE_NAME) + " Data";
-
-        return findPublisherByUniqueName(dataPublisherUniqueName)
-        .then(function (existingPublisher) {
-            if (existingPublisher) {
-                return existingPublisher;
-            }
-
-            return tryCreateDataPublisher(
-                dataPublisherUniqueName,
-                dataPublisherFriendlyName,
-                buildPublisherPrefixCandidates(basePublisher.customizationprefix),
-                0);
-        });
-    }
-
-    function resolveRuntimePublisher() {
-        return findSolution(DATA_SOLUTION_UNIQUE_NAME)
-        .then(function (dataSolution) {
-            if (dataSolution && dataSolution._publisherid_value) {
-                return getPublisherById(dataSolution._publisherid_value);
-            }
-
-            return findBaseSolution()
-            .then(function (baseSolution) {
-                return getPublisherById(baseSolution._publisherid_value);
-            })
-            .then(ensureDataPublisher);
-        });
-    }
-
-    function ensureHelperSolution() {
-        return findSolution(HELPER_SOLUTION_UNIQUE_NAME)
         .then(function (solution) {
             if (solution) {
                 return solution;
             }
 
-            return resolveRuntimePublisher()
-            .then(function (publisher) {
-                return WebApiClient.Create({
-                    entityName: "solution",
-                    entity: {
-                        friendlyname: HELPER_SOLUTION_DISPLAY_NAME,
-                        uniquename: HELPER_SOLUTION_UNIQUE_NAME,
-                        version: "1.0.0.0",
-                        "publisherid@odata.bind": "/publishers(" + publisher.publisherid + ")"
-                    }
-                });
-            })
-            .then(function () {
-                return findSolution(HELPER_SOLUTION_UNIQUE_NAME);
-            });
+            throw new Error("Selected solution was not found.");
         });
     }
 
@@ -194,32 +52,6 @@
             logicalName: String(selected || "").toLowerCase(),
             metadataId: XrmTranslator.GetEntityId()
         };
-    }
-
-    function getSolutionComponents(solutionId) {
-        return WebApiClient.Retrieve({
-            entityName: "solutioncomponent",
-            queryParams: "?$select=objectid,componenttype&$filter=_solutionid_value eq " + solutionId
-        })
-        .then(function (response) {
-            return response && response.value ? response.value : [];
-        });
-    }
-
-    function removeSolutionComponent(component) {
-        if (!component.objectid || component.componenttype == null) {
-            return Promise.resolve(null);
-        }
-
-        return WebApiClient.Execute(WebApiClient.Requests.RemoveSolutionComponentRequest.with({
-            payload: {
-                SolutionComponent: {
-                    solutioncomponentid: component.objectid
-                },
-                ComponentType: component.componenttype,
-                SolutionUniqueName: HELPER_SOLUTION_UNIQUE_NAME
-            }
-        }));
     }
 
     function showRibbonLoadStatus(message, tone, autoHideMs) {
@@ -251,43 +83,12 @@
         }, delayMs || 0);
     }
 
-    function resetHelperSolutionToEntity(solution, entityInfo) {
-        showRibbonLoadStatus("Preparing ribbon helper solution for " + entityInfo.logicalName + ".");
-
-        return getSolutionComponents(solution.solutionid)
-        .then(function (components) {
-            var chain = Promise.resolve(null);
-
-            for (var i = 0; i < components.length; i++) {
-                (function (component) {
-                    chain = chain.then(function () {
-                        return removeSolutionComponent(component);
-                    });
-                }(components[i]));
-            }
-
-            return chain;
-        })
-        .then(function () {
-            return WebApiClient.Execute(WebApiClient.Requests.AddSolutionComponentRequest.with({
-                payload: {
-                    ComponentId: entityInfo.metadataId,
-                    ComponentType: XrmTranslator.ComponentType.Entity,
-                    SolutionUniqueName: HELPER_SOLUTION_UNIQUE_NAME,
-                    AddRequiredComponents: false,
-                    IncludedComponentSettingsValues: [],
-                    DoNotIncludeSubcomponents: true
-                }
-            }));
-        });
-    }
-
-    function exportHelperSolution() {
-        showRibbonLoadStatus("Exporting ribbon helper solution.");
+    function exportSelectedSolution(solution) {
+        showRibbonLoadStatus("Exporting selected solution " + solution.uniquename + ".");
 
         return WebApiClient.Execute(WebApiClient.Requests.ExportSolutionRequest.with({
             payload: {
-                SolutionName: HELPER_SOLUTION_UNIQUE_NAME,
+                SolutionName: solution.uniquename,
                 Managed: false
             }
         }));
@@ -772,11 +573,12 @@
             changedLocLabels[changes[i].locLabelId] = true;
         }
 
-        backupZip.file(HELPER_SOLUTION_UNIQUE_NAME + "-original.zip", ribbonState.solutionZipBase64, { base64: true });
+        backupZip.file(ribbonState.solutionUniqueName + "-original.zip", ribbonState.solutionZipBase64, { base64: true });
         backupZip.file("customizations.xml", ribbonState.customizationsXml);
         backupZip.file("backup-info.json", JSON.stringify({
             entityLogicalName: ribbonState.entityInfo.logicalName,
             entitySchemaName: ribbonState.entityInfo.schemaName,
+            solutionUniqueName: ribbonState.solutionUniqueName,
             timestamp: new Date().toISOString(),
             changedCellCount: changes.length,
             locLabelIds: Object.keys(changedLocLabels)
@@ -999,13 +801,22 @@
         ribbonLoadStatusSuppressed = true;
         setRibbonLoadButtonsDisabled(true, true);
 
-        return ensureHelperSolution()
+        return getSelectedSolution()
         .then(function (solution) {
-            return resetHelperSolutionToEntity(solution, entityInfo);
+            return exportSelectedSolution(solution)
+            .then(function (exportResponse) {
+                return {
+                    solution: solution,
+                    exportResponse: exportResponse
+                };
+            });
         })
-        .then(exportHelperSolution)
-        .then(function (exportResponse) {
-            return readCustomizationsFromExport(exportResponse);
+        .then(function (context) {
+            return readCustomizationsFromExport(context.exportResponse)
+            .then(function (exportData) {
+                exportData.solution = context.solution;
+                return exportData;
+            });
         })
         .then(function (exportData) {
             exported = exportData;
@@ -1022,6 +833,7 @@
 
             ribbonState = {
                 entityInfo: entityInfo,
+                solutionUniqueName: exported.solution.uniquename,
                 zip: exported.zip,
                 customizationsXml: exported.customizationsXml,
                 solutionZipBase64: exported.solutionZipBase64,

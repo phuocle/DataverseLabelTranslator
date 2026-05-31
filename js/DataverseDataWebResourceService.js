@@ -4,7 +4,6 @@
     var BASE_SOLUTION_UNIQUE_NAME = "DataverseLabelTranslator";
     var DATA_SOLUTION_DISPLAY_NAME = "Dataverse Label Translator Data";
     var DATA_SOLUTION_UNIQUE_NAME = "DataverseLabelTranslatorData";
-    var COMPONENT_TYPE_WEBRESOURCE = 61;
     var DEFAULT_WEBRESOURCE_TYPE = 4;
 
     function getOrgUrl() {
@@ -265,51 +264,6 @@
         });
     }
 
-    function isWebResourceInSolution(solutionId, webResourceId) {
-        return WebApiClient.Retrieve({
-            apiVersion: "9.2",
-            entityName: "solutioncomponent",
-            queryParams: "?$select=solutioncomponentid&$filter=_solutionid_value eq " + solutionId + " and componenttype eq " + COMPONENT_TYPE_WEBRESOURCE + " and objectid eq " + webResourceId
-        })
-        .then(function (response) {
-            return !!(response && response.value && response.value.length > 0);
-        });
-    }
-
-    function isDuplicateSolutionComponentError(error) {
-        var message = String(error && (error.message || error.statusText || error) || "");
-        return /duplicate|CrmDuplicateRecordException|Cannot insert duplicate key/i.test(message);
-    }
-
-    function addWebResourceToSolution(solutionUniqueName, webResourceId) {
-        return WebApiClient.SendRequest("POST", WebApiClient.GetApiUrl({ apiVersion: "9.2" }) + "AddSolutionComponent()", {
-            ComponentId: webResourceId,
-            ComponentType: COMPONENT_TYPE_WEBRESOURCE,
-            SolutionUniqueName: solutionUniqueName,
-            AddRequiredComponents: false,
-            IncludedComponentSettingsValues: null,
-            DoNotIncludeSubcomponents: false
-        })
-        .catch(function (error) {
-            if (isDuplicateSolutionComponentError(error)) {
-                return null;
-            }
-
-            throw error;
-        });
-    }
-
-    function ensureWebResourceInSolution(solutionInfo, webResourceId) {
-        return isWebResourceInSolution(solutionInfo.solutionId, webResourceId)
-        .then(function (isAdded) {
-            if (isAdded) {
-                return null;
-            }
-
-            return addWebResourceToSolution(solutionInfo.solutionUniqueName, webResourceId);
-        });
-    }
-
     function normalizeOptions(options) {
         options = options || {};
 
@@ -344,9 +298,6 @@
         })
         .then(function (webResource) {
             result.webResource = webResource;
-            return ensureWebResourceInSolution(result.solutionInfo, webResource.webresourceid);
-        })
-        .then(function () {
             return {
                 orgUrl: getOrgUrl(),
                 solutionUniqueName: result.solutionInfo.solutionUniqueName,

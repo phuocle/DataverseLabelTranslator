@@ -259,12 +259,6 @@
 
         return SaveOptionValueUpdates(updates)
             .then(function () {
-                return Promise.all([
-                    XrmTranslator.AddToSolution(updateIds[0], XrmTranslator.ComponentType.Attribute),
-                    XrmTranslator.AddToSolution(updateIds[1], XrmTranslator.ComponentType.OptionSet, true, true)
-                ]);
-            })
-            .then(function () {
                 return { globalOptionSetNames: updateIds[2] };
             });
     }
@@ -280,13 +274,7 @@
                     return Promise.resolve();
                 }
 
-                return SaveOptionValueUpdates(updates)
-                    .then(function () {
-                        return Promise.all([
-                            XrmTranslator.AddToSolution(updateIds[0], XrmTranslator.ComponentType.Attribute),
-                            XrmTranslator.AddToSolution(updateIds[1], XrmTranslator.ComponentType.OptionSet, true, true)
-                        ]);
-                    });
+                return SaveOptionValueUpdates(updates);
             },
             publishAction: function () {
                 return XrmTranslator.Publish(updateIds[2]);

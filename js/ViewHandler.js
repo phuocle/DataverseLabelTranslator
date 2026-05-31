@@ -204,17 +204,7 @@
                     }
                 });
             }
-        })
-            .then(function () {
-                var viewIds = [];
-                for (var i = 0; i < updates.length; i++) {
-                    if (viewIds.indexOf(updates[i].recid) === -1) {
-                        viewIds.push(updates[i].recid);
-                    }
-                }
-
-                return XrmTranslator.AddToSolution(viewIds, XrmTranslator.ComponentType.SavedQuery);
-            });
+        });
     }
 
     ViewHandler.Save = function() {

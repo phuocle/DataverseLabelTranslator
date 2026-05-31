@@ -187,15 +187,7 @@
                     }
                 });
             }
-        })
-            .then(function () {
-                if (XrmTranslator.GetEntity().toLowerCase() === "none") {
-                    return XrmTranslator.AddToSolution(updates.map(function(u) { return u.recid; }), XrmTranslator.ComponentType.SystemForm, true, true);
-                }
-                else {
-                    return XrmTranslator.AddToSolution(updates.map(function(u) { return u.recid; }), XrmTranslator.ComponentType.SystemForm);
-                }
-            });
+        });
     }
 
     FormMetaHandler.Save = function() {

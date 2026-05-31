@@ -126,10 +126,7 @@
 
         XrmTranslator.LockGridProgress("Saving 6. Entity Metadata", 1, 1);
 
-        return WebApiClient.SendRequest("PUT", entityUrl, updates, [{key: "MSCRM.MergeLabels", value: "true"}])
-        .then(function () {
-            return XrmTranslator.AddToSolution([XrmTranslator.GetEntityId()], XrmTranslator.ComponentType.Entity);
-        });
+        return WebApiClient.SendRequest("PUT", entityUrl, updates, [{key: "MSCRM.MergeLabels", value: "true"}]);
     }
 
     EntityHandler.Save = function() {

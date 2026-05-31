@@ -198,7 +198,7 @@
         var updates = GetUpdates(records);
 
         if (!updates || updates.length === 0) {
-            return WebApiClient.Promise.resolve();
+            return WebApiClient.Promise.resolve(false);
         }
 
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
@@ -224,6 +224,9 @@
         return XrmTranslator.RunTypeSaveFlow({
             saveAction: function () {
                 return ContentSnippetHandler.SaveOnly();
+            },
+            shouldPublish: function (result) {
+                return result !== false;
             },
             reloadAction: function () {
                 return ContentSnippetHandler.Load();

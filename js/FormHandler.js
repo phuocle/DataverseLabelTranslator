@@ -692,6 +692,7 @@
 
         var executeSave = function () {
             var chain = WebApiClient.Promise.resolve();
+            var savedAny = false;
 
             for (var i = 0; i < FormHandler.loadedFormsData.length; i++) {
                 (function(formData) {
@@ -713,7 +714,12 @@
                         grid.records = formRecords;
                         grid.total = formRecords.length;
 
-                        return FormHandler.SaveOnly(true);
+                        return FormHandler.SaveOnly(true)
+                        .then(function (result) {
+                            if (result !== false) {
+                                savedAny = true;
+                            }
+                        });
                     });
                 })(FormHandler.loadedFormsData[i]);
             }
@@ -721,6 +727,7 @@
             return chain.then(function() {
                 grid.records = originalRecords;
                 grid.total = originalTotal;
+                return savedAny;
             });
         };
 
@@ -741,7 +748,7 @@
         var updates = GetUpdates(records);
 
         if (updates.length === 0) {
-            return WebApiClient.Promise.resolve();
+            return WebApiClient.Promise.resolve(false);
         }
 
         var update = ApplyUpdates(updates, XrmTranslator.metadata, formXml);
@@ -752,14 +759,6 @@
                 entityName: "systemform",
                 entityId: XrmTranslator.metadata.formid,
                 entity: update
-            })
-            .then(function () {
-                if (XrmTranslator.GetEntity().toLowerCase() === "none") {
-                    return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm, true, true);
-                }
-                else {
-                    return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm);
-                }
             });
         };
 
@@ -787,13 +786,6 @@
                         entityId: XrmTranslator.metadata.formid,
                         entity: payload
                     });
-                })
-                .then(function () {
-                    if (XrmTranslator.GetEntity().toLowerCase() === "none") {
-                        return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm, true, true);
-                    }
-
-                    return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm);
                 });
             },
             publishAction: function () {
@@ -803,6 +795,9 @@
                 }
 
                 return XrmTranslator.Publish();
+            },
+            shouldPublish: function (result) {
+                return result !== false;
             },
             reloadAction: function () {
                 FormHandler.lastId = XrmTranslator.metadata.formid;

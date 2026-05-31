@@ -453,6 +453,13 @@
                     .filter(function(webresource) { return !!webresource.webresourceid; })
                     .map(function(webresource) { return webresource.webresourceid; });
 
+                if (!updates || updates.length === 0) {
+                    return {
+                        hasChanges: false,
+                        ids: []
+                    };
+                }
+
                 return XrmTranslator.ExecuteChangeSetBatches(updates, {
                     progressLabel: "Saving " + XrmTranslator.GetCurrentToolbarTypeText(),
                     batchNamePrefix: "batch_savewebresources",
@@ -501,19 +508,27 @@
                         }
                     }
 
-                    return existingIds.concat(createdIds);
+                    var ids = existingIds.concat(createdIds);
+                    if (ids.length < updates.length) {
+                        throw new Error("Saved web resources, but could not resolve every web resource id for publish.");
+                    }
+
+                    return {
+                        hasChanges: true,
+                        ids: ids
+                    };
                 });
             },
-            publishAction: function (ids) {
+            shouldPublish: function (result) {
+                return !!(result && result.hasChanges);
+            },
+            publishAction: function (result) {
+                var ids = result && result.ids ? result.ids : [];
                 if (!ids || ids.length === 0) {
                     return Promise.resolve();
                 }
 
-                return XrmTranslator.PublishWebResources(ids)
-                .then(function() {
-                    // WebResources can't be added with defined component settings or DoNotIncludeSubcomponents set to true.
-                    return XrmTranslator.AddToSolution(ids, XrmTranslator.ComponentType.WebResource, true, true);
-                });
+                return XrmTranslator.PublishWebResources(ids);
             },
             reloadAction: function () {
                 return WebResourceHandler.Load();

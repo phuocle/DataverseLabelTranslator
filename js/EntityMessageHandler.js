@@ -491,6 +491,9 @@
             publishAction: function (saved) {
                 return saved ? XrmTranslator.Publish() : Promise.resolve();
             },
+            shouldPublish: function (saved) {
+                return saved === true;
+            },
             reloadAction: function () {
                 return EntityMessageHandler.Load();
             }

@@ -379,7 +379,6 @@
      *     - clientdata is a READ-ONLY field, CRM auto-generates it from XAML
      *
      * AFTER SUCCESSFUL SAVE:
-     *     - Workflow is added to the solution (AddToSolution)
      *     - Grid auto-reloads to display new labels from the regenerated clientdata
      */
     BpfHandler.SaveOnly = function () {
@@ -466,12 +465,6 @@
                                 );
                             });
                     });
-            })
-            .then(function () {
-                return XrmTranslator.AddToSolution(
-                    workflowIds,
-                    XrmTranslator.ComponentType.Workflow
-                );
             });
     };
 

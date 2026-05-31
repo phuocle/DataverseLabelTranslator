@@ -185,14 +185,6 @@
                     }
                 });
 
-                var optionSetIds = [];
-                for (var i = 0; i < XrmTranslator.metadata.length; i++) {
-                    var os = XrmTranslator.metadata[i];
-                    if (optionSetNames.indexOf(os.Name) !== -1 && optionSetIds.indexOf(os.MetadataId) === -1) {
-                        optionSetIds.push(os.MetadataId);
-                    }
-                }
-
                 return XrmTranslator.ExecuteChangeSetBatches(updates, {
                     progressLabel: "Saving " + XrmTranslator.GetCurrentToolbarTypeText(),
                     batchNamePrefix: "batch_updateglobaloptionvalue",
@@ -207,14 +199,15 @@
                 })
                 .then(function () {
                     return {
-                        optionSetNames: optionSetNames,
-                        optionSetIds: optionSetIds
+                        optionSetNames: optionSetNames
                     };
                 });
             },
+            shouldPublish: function (result) {
+                return !!(result && result.optionSetNames && result.optionSetNames.length > 0);
+            },
             publishAction: function (result) {
                 var optionSetNames = result && result.optionSetNames ? result.optionSetNames : [];
-                var optionSetIds = result && result.optionSetIds ? result.optionSetIds : [];
 
                 if (optionSetNames.length === 0) {
                     return Promise.resolve();
@@ -230,9 +223,6 @@
                         payload: { ParameterXml: xml }
                     });
                     return WebApiClient.Execute(request);
-                })
-                .then(function () {
-                    return XrmTranslator.AddToSolution(optionSetIds, XrmTranslator.ComponentType.OptionSet, true, true);
                 });
             },
             reloadAction: function () {

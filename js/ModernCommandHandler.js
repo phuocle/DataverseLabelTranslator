@@ -426,7 +426,7 @@
         var updates = GetUpdates(records);
 
         if (updates.length === 0) {
-            return WebApiClient.Promise.resolve();
+            return WebApiClient.Promise.resolve(false);
         }
 
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
@@ -457,6 +457,9 @@
             },
             publishAction: function () {
                 return XrmTranslator.Publish();
+            },
+            shouldPublish: function (result) {
+                return result !== false;
             },
             reloadAction: function () {
                 return ModernCommandHandler.Load();

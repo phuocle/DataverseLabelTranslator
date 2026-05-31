@@ -196,10 +196,7 @@
                     headers: [{key: "MSCRM.MergeLabels", value: "true"}]
                 });
             }
-        })
-            .then(function () {
-                return XrmTranslator.AddToSolution(updates.map(function(u) { return u.MetadataId; }), XrmTranslator.ComponentType.Attribute);
-            });
+        });
     }
 
     AttributeHandler.Save = function() {

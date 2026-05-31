@@ -343,13 +343,7 @@
                     headers: request.headers
                 });
             }
-        })
-            .then(function () {
-                return XrmTranslator.AddToSolution(
-                    requests.map(function (r) { return r.metadataId; }),
-                    XrmTranslator.ComponentType.EntityRelationship
-                );
-            });
+        });
     };
 
     RelationshipHandler.Save = function () {

@@ -462,7 +462,10 @@
         return XrmTranslator.RunTypeSaveFlow({
             saveAction: function () {
                 if (!siteMapData || siteMapData.length === 0) {
-                    return [];
+                    return {
+                        hasChanges: false,
+                        ids: []
+                    };
                 }
 
                 var records = XrmTranslator.GetAllRecords();
@@ -512,7 +515,10 @@
 
                 updatedSiteMapIds = Object.keys(updatesBySiteMap);
                 if (updatedSiteMapIds.length === 0) {
-                    return [];
+                    return {
+                        hasChanges: false,
+                        ids: []
+                    };
                 }
 
                 var saveChain = WebApiClient.Promise.resolve();
@@ -540,23 +546,23 @@
                 }
 
                 return saveChain.then(function () {
-                    return updatedSiteMapIds;
+                    return {
+                        hasChanges: true,
+                        ids: updatedSiteMapIds
+                    };
                 });
             },
-            publishAction: function (ids) {
-                ids = ids || updatedSiteMapIds;
+            shouldPublish: function (result) {
+                return !!(result && result.hasChanges);
+            },
+            publishAction: function (result) {
+                var ids = result && result.ids ? result.ids : updatedSiteMapIds;
                 if (!ids || ids.length === 0) {
                     return Promise.resolve();
                 }
 
                 return XrmTranslator.RunAsBaseLanguage(function () {
                     return WebApiClient.Execute(WebApiClient.Requests.PublishAllXmlRequest);
-                })
-                .then(function () {
-                    return XrmTranslator.AddToSolution(
-                        ids,
-                        XrmTranslator.ComponentType.SiteMap
-                    );
                 });
             },
             reloadAction: function () {

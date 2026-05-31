@@ -647,9 +647,6 @@
                         );
                     });
                 });
-            })
-            .then(function () {
-                return XrmTranslator.AddToSolution(workflowIds, XrmTranslator.ComponentType.Workflow);
             });
     };
 

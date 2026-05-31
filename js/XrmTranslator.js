@@ -1451,6 +1451,9 @@
         var saveAction = options.saveAction || function () { return Promise.resolve(); };
         var publishAction = options.publishAction || function () { return Promise.resolve(); };
         var reloadAction = options.reloadAction || function () { return Promise.resolve(); };
+        var shouldPublish = typeof options.shouldPublish === "function"
+            ? options.shouldPublish
+            : function () { return true; };
 
         XrmTranslator.LockGrid("Saving " + toolbarType);
 
@@ -1460,6 +1463,20 @@
         })
         .then(function (saveResult) {
             XrmTranslator.UnlockGrid();
+
+            if (shouldPublish(saveResult) === false) {
+                XrmTranslator.ShowStatusBanner({
+                    tone: "info",
+                    message: "No changes to save.",
+                    autoHideMs: 3000
+                });
+                XrmTranslator.EnableLoadAndSave();
+                return {
+                    skipRemainingFlow: true,
+                    result: saveResult
+                };
+            }
+
             XrmTranslator.StartOperationStatus({
                 phase: "publishing",
                 type: XrmTranslator.GetType(),
@@ -1475,10 +1492,18 @@
                 XrmTranslator.Delay(publishMinimumMs)
             ])
             .then(function () {
-                return saveResult;
+                return {
+                    skipRemainingFlow: false,
+                    result: saveResult
+                };
             });
         })
-        .then(function (saveResult) {
+        .then(function (flowState) {
+            if (flowState && flowState.skipRemainingFlow) {
+                return flowState;
+            }
+
+            var saveResult = flowState ? flowState.result : flowState;
             XrmTranslator.UpdateOperationStatus({
                 phase: "published",
                 type: XrmTranslator.GetType(),
@@ -1491,10 +1516,18 @@
 
             return XrmTranslator.Delay(publishedMessageMs)
             .then(function () {
-                return saveResult;
+                return {
+                    skipRemainingFlow: false,
+                    result: saveResult
+                };
             });
         })
-        .then(function (saveResult) {
+        .then(function (flowState) {
+            if (flowState && flowState.skipRemainingFlow) {
+                return flowState;
+            }
+
+            var saveResult = flowState ? flowState.result : flowState;
             XrmTranslator.UpdateOperationStatus({
                 phase: "reloading",
                 type: XrmTranslator.GetType(),
@@ -1509,6 +1542,10 @@
             return reloadAction(saveResult);
         })
         .then(function (reloadResult) {
+            if (reloadResult && reloadResult.skipRemainingFlow) {
+                return reloadResult.result;
+            }
+
             XrmTranslator.ClearOperationStatus({ hideBanner: true });
             return reloadResult;
         })
@@ -1679,10 +1716,6 @@
                 return WebApiClient.Execute(request);
             })
             .catch(XrmTranslator.errorHandler);
-    }
-
-    XrmTranslator.AddToSolution = function(componentIds, componentType, includeComponentSettings, includeSubComponents) {
-        return Promise.resolve(null);
     }
 
     XrmTranslator.BatchSaveSize = 25;
