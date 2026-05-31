@@ -76,6 +76,9 @@ Full local git workflow: stage all -> commit -> verify clean. Do not push unless
 
 ### /pl-deploy-web-resource `<local-path>`
 Deploy a file to Dataverse using MCP `manage_webresource`:
+
+When a file listed in `.codex/mapping.xml` is changed and the user needs to test the app in Dataverse, deploy that changed file again with `/pl-deploy-web-resource <local-path>`. Do not leave mapped web resource changes only on disk when the next expected step is app testing.
+
 1. Look up `<local-path>` in `.codex/mapping.xml` to get CRM `UniqueName`.
 2. If not in mapping, auto-derive: `pl_/DataverseLabelTranslator/<type>/<basename>` where type = `js|css|html|img`.
 3. Try `manage_webresource` with `action=detail`, `web_resource_id=<UniqueName>` to check existence.
