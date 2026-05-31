@@ -1842,7 +1842,14 @@
 
                 var columnText = FormatLanguageColumnText(language, locale);
 
-                grid.addColumn({ field: language, text: columnText, size: columnWidth + "%", sortable: true, editable: { type: 'text' } });
+                grid.addColumn({
+                    field: language,
+                    text: columnText,
+                    size: columnWidth + "%",
+                    sortable: true,
+                    editable: { type: 'text' },
+                    render: XrmTranslator.CreateTranslationCellRenderer(language)
+                });
                 grid.addSearch({ field: language, text: columnText, type: 'text' });
             }
 
@@ -1867,7 +1874,14 @@
 
             var editable = { type: 'text' };
 
-            grid.addColumn({ field: languages[locale], text: locale, size: columnWidth + "%", sortable: true, editable: editable });
+            grid.addColumn({
+                field: languages[locale],
+                text: locale,
+                size: columnWidth + "%",
+                sortable: true,
+                editable: editable,
+                render: XrmTranslator.CreateTranslationCellRenderer(languages[locale])
+            });
             grid.addSearch({ field: languages[locale], text: locale, type: 'text' });
         }
 

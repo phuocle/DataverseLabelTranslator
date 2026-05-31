@@ -15,6 +15,71 @@
         return XrmTranslator.GetComponent() === "Description";
     }
 
+    function IsDisplayTextComponent() {
+        return XrmTranslator.GetComponent() === "DisplayName";
+    }
+
+    function IsEmptyLabelValue(value) {
+        return value == null || String(value).trim().length === 0;
+    }
+
+    function GetLanguageColumnText(languageCode) {
+        var columns = XrmTranslator.GetGrid().columns || [];
+        var field = String(languageCode);
+
+        for (var i = 0; i < columns.length; i++) {
+            if (String(columns[i].field) === field) {
+                return columns[i].text || columns[i].caption || columns[i].label || field;
+            }
+        }
+
+        return field;
+    }
+
+    function GetDisplayTextRowPath(record, optionSet) {
+        var optionSetName = optionSet && optionSet.Name ? optionSet.Name : "";
+        var rowName = record && record.schemaName != null ? String(record.schemaName) : "";
+
+        if (optionSetName && rowName && optionSetName !== rowName) {
+            return optionSetName + " > " + rowName;
+        }
+
+        return rowName || optionSetName || "(unknown)";
+    }
+
+    function ValidateDisplayTextBaseLanguageChange(record, optionSet, changes) {
+        if (!IsDisplayTextComponent() || !XrmTranslator.baseLanguage) {
+            return;
+        }
+
+        var baseLanguage = String(XrmTranslator.baseLanguage);
+        if (!Object.prototype.hasOwnProperty.call(changes, baseLanguage)) {
+            return;
+        }
+
+        if (!IsEmptyLabelValue(changes[baseLanguage])) {
+            return;
+        }
+
+        throw new Error(
+            "Display Text in the base language (" + GetLanguageColumnText(baseLanguage) + ") cannot be empty.\n" +
+            "Row: " + GetDisplayTextRowPath(record, optionSet)
+        );
+    }
+
+    function ApplyEmptyEditablePlaceholder(record, editablePlaceholder, basePlaceholder) {
+        if (!editablePlaceholder) {
+            return;
+        }
+
+        record._emptyEditablePlaceholder = editablePlaceholder;
+
+        if (basePlaceholder && XrmTranslator.baseLanguage) {
+            record._emptyEditablePlaceholders = record._emptyEditablePlaceholders || {};
+            record._emptyEditablePlaceholders[String(XrmTranslator.baseLanguage)] = basePlaceholder;
+        }
+    }
+
     function AddLocalizedLabelsToRecord(record, localizedLabels) {
         localizedLabels = localizedLabels || [];
 
@@ -31,11 +96,19 @@
                 continue;
             }
 
-            if (changes[change] == null || (!allowEmpty && !changes[change])) {
+            var label = changes[change];
+            if (label == null) {
+                if (!allowEmpty) {
+                    continue;
+                }
+                label = "";
+            }
+
+            if (!allowEmpty && !label) {
                 continue;
             }
 
-            labels.push({ LanguageCode: change, Label: changes[change] });
+            labels.push({ LanguageCode: change, Label: label });
         }
 
         return labels;
@@ -77,6 +150,7 @@
 
             var changes = record.w2ui.changes;
             var labels;
+            ValidateDisplayTextBaseLanguageChange(record, optionSet, changes);
 
             if (parts.length === 1) {
                 if (!IsDescriptionComponent()) {
@@ -97,7 +171,7 @@
                 continue;
             }
 
-            labels = GetChangedLabels(changes, false);
+            labels = GetChangedLabels(changes, IsDescriptionComponent() || IsDisplayTextComponent());
             if (labels.length < 1) {
                 continue;
             }
@@ -121,6 +195,9 @@
         grid.clear();
         var records = [];
         var isDescription = IsDescriptionComponent();
+        var isDisplayText = IsDisplayTextComponent();
+        var editablePlaceholder = isDescription ? "Add description" : (isDisplayText ? "Add display text" : null);
+        var baseEditablePlaceholder = isDisplayText ? "Add display text (*)" : null;
 
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var optionSet = XrmTranslator.metadata[i];
@@ -131,8 +208,14 @@
                 w2ui: { editable: isDescription, children: [] }
             };
 
-            if (isDescription && optionSet.Description) {
-                AddLocalizedLabelsToRecord(parent, optionSet.Description.LocalizedLabels);
+            if (isDescription) {
+                ApplyEmptyEditablePlaceholder(parent, editablePlaceholder, baseEditablePlaceholder);
+                if (optionSet.Description) {
+                    AddLocalizedLabelsToRecord(parent, optionSet.Description.LocalizedLabels);
+                }
+            }
+            else if (!isDescription) {
+                parent._emptyReadonlyPlaceholder = "-";
             }
 
             if (!!optionSet.TrueOption) {
@@ -145,6 +228,7 @@
                         recid: optionSet.MetadataId + idSeparator + option.Value,
                         schemaName: option.Value.toString()
                     };
+                    ApplyEmptyEditablePlaceholder(child, editablePlaceholder, baseEditablePlaceholder);
                     AddLocalizedLabelsToRecord(child, labels);
                     parent.w2ui.children.push(child);
                 }
@@ -164,6 +248,7 @@
                         recid: optionSet.MetadataId + idSeparator + option.Value,
                         schemaName: option.Value.toString()
                     };
+                    ApplyEmptyEditablePlaceholder(child, editablePlaceholder, baseEditablePlaceholder);
                     AddLocalizedLabelsToRecord(child, labels);
                     parent.w2ui.children.push(child);
                 }

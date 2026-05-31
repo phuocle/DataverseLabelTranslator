@@ -454,6 +454,7 @@
             jobId: options.jobId || existingState.jobId || null,
             message: options.message || existingState.message || "",
             tone: normalizeStatusTone(options.tone || existingState.tone),
+            icon: typeof options.icon !== "undefined" ? options.icon : (existingState.icon || null),
             code: typeof options.code !== "undefined" ? options.code : (existingState.code || null),
             blockSave: typeof options.blockSave === "boolean" ? options.blockSave : existingState.blockSave !== false,
             blockLoad: typeof options.blockLoad === "boolean" ? options.blockLoad : !!existingState.blockLoad,
@@ -507,6 +508,7 @@
         showStatusBanner({
             tone: state.tone,
             message: state.message,
+            icon: state.icon,
             code: state.code
         });
         applyOperationButtons();
@@ -590,7 +592,8 @@
         var toolbarType = getOperationToolbarType(state) || "11. Ribbons";
         XrmTranslator.UpdateOperationStatus({
             phase: "startingPublish",
-            tone: "info",
+            tone: "success",
+            icon: "...",
             message: "Publishing " + toolbarType,
             type: state.type || "ribbons",
             toolbarType: toolbarType,
@@ -718,7 +721,8 @@
         var toolbarType = getOperationToolbarType(job) || "Publish XML";
         var state = buildOperationState({
             phase: "publishing",
-            tone: "warning",
+            tone: "success",
+            icon: "...",
             type: job.type || "ribbons",
             toolbarType: toolbarType,
             entityLogicalName: job.entityLogicalName || null,
@@ -1446,8 +1450,10 @@
         options = options || {};
 
         var toolbarType = options.toolbarType || XrmTranslator.GetCurrentToolbarTypeText();
-        var publishMinimumMs = options.publishMinimumMs || 5000;
-        var publishedMessageMs = options.publishedMessageMs || 5000;
+        var publishMinimumMs = parseInt(options.publishMinimumMs, 10);
+        var publishedMessageMs = parseInt(options.publishedMessageMs, 10);
+        publishMinimumMs = isNaN(publishMinimumMs) ? 5000 : Math.max(publishMinimumMs, 5000);
+        publishedMessageMs = isNaN(publishedMessageMs) ? 5000 : Math.max(publishedMessageMs, 5000);
         var saveAction = options.saveAction || function () { return Promise.resolve(); };
         var publishAction = options.publishAction || function () { return Promise.resolve(); };
         var reloadAction = options.reloadAction || function () { return Promise.resolve(); };
@@ -1466,7 +1472,8 @@
 
             if (shouldPublish(saveResult) === false) {
                 XrmTranslator.ShowStatusBanner({
-                    tone: "info",
+                    tone: "success",
+                    icon: "0",
                     message: "No changes to save.",
                     autoHideMs: 3000
                 });
@@ -1483,7 +1490,8 @@
                 toolbarType: toolbarType,
                 blockSave: true,
                 blockLoad: true,
-                tone: "info",
+                tone: "success",
+                icon: "...",
                 message: "Publishing " + toolbarType
             });
 
@@ -1511,6 +1519,7 @@
                 blockSave: true,
                 blockLoad: true,
                 tone: "success",
+                icon: "OK",
                 message: "Published " + toolbarType
             });
 
@@ -2860,6 +2869,11 @@
         var hasDescription = typesWithDescription.indexOf(selectedType) !== -1;
         var toolbar = GetToolbar();
         var componentItem = toolbar.get("component");
+        var displayNameItem = toolbar.get("component:DisplayName");
+
+        if (displayNameItem) {
+            displayNameItem.text = selectedType === "globalOptionSets" ? "Display Text" : "DisplayName";
+        }
 
         if (hasDescription) {
             toolbar.enable("component");
@@ -3166,6 +3180,67 @@
             return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[m];
         });
     }
+
+    function GetRecordFieldValue(record, field) {
+        if (!record) {
+            return "";
+        }
+
+        if (record.w2ui && record.w2ui.changes && Object.prototype.hasOwnProperty.call(record.w2ui.changes, field)) {
+            return record.w2ui.changes[field];
+        }
+
+        if (Object.prototype.hasOwnProperty.call(record, field)) {
+            return record[field];
+        }
+
+        var stringField = String(field);
+        if (record.w2ui && record.w2ui.changes && Object.prototype.hasOwnProperty.call(record.w2ui.changes, stringField)) {
+            return record.w2ui.changes[stringField];
+        }
+
+        if (Object.prototype.hasOwnProperty.call(record, stringField)) {
+            return record[stringField];
+        }
+
+        return "";
+    }
+
+    XrmTranslator.RenderTranslationCell = function(record, field) {
+        var value = GetRecordFieldValue(record, field);
+
+        if (value !== null && typeof value !== "undefined" && String(value).length > 0) {
+            return EscapeHtml(value);
+        }
+
+        var stringField = String(field);
+        if (record && record._emptyEditablePlaceholders &&
+            Object.prototype.hasOwnProperty.call(record._emptyEditablePlaceholders, stringField)) {
+            return "<span class=\"xqt-empty-cell-hint xqt-empty-cell-hint-editable\" title=\"Click to edit\">" +
+                EscapeHtml(record._emptyEditablePlaceholders[stringField]) +
+                "</span>";
+        }
+
+        if (record && record._emptyEditablePlaceholder) {
+            return "<span class=\"xqt-empty-cell-hint xqt-empty-cell-hint-editable\" title=\"Click to edit\">" +
+                EscapeHtml(record._emptyEditablePlaceholder) +
+                "</span>";
+        }
+
+        if (record && record._emptyReadonlyPlaceholder) {
+            return "<span class=\"xqt-empty-cell-hint xqt-empty-cell-hint-readonly\" title=\"Read only\">" +
+                EscapeHtml(record._emptyReadonlyPlaceholder) +
+                "</span>";
+        }
+
+        return "";
+    };
+
+    XrmTranslator.CreateTranslationCellRenderer = function(field) {
+        return function(record) {
+            return XrmTranslator.RenderTranslationCell(record, field);
+        };
+    };
 
     function BuildDictionaryValueBox(label, value) {
         return '<div style="margin: 0 0 14px 0;">' +
@@ -3685,7 +3760,8 @@
                     if (!XrmTranslator.HasPendingChanges()) {
                         grid.refresh();
                         XrmTranslator.ShowStatusBanner({
-                            tone: "info",
+                            tone: "success",
+                            icon: "0",
                             message: "No changes to save.",
                             autoHideMs: 3000
                         });

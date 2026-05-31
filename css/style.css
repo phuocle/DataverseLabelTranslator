@@ -15,6 +15,27 @@
     pointer-events: none;
 }
 
+.xqt-empty-cell-hint {
+    display: inline-block;
+    font-style: italic;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+.xqt-empty-cell-hint-editable {
+    color: #c7c7c7;
+    cursor: text;
+    opacity: 0.68;
+}
+
+.xqt-empty-cell-hint-readonly {
+    color: #9a9a9a;
+    cursor: default;
+}
+
 .xqt-status-banner {
     align-items: center;
     box-sizing: border-box;
