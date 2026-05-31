@@ -126,6 +126,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     function FetchPluralNames(entityNames) {
@@ -331,7 +332,7 @@
         }
 
         return XrmTranslator.ExecuteChangeSetBatches(requests, {
-            progressLabel: "Saving relationship batches",
+            progressLabel: "Saving 7. Relationships",
             batchNamePrefix: "batch_updaterelationships",
             changeSetNamePrefix: "changeset_updaterelationships",
             buildRequest: function(request) {
@@ -352,18 +353,17 @@
     };
 
     RelationshipHandler.Save = function () {
-        XrmTranslator.LockGrid("Saving");
-
-        return RelationshipHandler.SaveOnly()
-            .then(function () {
-                XrmTranslator.LockGrid("Publishing");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return RelationshipHandler.SaveOnly();
+            },
+            publishAction: function () {
                 return XrmTranslator.Publish();
-            })
-            .then(function () {
-                XrmTranslator.LockGrid("Reloading");
+            },
+            reloadAction: function () {
                 return RelationshipHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+        });
     };
 
 }(window.RelationshipHandler = window.RelationshipHandler || {}));

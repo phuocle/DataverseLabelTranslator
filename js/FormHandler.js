@@ -90,6 +90,35 @@
         return updates;
     }
 
+    function ApplyLocalizedLabelChanges(changes, labels) {
+        labels = labels || [];
+
+        for (var change in changes) {
+            if (!changes.hasOwnProperty(change) || !changes[change]) {
+                continue;
+            }
+
+            var found = false;
+            for (var i = 0; i < labels.length; i++) {
+                if (labels[i].LanguageCode == change) {
+                    labels[i].Label = changes[change];
+                    labels[i].HasChanged = true;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                labels.push({
+                    LanguageCode: parseInt(change, 10),
+                    Label: changes[change]
+                });
+            }
+        }
+
+        return labels;
+    }
+
     function GetLabels(node) {
         var labelsNode = null;
         var children = node.children;
@@ -173,6 +202,7 @@
         XrmTranslator.AddSummary(records, true);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     function FillAllFormsTable(allFormData) {
@@ -186,14 +216,18 @@
             var formData = allFormData[i];
             var prefix = getFormPrefix(formData.formId);
             var formRecords = deepClone(formData.records || []);
+            var formChildren = [];
 
             prefixRecords(formRecords, prefix);
+            formChildren.push(createFormDescriptionRecord(formData, prefix));
+            formChildren = formChildren.concat(formRecords);
 
             loadedFormsData.push({
                 formId: formData.formId,
                 formName: formData.formName,
                 metadata: deepClone(formData.metadata),
                 selectedForms: formData.selectedForms ? formData.selectedForms.slice() : [],
+                descriptionLabels: deepClone(formData.descriptionLabels),
                 prefix: prefix
             });
 
@@ -217,7 +251,7 @@
                 _isGroupNode: true,
                 _isFormGroupNode: true,
                 w2ui: {
-                    children: formRecords,
+                    children: formChildren,
                     editable: false,
                     hideCheckBox: true
                 }
@@ -228,6 +262,7 @@
 
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     function GetUserLanguageForm (forms) {
@@ -290,6 +325,25 @@
         return "form~" + formId + "~";
     }
 
+    function createFormDescriptionRecord(formData, prefix) {
+        var labels = formData.descriptionLabels && formData.descriptionLabels.Label
+            ? formData.descriptionLabels.Label.LocalizedLabels
+            : [];
+
+        var record = {
+            recid: prefix + "description",
+            schemaName: "[Form] Description",
+            _isFormDescriptionRow: true,
+            _formId: formData.formId
+        };
+
+        for (var i = 0; i < labels.length; i++) {
+            record[labels[i].LanguageCode.toString()] = labels[i].Label;
+        }
+
+        return record;
+    }
+
     function prefixRecords(records, prefix) {
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
@@ -333,6 +387,51 @@
             return false;
         });
     }
+
+    function saveFormDescriptionRows(formData, descriptionRows) {
+        var changedRows = descriptionRows.filter(function(row) {
+            return row.w2ui && row.w2ui.changes;
+        });
+
+        if (changedRows.length === 0) {
+            return WebApiClient.Promise.resolve();
+        }
+
+        var labelsResponse = formData.descriptionLabels || { Label: { LocalizedLabels: [] } };
+        if (!labelsResponse.Label) {
+            labelsResponse.Label = { LocalizedLabels: [] };
+        }
+        if (!labelsResponse.Label.LocalizedLabels) {
+            labelsResponse.Label.LocalizedLabels = [];
+        }
+
+        for (var i = 0; i < changedRows.length; i++) {
+            ApplyLocalizedLabelChanges(changedRows[i].w2ui.changes, labelsResponse.Label.LocalizedLabels);
+        }
+
+        XrmTranslator.LockGridProgress("Saving 3. Forms", 1, 1);
+
+        return WebApiClient.Execute(WebApiClient.Requests.SetLocLabelsRequest.with({
+            payload: {
+                Labels: labelsResponse.Label.LocalizedLabels,
+                EntityMoniker: {
+                    "@odata.type": "Microsoft.Dynamics.CRM.systemform",
+                    formid: formData.formId
+                },
+                AttributeName: "description"
+            }
+        }))
+        .then(function() {
+            if (XrmTranslator.GetEntity().toLowerCase() === "none") {
+                return XrmTranslator.AddToSolution([formData.formId], XrmTranslator.ComponentType.SystemForm, true, true);
+            }
+
+            return XrmTranslator.AddToSolution([formData.formId], XrmTranslator.ComponentType.SystemForm);
+        });
+    }
+
+    FormHandler.CreateDescriptionRecord = createFormDescriptionRecord;
+    FormHandler.SaveDescriptionRows = saveFormDescriptionRows;
 
     function isFormGroupGrid(records) {
         return records.some(function(record) {
@@ -491,25 +590,38 @@
             var userLanguageForms = GetUserLanguageForm(responses).forms.value;
             var allFormData = [];
 
-            for (var i = 0; i < userLanguageForms.length; i++) {
-                var form = userLanguageForms[i];
+            return WebApiClient.Promise.resolve(userLanguageForms)
+            .each(function(form) {
                 ProcessSelection(form.formid);
 
                 var grid = XrmTranslator.GetGrid();
                 var records = grid.records.filter(function(r) { return !r.w2ui || !r.w2ui.summary; });
+                var retrieveDescriptionLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
+                    .with({
+                        urlParams: {
+                            EntityMoniker: "{'@odata.id':'systemforms(" + form.formid + ")'}",
+                            AttributeName: "'description'",
+                            IncludeUnpublished: true
+                        }
+                    });
 
-                allFormData.push({
-                    formId: form.formid,
-                    formName: form.name || form.formid,
-                    formType: form.type,
-                    formTypeName: formTypeMap[form.type] || ("Type " + form.type),
-                    metadata: JSON.parse(JSON.stringify(XrmTranslator.metadata)),
-                    selectedForms: FormHandler.selectedForms ? FormHandler.selectedForms.slice() : [],
-                    records: JSON.parse(JSON.stringify(records))
+                return WebApiClient.Execute(retrieveDescriptionLabelsRequest)
+                .then(function(descriptionLabels) {
+                    allFormData.push({
+                        formId: form.formid,
+                        formName: form.name || form.formid,
+                        formType: form.type,
+                        formTypeName: formTypeMap[form.type] || ("Type " + form.type),
+                        metadata: JSON.parse(JSON.stringify(XrmTranslator.metadata)),
+                        selectedForms: FormHandler.selectedForms ? FormHandler.selectedForms.slice() : [],
+                        descriptionLabels: descriptionLabels,
+                        records: JSON.parse(JSON.stringify(records))
+                    });
                 });
-            }
-
-            return allFormData;
+            })
+            .then(function() {
+                return allFormData;
+            });
         })
         .catch(XrmTranslator.errorHandler);
     };
@@ -672,16 +784,29 @@
                             return;
                         }
 
-                        var formRecords = deepClone(group.w2ui.children);
+                        var descriptionRows = deepClone(group.w2ui.children.filter(function(record) {
+                            return record._isFormDescriptionRow;
+                        }));
+                        var formRecords = deepClone(group.w2ui.children.filter(function(record) {
+                            return !record._isFormDescriptionRow;
+                        }));
                         stripPrefixFromRecords(formRecords, formData.prefix);
 
-                        XrmTranslator.metadata = deepClone(formData.metadata);
-                        FormHandler.selectedForms = formData.selectedForms ? formData.selectedForms.slice() : [];
+                        var saveChain = saveFormDescriptionRows(formData, descriptionRows);
 
-                        grid.records = formRecords;
-                        grid.total = formRecords.length;
+                        if (hasChanges(formRecords)) {
+                            saveChain = saveChain.then(function() {
+                                XrmTranslator.metadata = deepClone(formData.metadata);
+                                FormHandler.selectedForms = formData.selectedForms ? formData.selectedForms.slice() : [];
 
-                        return FormHandler.SaveOnly(true);
+                                grid.records = formRecords;
+                                grid.total = formRecords.length;
+
+                                return FormHandler.SaveOnly(true);
+                            });
+                        }
+
+                        return saveChain;
                     });
                 })(FormHandler.loadedFormsData[i]);
             }
@@ -715,7 +840,7 @@
         var update = ApplyUpdates(updates, XrmTranslator.metadata, formXml);
 
         var executeSave = function () {
-            XrmTranslator.LockGridProgress("Saving forms", 1, 1);
+            XrmTranslator.LockGridProgress("Saving 3. Forms", 1, 1);
             return WebApiClient.Update({
                 entityName: "systemform",
                 entityId: XrmTranslator.metadata.formid,
@@ -741,49 +866,41 @@
     }
 
     FormHandler.Save = function(payload) {
-        XrmTranslator.LockGrid("Saving");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                if (!payload) {
+                    return FormHandler.SaveOnly();
+                }
 
-        var savePromise;
+                // Direct payload from RemoveOverriddenCellLabels.
+                return XrmTranslator.RunAsBaseLanguage(function () {
+                    XrmTranslator.LockGridProgress("Saving 3. Forms", 1, 1);
+                    return WebApiClient.Update({
+                        entityName: "systemform",
+                        entityId: XrmTranslator.metadata.formid,
+                        entity: payload
+                    });
+                })
+                .then(function () {
+                    if (XrmTranslator.GetEntity().toLowerCase() === "none") {
+                        return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm, true, true);
+                    }
 
-        if (payload) {
-            // Direct payload from RemoveOverriddenCellLabels
-            savePromise = XrmTranslator.RunAsBaseLanguage(function () {
-            XrmTranslator.LockGridProgress("Saving forms", 1, 1);
-            return WebApiClient.Update({
-                entityName: "systemform",
-                entityId: XrmTranslator.metadata.formid,
-                    entity: payload
-            });
-        })
-        .then(function () {
-            if (XrmTranslator.GetEntity().toLowerCase() === "none") {
-                return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm, true, true);
-            }
-            else {
-                return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm);
+                    return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm);
+                });
+            },
+            publishAction: function () {
+                var entityName = XrmTranslator.GetEntity();
+                if (entityName.toLowerCase() === "none") {
+                    return XrmTranslator.PublishDashboard([{ recid: XrmTranslator.metadata.formid }]);
+                }
+
+                return XrmTranslator.Publish();
+            },
+            reloadAction: function () {
+                FormHandler.lastId = XrmTranslator.metadata.formid;
+                return FormHandler.Load();
             }
         });
-        } else {
-            savePromise = FormHandler.SaveOnly();
-        }
-
-        return savePromise
-        .then(function (response){
-            XrmTranslator.LockGrid("Publishing");
-            var entityName = XrmTranslator.GetEntity();
-            if (entityName.toLowerCase() === "none") {
-                return XrmTranslator.PublishDashboard([{ recid: XrmTranslator.metadata.formid }]);
-            }
-            else {
-                return XrmTranslator.Publish();
-            }
-        })
-        .then(function (response) {
-            XrmTranslator.LockGrid("Reloading");
-
-            FormHandler.lastId = XrmTranslator.metadata.formid;
-            return FormHandler.Load();
-        })
-        .catch(XrmTranslator.errorHandler);
     }
 } (window.FormHandler = window.FormHandler || {}));

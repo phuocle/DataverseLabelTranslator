@@ -82,8 +82,8 @@ When unlocked:
 
 - The grid lock overlay is removed.
 - The toolbar lock class is removed.
-- Save is usually disabled immediately after a successful load or reload.
-- Save becomes enabled after the user edits a grid cell and `XrmTranslator.HasPendingChanges()` returns true.
+- Load and Save are enabled after a successful load or reload, unless an active operation is still blocking them.
+- Save availability is not tied to `XrmTranslator.HasPendingChanges()` outside active operations.
 
 Before every normal save:
 
@@ -98,17 +98,17 @@ Before every normal save:
 
 | Type | 1. Load click message | 2. During load toolbar/grid/status | 3. After load toolbar/grid | 4. Save click message | 5. During save toolbar/grid/status | 6. After save action |
 |---|---|---|---|---|---|---|
-| `0. All-In-One` | `Loading ......` from `AllInOneHandler.Load()` | Grid is cleared and locked. Toolbar is locked. Child handler `grid.unlock()` calls are suppressed while each included type loads sequentially. No status banner. | Grid unlocks, toolbar unlocks, grouped records are shown. Save is disabled until edits are detected. | `Saving ......` | Grid and toolbar are locked. It saves changed groups by calling each child handler `SaveOnly()`, then runs one `PublishAllXmlRequest`. Child progress messages can appear, such as `Saving attribute batches n/m`. | Reloads All-In-One by calling `AllInOneHandler.Load()`. Final state is unlocked grouped grid, Save disabled. |
-| `1. Attributes` | `Loading 1. Attributes` | Grid and toolbar are locked. No status banner. Handler retrieves customizable attributes. | `FillTable()` adds records, summary, unlocks grid/toolbar. Load and Save are enabled. | `Saving 1. Attributes`, then `Saving 1. Attributes n/m`, then banner `Publishing 1. Attributes...`, then banner `Published 1. Attributes`, then `Reloading 1. Attributes` | Grid spinner is used for Saving only, then hidden immediately. Publishing runs as a banner with Load/Save disabled and a minimum 5s visible duration. Published stays visible for 5s, then hides before Reloading starts. If there are no pending changes, shared save guard shows `No changes to save.` and does not call the handler. | Reloads Attributes after published banner is hidden. Grid/toolbar unlock after `FillTable()`. Load and Save are enabled. |
-| `2. Option Sets` | `Loading <entity> attributes` | Grid and toolbar are locked. No status banner. Handler retrieves picklist, boolean, status, state, and multi-select metadata. | Grid filled and unlocked. Save disabled. | `Saving`, optional `Saving option set batches n/m`, then `Publishing`, then `Reloading` | Grid and toolbar locked. If no updates, skips publish and goes straight to `Reloading`. If updates exist, saves option values, publishes selected entity/global option sets, adds components to solution. | Reloads Option Sets. Grid/toolbar unlock after load. Save disabled. |
-| `3. Forms` | `Loading <entity> attributes` | Grid and toolbar are locked. No status banner. Handler loads all forms for the selected entity or dashboard forms when entity is `none`. | Grid filled and unlocked. Save disabled. | `Saving`, `Saving forms 1/1`, then `Publishing`, then `Reloading` | Grid and toolbar locked. Updates form XML, adds system form to solution, publishes selected entity or dashboard XML when entity is `none`. | Reloads Forms. Last form id is preserved for reload selection. Grid/toolbar unlock after load. Save disabled. |
-| `4. Views` | `Loading <entity> attributes` | Grid and toolbar locked. No status banner. Handler retrieves savedquery records and loc labels. | Grid filled and unlocked. Save disabled. | `Saving`, `Saving view batches n/m`, then `Publishing`, then `Reloading` | Grid and toolbar locked. Uses `SetLocLabels` batches, adds views to solution, publishes selected entity. | Reloads Views. Grid/toolbar unlock after load. Save disabled. |
-| `5. Form Metadata` | `Loading <entity> attributes` | Grid and toolbar locked. No status banner. Handler retrieves active customizable forms and their name labels. | Grid filled and unlocked. Save disabled. | `Saving`, `Saving form metadata batches n/m`, then `Publishing`, then `Reloading` | Grid and toolbar locked. Uses `SetLocLabels`, adds system forms to solution, publishes selected entity or dashboards when entity is `none`. | Reloads Form Metadata. Grid/toolbar unlock after load. Save disabled. |
-| `6. Entity Metadata` | `Loading <entity> attributes` | Grid and toolbar locked. No status banner. Handler retrieves `EntityDefinition`. | Grid filled with singular/plural rows and unlocked. Save disabled. | `Saving`, `Saving entity metadata 1/1`, then `Publishing`, then `Reloading` | Grid and toolbar locked. Updates `EntityDefinition` labels with `MSCRM.MergeLabels`, adds entity to solution, publishes selected entity. | Reloads Entity Metadata. Grid/toolbar unlock after load. Save disabled. |
-| `7. Relationships` | `Loading <entity> attributes` | Grid and toolbar locked. No status banner. Handler retrieves 1:N, N:1, and N:N relationships and related entity plural names. | Grid filled and unlocked. Save disabled. | `Saving`, `Saving relationship batches n/m`, then `Publishing`, then `Reloading` | Grid and toolbar locked. Updates relationship associated menu labels, adds relationships to solution, publishes selected entity. | Reloads Relationships. Grid/toolbar unlock after load. Save disabled. |
-| `8. Charts` | `Loading <entity> attributes` | Grid and toolbar locked. No status banner. Handler retrieves chart records and loc labels. | Grid filled and unlocked. Save disabled. | `Saving`, `Saving chart batches n/m`, then `Publishing`, then `Reloading` | Grid and toolbar locked. Uses `SetLocLabels`, adds charts to solution, publishes selected entity. | Reloads Charts. Grid/toolbar unlock after load. Save disabled. |
-| `9. Business Process Flows` | `Loading <entity> attributes` | Grid and toolbar locked. No status banner. Handler retrieves BPF workflows and parses `clientdata`. | Grid filled and unlocked. Save disabled. | `Saving`, `Saving business process flows n/m`, then `Reloading` | Grid and toolbar locked. Deactivates each changed BPF, reads XAML, applies label changes, saves XAML, reactivates, and adds workflows to solution. No explicit publish step. | Reloads BPF. Grid/toolbar unlock after load. Save disabled. |
-| `10. Business Rules` | `Loading <entity> attributes` | Grid and toolbar locked. No status banner. Handler loads attribute display names, retrieves business rule workflows, parses XAML/client data. | Grid filled and unlocked. Save disabled. | `Saving`, `Saving business rules n/m`, then `Reloading` | Grid and toolbar locked. For each changed rule, retrieves latest XAML, deactivates if active, applies label changes, saves, reactivates if needed, and adds workflows to solution. No explicit publish step. | Reloads Business Rules. Grid/toolbar unlock after load. Save disabled. |
+| `0. All-In-One` | `Loading ......` from `AllInOneHandler.Load()` | Grid is cleared and locked. Toolbar is locked. Child handler `grid.unlock()` calls are suppressed while each included type loads sequentially. No status banner. | Grid unlocks, toolbar unlocks, grouped records are shown. The `3. Forms` group includes `[Form] Description` rows. Save is disabled until edits are detected. | `Saving ......` | Grid and toolbar are locked. It saves changed groups by calling each child handler `SaveOnly()`, saves form description rows through `SetLocLabels(systemform.description)`, then runs one `PublishAllXmlRequest`. Child progress messages can appear, such as `Saving attribute batches n/m`. | Reloads All-In-One by calling `AllInOneHandler.Load()`. Final state is unlocked grouped grid, Save disabled. |
+| `1. Attributes` | `Loading 1. Attributes` | Grid and toolbar are locked. No status banner. Handler retrieves customizable attributes. | `FillTable()` adds records, summary, unlocks grid/toolbar. Load and Save are enabled. | `Saving 1. Attributes`, then `Saving 1. Attributes n/m`, then banner `Publishing 1. Attributes`, then banner `Published 1. Attributes`, then `Reloading 1. Attributes` | Grid spinner is used for Saving only, then hidden immediately. Publishing runs as a banner with Load/Save disabled and a minimum 5s visible duration. Published stays visible for 5s, then hides before Reloading starts. If there are no pending changes, shared save guard shows `No changes to save.` and does not call the handler. | Reloads Attributes after published banner is hidden. Grid/toolbar unlock after `FillTable()`. Load and Save are enabled. |
+| `2. Option Sets` | `Loading 2. Option Sets` | Grid and toolbar are locked. No status banner. Handler retrieves picklist, boolean, status, state, and multi-select metadata. | Grid filled and unlocked. Load and Save are enabled. | `Saving 2. Option Sets`, then banner `Publishing 2. Option Sets`, then banner `Published 2. Option Sets`, then `Reloading 2. Option Sets` | Grid spinner is used for Saving only, then hidden. Publishing runs as a banner with Load/Save disabled and a minimum 5s visible duration. Real publish includes selected entity and changed global option sets. | Reloads Option Sets after published banner is hidden. Load and Save are enabled. |
+| `3. Forms` | `Loading 3. Forms` | Grid and toolbar are locked. No status banner. Handler loads all forms for the selected entity or dashboard forms when entity is `none`, including `systemform.description` labels. | Grid filled with form XML label rows plus `[Form] Description` rows and unlocked. Load and Save are enabled. | `Saving 3. Forms`, then banner `Publishing 3. Forms`, then banner `Published 3. Forms`, then `Reloading 3. Forms` | Grid spinner is used for Saving only. Form XML label changes update `systemform.formxml`; form description changes use `SetLocLabels` for `systemform.description`. Publishing runs as a banner with Load/Save disabled and a minimum 5s visible duration. Publishes selected entity or dashboard XML when entity is `none`. | Reloads Forms. Load and Save are enabled. |
+| `4. Views` | `Loading 4. Views` | Grid and toolbar locked. No status banner. Handler retrieves savedquery records with loc labels for `name` and `description`. | Grid filled with separate `Name` and `Description` rows and unlocked. Load and Save are enabled. | `Saving 4. Views`, then banner `Publishing 4. Views`, then banner `Published 4. Views`, then `Reloading 4. Views` | Grid spinner is used for Saving only. Uses `SetLocLabels` for the changed savedquery attribute (`name` or `description`), adds changed views to solution, publishes selected entity. | Reloads Views. Load and Save are enabled. |
+| `5. Form Metadata` | `Loading 5. Form Metadata` | Grid and toolbar locked. No status banner. Handler retrieves active customizable forms and their name labels. | Grid filled and unlocked. Load and Save are enabled. | `Saving 5. Form Metadata`, then banner `Publishing 5. Form Metadata`, then banner `Published 5. Form Metadata`, then `Reloading 5. Form Metadata` | Grid spinner is used for Saving only. Publishing runs as a banner with Load/Save disabled and a minimum 5s visible duration. Publishes selected entity or dashboards when entity is `none`. | Reloads Form Metadata. Load and Save are enabled. |
+| `6. Entity Metadata` | `Loading 6. Entity Metadata` | Grid and toolbar locked. No status banner. Handler retrieves `EntityDefinition`. | Grid filled with singular/plural rows and unlocked. Load and Save are enabled. | `Saving 6. Entity Metadata`, then banner `Publishing 6. Entity Metadata`, then banner `Published 6. Entity Metadata`, then `Reloading 6. Entity Metadata` | Grid spinner is used for Saving only. Publishing runs as a banner with Load/Save disabled and a minimum 5s visible duration. Updates `EntityDefinition` labels with `MSCRM.MergeLabels`, adds entity to solution, publishes selected entity. | Reloads Entity Metadata. Load and Save are enabled. |
+| `7. Relationships` | `Loading 7. Relationships` | Grid and toolbar locked. No status banner. Handler retrieves 1:N, N:1, and N:N relationships and related entity plural names. | Grid filled and unlocked. Load and Save are enabled. | `Saving 7. Relationships`, then banner `Publishing 7. Relationships`, then banner `Published 7. Relationships`, then `Reloading 7. Relationships` | Grid spinner is used for Saving only. Publishing runs as a banner with Load/Save disabled and a minimum 5s visible duration. Updates relationship associated menu labels, adds relationships to solution, publishes selected entity. | Reloads Relationships. Load and Save are enabled. |
+| `8. Charts` | `Loading 8. Charts` | Grid and toolbar locked. No status banner. Handler retrieves chart records and loc labels. | Grid filled and unlocked. Load and Save are enabled. | `Saving 8. Charts`, then banner `Publishing 8. Charts`, then banner `Published 8. Charts`, then `Reloading 8. Charts` | Grid spinner is used for Saving only. Publishing runs as a banner with Load/Save disabled and a minimum 5s visible duration. Uses `SetLocLabels`, adds charts to solution, publishes selected entity. | Reloads Charts. Load and Save are enabled. |
+| `9. Business Process Flows` | `Loading 9. Business Process Flows` | Grid and toolbar locked. No status banner. Handler retrieves BPF workflows and parses `clientdata`. | Grid filled and unlocked. Load and Save are enabled. | `Saving 9. Business Process Flows`, then dummy banner `Publishing 9. Business Process Flows`, then banner `Published 9. Business Process Flows`, then `Reloading 9. Business Process Flows` | Grid spinner is used for Saving only. Dummy publishing keeps Load/Save disabled for at least 5s because BPF has no explicit publish step. | Reloads BPF. Load and Save are enabled. |
+| `10. Business Rules` | `Loading 10. Business Rules` | Grid and toolbar locked. No status banner. Handler loads attribute display names, retrieves business rule workflows, parses XAML/client data. | Grid filled and unlocked. Load and Save are enabled. | `Saving 10. Business Rules`, then dummy banner `Publishing 10. Business Rules`, then banner `Published 10. Business Rules`, then `Reloading 10. Business Rules` | Grid spinner is used for Saving only. Dummy publishing keeps Load/Save disabled for at least 5s because Business Rules has no explicit publish step. | Reloads Business Rules. Load and Save are enabled. |
 | `11. Ribbons` | Status banner: `Preparing ribbon labels for <entity>.` then `Preparing ribbon helper solution for <entity>.`, then `Parsing ribbon labels.` | Ribbon skips the generic `Loading <entity> attributes` lock. It disables Load and Save explicitly and uses status banners. Grid can remain visually unlocked during helper solution preparation/export until records are filled. | Grid is filled and unlocked. Status banner shows `Ribbon labels loaded.` briefly. Load is re-enabled after delay. Save remains disabled until edits. | Status banner: `Preparing ribbon backup.` Then after backup choice: `Preparing ribbon import. Save and Load are temporarily disabled.` | Save uses status banners and operation-state blocking. Save/Load are disabled. It creates backup, imports helper solution, starts async PublishAll XML, commits grid changes, and shows publish status. | Grid unlocks after publish job is started, not necessarily after publish completes. Status remains governed by publish job polling/recovery. Save/Load availability follows operation state. |
 | `12. Commands` | `Loading <entity> attributes`, then `Loading command labels 0/<count>` | Grid and toolbar locked. Handler resolves solution `appaction` ids, retrieves entity commands, then retrieves labels. | Grid filled and unlocked. Save disabled. | `Saving`, `Saving command labels n/m`, then `Publishing`, then `Reloading` | Grid and toolbar locked. Uses `SetLocLabels` for appaction label properties, then publishes selected entity. | Reloads Commands. Grid/toolbar unlock after load. Save disabled. |
 | `13. Entity Messages` | `Loading entity messages` | Grid and toolbar locked. For custom entities, it returns an empty grid immediately. For OOB/system entities, it resolves solution/entity info, queries display string identity, exports translation package, parses `CrmTranslations.xml`. No separate status banner during load. | Grid is filled and unlocked for OOB/system entities, or empty and unlocked for custom entities. Save disabled. | Status banner: `Importing entity message translations. Save and Load are temporarily disabled.` Grid messages: `Re-exporting translations`, `Importing translations`, then status banner `Publishing entity messages for <entity>. Save and Load are temporarily disabled.`, then `Reloading entity messages` | Grid and toolbar locked by grid lock. Save/Load also blocked by operation state. It re-exports a fresh translation package, applies changed rows, imports translations, publishes selected entity. | Clears operation status, reloads Entity Messages, unlocks after load, Save disabled. |
@@ -178,11 +178,11 @@ Use one standard state model for every type after `App Loading` has completed:
   - Do not show publish/reload text until the save phase has finished successfully.
 - After save succeeds and before reload:
   - Start the publishing phase.
-  - Every type must enter a `Publishing {ToolbarType}...` phase, even when there is no real Dataverse publish operation.
-  - For types without a real publish step, run a dummy publish phase: show `Publishing {ToolbarType}...`, keep Load and Save disabled, wait about 5 seconds, then show `Published {ToolbarType}`.
+  - Every type must enter a `Publishing {ToolbarType}` phase, even when there is no real Dataverse publish operation.
+  - For types without a real publish step, run a dummy publish phase: show `Publishing {ToolbarType}`, keep Load and Save disabled, wait about 5 seconds, then show `Published {ToolbarType}`.
   - Prefer async publish/poll behavior for every type that has a real publish operation, using the Ribbon model as the target UX.
   - Unlock the grid only when it is safe; Save and Load remain blocked while real or dummy publish is running.
-  - Show a status banner such as `Publishing {ToolbarType}...`.
+  - Show a status banner such as `Publishing {ToolbarType}`.
   - Poll publish state on a fixed schedule, for example wait 30 seconds, check attempt 1, then continue scheduled checks until success/failure/timeout.
   - On publish success, show `Published {ToolbarType}` for about 5 seconds, then hide the banner.
   - On dummy publish success, show `Published {ToolbarType}` for about 5 seconds, then hide the banner and re-enable both Load and Save.
@@ -202,25 +202,25 @@ Use one standard state model for every type after `App Loading` has completed:
 
 | Type | Load message | Save message | Publish message | Reload message |
 |---|---|---|---|---|
-| `0. All-In-One` | `Loading 0. All-In-One` | `Saving 0. All-In-One` | `Publishing 0. All-In-One...` then `Published 0. All-In-One` | `Reloading 0. All-In-One` |
-| `1. Attributes` | `Loading 1. Attributes` | `Saving 1. Attributes` | `Publishing 1. Attributes...` then `Published 1. Attributes` | `Reloading 1. Attributes` |
-| `2. Option Sets` | `Loading 2. Option Sets` | `Saving 2. Option Sets` | `Publishing 2. Option Sets...` then `Published 2. Option Sets` | `Reloading 2. Option Sets` |
-| `3. Forms` | `Loading 3. Forms` | `Saving 3. Forms` | `Publishing 3. Forms...` then `Published 3. Forms` | `Reloading 3. Forms` |
-| `4. Views` | `Loading 4. Views` | `Saving 4. Views` | `Publishing 4. Views...` then `Published 4. Views` | `Reloading 4. Views` |
-| `5. Form Metadata` | `Loading 5. Form Metadata` | `Saving 5. Form Metadata` | `Publishing 5. Form Metadata...` then `Published 5. Form Metadata` | `Reloading 5. Form Metadata` |
-| `6. Entity Metadata` | `Loading 6. Entity Metadata` | `Saving 6. Entity Metadata` | `Publishing 6. Entity Metadata...` then `Published 6. Entity Metadata` | `Reloading 6. Entity Metadata` |
-| `7. Relationships` | `Loading 7. Relationships` | `Saving 7. Relationships` | `Publishing 7. Relationships...` then `Published 7. Relationships` | `Reloading 7. Relationships` |
-| `8. Charts` | `Loading 8. Charts` | `Saving 8. Charts` | `Publishing 8. Charts...` then `Published 8. Charts` | `Reloading 8. Charts` |
-| `9. Business Process Flows` | `Loading 9. Business Process Flows` | `Saving 9. Business Process Flows` | Dummy `Publishing 9. Business Process Flows...` for about 5s, then `Published 9. Business Process Flows` | `Reloading 9. Business Process Flows` |
-| `10. Business Rules` | `Loading 10. Business Rules` | `Saving 10. Business Rules` | Dummy `Publishing 10. Business Rules...` for about 5s, then `Published 10. Business Rules` | `Reloading 10. Business Rules` |
-| `11. Ribbons` | `Loading 11. Ribbons` | `Saving 11. Ribbons` | `Publishing 11. Ribbons...` then `Published 11. Ribbons` | `Reloading 11. Ribbons` if a fresh readback is required; otherwise commit in-place after async publish success |
-| `12. Commands` | `Loading 12. Commands` | `Saving 12. Commands` | `Publishing 12. Commands...` then `Published 12. Commands` | `Reloading 12. Commands` |
-| `13. Entity Messages` | `Loading 13. Entity Messages` | `Saving 13. Entity Messages` | `Publishing 13. Entity Messages...` then `Published 13. Entity Messages` | `Reloading 13. Entity Messages` |
-| `14. Content Snippets` | `Loading 14. Content Snippets` | `Saving 14. Content Snippets` | Dummy `Publishing 14. Content Snippets...` for about 5s, then `Published 14. Content Snippets` | `Reloading 14. Content Snippets` |
-| `15. Sitemap` | `Loading 15. Sitemap` | `Saving 15. Sitemap` | `Publishing 15. Sitemap...` then `Published 15. Sitemap` | `Reloading 15. Sitemap` |
-| `16. Dashboards` | `Loading 16. Dashboards` | `Saving 16. Dashboards` | `Publishing 16. Dashboards...` then `Published 16. Dashboards` | `Reloading 16. Dashboards` |
-| `17. Web Resources` | `Loading 17. Web Resources` | `Saving 17. Web Resources` | `Publishing 17. Web Resources...` then `Published 17. Web Resources` | `Reloading 17. Web Resources` |
-| `18. Global Option Sets` | `Loading 18. Global Option Sets` | `Saving 18. Global Option Sets` | `Publishing 18. Global Option Sets...` then `Published 18. Global Option Sets` | `Reloading 18. Global Option Sets` |
+| `0. All-In-One` | `Loading 0. All-In-One` | `Saving 0. All-In-One` | `Publishing 0. All-In-One` then `Published 0. All-In-One` | `Reloading 0. All-In-One` |
+| `1. Attributes` | `Loading 1. Attributes` | `Saving 1. Attributes` | `Publishing 1. Attributes` then `Published 1. Attributes` | `Reloading 1. Attributes` |
+| `2. Option Sets` | `Loading 2. Option Sets` | `Saving 2. Option Sets` | `Publishing 2. Option Sets` then `Published 2. Option Sets` | `Reloading 2. Option Sets` |
+| `3. Forms` | `Loading 3. Forms` | `Saving 3. Forms` | `Publishing 3. Forms` then `Published 3. Forms` | `Reloading 3. Forms` |
+| `4. Views` | `Loading 4. Views` | `Saving 4. Views` | `Publishing 4. Views` then `Published 4. Views` | `Reloading 4. Views` |
+| `5. Form Metadata` | `Loading 5. Form Metadata` | `Saving 5. Form Metadata` | `Publishing 5. Form Metadata` then `Published 5. Form Metadata` | `Reloading 5. Form Metadata` |
+| `6. Entity Metadata` | `Loading 6. Entity Metadata` | `Saving 6. Entity Metadata` | `Publishing 6. Entity Metadata` then `Published 6. Entity Metadata` | `Reloading 6. Entity Metadata` |
+| `7. Relationships` | `Loading 7. Relationships` | `Saving 7. Relationships` | `Publishing 7. Relationships` then `Published 7. Relationships` | `Reloading 7. Relationships` |
+| `8. Charts` | `Loading 8. Charts` | `Saving 8. Charts` | `Publishing 8. Charts` then `Published 8. Charts` | `Reloading 8. Charts` |
+| `9. Business Process Flows` | `Loading 9. Business Process Flows` | `Saving 9. Business Process Flows` | Dummy `Publishing 9. Business Process Flows` for about 5s, then `Published 9. Business Process Flows` | `Reloading 9. Business Process Flows` |
+| `10. Business Rules` | `Loading 10. Business Rules` | `Saving 10. Business Rules` | Dummy `Publishing 10. Business Rules` for about 5s, then `Published 10. Business Rules` | `Reloading 10. Business Rules` |
+| `11. Ribbons` | `Loading 11. Ribbons` | `Saving 11. Ribbons` | `Publishing 11. Ribbons` then `Published 11. Ribbons` | `Reloading 11. Ribbons` if a fresh readback is required; otherwise commit in-place after async publish success |
+| `12. Commands` | `Loading 12. Commands` | `Saving 12. Commands` | `Publishing 12. Commands` then `Published 12. Commands` | `Reloading 12. Commands` |
+| `13. Entity Messages` | `Loading 13. Entity Messages` | `Saving 13. Entity Messages` | `Publishing 13. Entity Messages` then `Published 13. Entity Messages` | `Reloading 13. Entity Messages` |
+| `14. Content Snippets` | `Loading 14. Content Snippets` | `Saving 14. Content Snippets` | Dummy `Publishing 14. Content Snippets` for about 5s, then `Published 14. Content Snippets` | `Reloading 14. Content Snippets` |
+| `15. Sitemap` | `Loading 15. Sitemap` | `Saving 15. Sitemap` | `Publishing 15. Sitemap` then `Published 15. Sitemap` | `Reloading 15. Sitemap` |
+| `16. Dashboards` | `Loading 16. Dashboards` | `Saving 16. Dashboards` | `Publishing 16. Dashboards` then `Published 16. Dashboards` | `Reloading 16. Dashboards` |
+| `17. Web Resources` | `Loading 17. Web Resources` | `Saving 17. Web Resources` | `Publishing 17. Web Resources` then `Published 17. Web Resources` | `Reloading 17. Web Resources` |
+| `18. Global Option Sets` | `Loading 18. Global Option Sets` | `Saving 18. Global Option Sets` | `Publishing 18. Global Option Sets` then `Published 18. Global Option Sets` | `Reloading 18. Global Option Sets` |
 
 ## Implementation Progress
 
@@ -229,20 +229,20 @@ Completed in this iteration:
 | Area | Status | Files | Notes |
 |---|---|---|---|
 | `App Loading` | Done | `js/XrmTranslator.js` | Startup now has one high-priority message: `App Loading`. Lower-level startup messages are suppressed while app loading is active. |
-| `1. Attributes` | Done | `js/XrmTranslator.js`, `js/AttributeHandler.js` | Load now shows `Loading 1. Attributes`. Load and Save are enabled after load. Save spinner shows `Saving 1. Attributes`; after save it unlocks grid, shows `Publishing 1. Attributes...` for at least 5s, then `Published 1. Attributes` for 5s, hides the banner, then shows `Reloading 1. Attributes`. After reload, Load and Save are enabled. |
+| `1. Attributes` | Done | `js/XrmTranslator.js`, `js/AttributeHandler.js` | Load now shows `Loading 1. Attributes`. Save uses the shared type save flow with real publish, 5s minimum publishing banner, 5s published banner, then `Reloading 1. Attributes`. After load/reload, Load and Save are enabled. |
+| `2. Option Sets` | Done | `js/XrmTranslator.js`, `js/OptionSetHandler.js` | Load now shows `Loading 2. Option Sets`. Save uses the shared type save flow with real publish, 5s minimum publishing banner, 5s published banner, then `Reloading 2. Option Sets`. |
+| `3. Forms` | Done | `js/XrmTranslator.js`, `js/FormHandler.js`, `js/AllInOneHandler.js` | Load now shows `Loading 3. Forms`. The standalone Forms grid and the All-In-One `3. Forms` group include `[Form] Description` rows for `systemform.description`. Save uses the shared type save flow with real entity/dashboard publish, 5s minimum publishing banner, 5s published banner, then `Reloading 3. Forms`. |
+| `4. Views` | Done | `js/XrmTranslator.js`, `js/ViewHandler.js` | Load now shows `Loading 4. Views`. The grid includes separate `Name` and `Description` rows, including empty description rows for adding new translations, and saves `savedquery.name` or `savedquery.description` based on the edited row. Save uses the shared type save flow with real publish and reload. |
+| `5. Form Metadata` | Done | `js/XrmTranslator.js`, `js/FormMetaHandler.js` | Load now shows `Loading 5. Form Metadata`. Save uses the shared type save flow with real entity/dashboard publish and reload. |
+| `6. Entity Metadata` | Done | `js/XrmTranslator.js`, `js/EntityHandler.js` | Load now shows `Loading 6. Entity Metadata`. Save uses the shared type save flow with real publish and reload. |
+| `7. Relationships` | Done | `js/XrmTranslator.js`, `js/RelationshipHandler.js` | Load now shows `Loading 7. Relationships`. Save uses the shared type save flow with real publish and reload. |
+| `8. Charts` | Done | `js/XrmTranslator.js`, `js/ChartHandler.js` | Load now shows `Loading 8. Charts`. Save uses the shared type save flow with real publish and reload. |
+| `9. Business Process Flows` | Done | `js/XrmTranslator.js`, `js/BpfHandler.js` | Load now shows `Loading 9. Business Process Flows`. Save uses the shared type save flow with dummy publishing because this type has no explicit publish step. |
+| `10. Business Rules` | Done | `js/XrmTranslator.js`, `js/BusinessRuleHandler.js` | Load now shows `Loading 10. Business Rules`. Save uses the shared type save flow with dummy publishing because this type has no explicit publish step. |
 
 Not done yet:
 
 - `0. All-In-One`
-- `2. Option Sets`
-- `3. Forms`
-- `4. Views`
-- `5. Form Metadata`
-- `6. Entity Metadata`
-- `7. Relationships`
-- `8. Charts`
-- `9. Business Process Flows`
-- `10. Business Rules`
 - `11. Ribbons`
 - `12. Commands`
 - `13. Entity Messages`
@@ -254,7 +254,7 @@ Not done yet:
 
 ## Next AI Implementation Guide
 
-Start from `0. All-In-One` and `2. Option Sets` after reviewing the implemented pattern for `1. Attributes`.
+Start from `0. All-In-One` and `11. Ribbons` after reviewing the implemented pattern for `1` through `10`.
 
 ### Shared Rules
 
@@ -268,7 +268,7 @@ For each type:
 
 - Load message: `Loading {ToolbarType}`
 - Save message: `Saving {ToolbarType}`
-- Publish banner: `Publishing {ToolbarType}...`
+- Publish banner: `Publishing {ToolbarType}`
 - Publish success banner: `Published {ToolbarType}` with `autoHideMs: 5000`
 - Reload message: `Reloading {ToolbarType}`
 
@@ -287,6 +287,8 @@ During save:
 - Disable Save.
 - If publish is real, keep Load and Save disabled until publish returns or async publish monitoring takes over.
 - If publish is dummy, disable Load and Save during the dummy publish timer, then re-enable both Load and Save.
+- Prefer `XrmTranslator.RunTypeSaveFlow({ saveAction, publishAction, reloadAction })` for normal synchronous save/publish/reload handlers.
+- Omit `publishAction` only for dummy publishing types.
 
 ### How To Implement `0. All-In-One`
 
@@ -303,32 +305,55 @@ Target changes:
 - Keep child handler unlock suppression.
 - Ensure child handler load messages do not replace the parent All-In-One load message.
 - In `AllInOneHandler.Save()`, replace save lock with `Saving 0. All-In-One`.
-- After child `SaveOnly()` calls finish, show `Publishing 0. All-In-One...`.
+- After child `SaveOnly()` calls finish, show `Publishing 0. All-In-One`.
 - Existing `PublishAllXmlRequest` is a real publish. Wrap it with the shared publish banner behavior.
 - On success, show `Published 0. All-In-One` for about 5 seconds.
 - Then reload using `Reloading 0. All-In-One`.
 - Ensure Load/Save cannot remain disabled if save/publish/reload fails.
 
-### How To Implement `2. Option Sets`
+### Completed Pattern For `1` Through `10`
 
-File: `js/OptionSetHandler.js`
+Files:
 
-Current load message is from `XrmTranslator.TriggerLoading()`:
+- `js/AttributeHandler.js`
+- `js/OptionSetHandler.js`
+- `js/FormHandler.js`
+- `js/ViewHandler.js`
+- `js/FormMetaHandler.js`
+- `js/EntityHandler.js`
+- `js/RelationshipHandler.js`
+- `js/ChartHandler.js`
+- `js/BpfHandler.js`
+- `js/BusinessRuleHandler.js`
 
-- `Loading <entity> attributes`
+Implemented pattern:
 
-Target changes:
+- `XrmTranslator.TriggerLoading()` shows `Loading {ToolbarType}` for all types `1` through `10`.
+- Each `FillTable()` enables both Load and Save after grid unlock.
+- Each handler uses `XrmTranslator.RunTypeSaveFlow(...)`.
+- Real publish types pass `publishAction`.
+- BPF and Business Rules omit `publishAction`, which runs dummy publishing for at least 5 seconds.
+- After `Published {ToolbarType}` stays visible for about 5 seconds, the helper hides the banner and runs `Reloading {ToolbarType}`.
 
-- In `XrmTranslator.TriggerLoading()`, add a branch for `XrmTranslator.GetType() === "options"` and show `Loading 2. Option Sets`.
-- In `OptionSetHandler.Save()`, use `Saving 2. Option Sets`.
-- Batch progress should use `Saving 2. Option Sets n/m`.
-- For real publish, show `Publishing 2. Option Sets...`, keep Load/Save disabled, call existing publish, then show `Published 2. Option Sets` for about 5 seconds.
-- Reload using `Reloading 2. Option Sets`.
-- If there are no updates, the shared Save click guard should return without saving; Load and Save stay enabled.
+## Existing Shared Helpers And Recommendation
 
-## Implementation Recommendation
+Current shared helpers:
 
-Add a small shared helper for type state labels, for example:
+- `XrmTranslator.GetCurrentToolbarTypeText()` returns the exact toolbar label including number.
+- `XrmTranslator.EnableLoadAndSave()` re-enables both operation buttons after a successful load/reload or handled failure.
+- `XrmTranslator.RunTypeSaveFlow({ saveAction, publishAction, reloadAction })` handles:
+  - `Saving {ToolbarType}` grid lock
+  - `Publishing {ToolbarType}` banner with Load/Save disabled for at least 5 seconds
+  - `Published {ToolbarType}` banner for about 5 seconds
+  - `Reloading {ToolbarType}` grid lock
+  - Load/Save re-enable in success and handled error paths
+  - operation-state blocking for Save/Load, so grid click/change events cannot re-enable Save during Publishing, Published, or Reloading phases
+
+Recommendation for remaining types:
+
+Use the existing helpers before adding another abstraction.
+
+If remaining work needs stronger type metadata, extend the shared helpers with a type label map, for example:
 
 ```javascript
 XrmTranslator.TypeStateLabels = {
@@ -376,7 +401,7 @@ Ribbons and Entity Messages should still use operation status banners for long i
 Publishing should be implemented as a shared async phase after the synchronous save phase. The target behavior is:
 
 1. Handler finishes data save.
-2. App starts publish operation state and shows banner `Publishing {ToolbarType}...`.
+2. App starts publish operation state and shows banner `Publishing {ToolbarType}`.
 3. App waits about 30 seconds before the first poll.
 4. If poll attempt 1 succeeds, show `Published {ToolbarType}` for about 5 seconds, then hide the banner.
 5. If not complete, continue scheduled polling with Save/Load blocked.

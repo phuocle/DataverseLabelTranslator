@@ -69,6 +69,11 @@
 
             if (record.w2ui && record.w2ui.changes) {
                 var attribute = XrmTranslator.GetAttributeById (record.recid);
+
+                if (IsShadowAttribute(attribute)) {
+                    continue;
+                }
+
                 var labels = attribute[XrmTranslator.GetComponent()].LocalizedLabels;
 
                 var changes = record.w2ui.changes;
@@ -81,6 +86,10 @@
         return updates;
     }
 
+    function IsShadowAttribute(attribute) {
+        return attribute && attribute.AttributeOf;
+    }
+
     function FillTable () {
         var grid = XrmTranslator.GetGrid();
         grid.clear();
@@ -88,9 +97,13 @@
         var records = [];
 
         var excludedColumns = XrmTranslator.metadata.reduce(function(all, attribute) {
+            // Shadow attributes such as owneridtype extend a real column and cannot be updated through AttributeMetadata PUT.
+            if (IsShadowAttribute(attribute)) {
+                all.push(attribute.SchemaName);
+            }
             // If attribute has a formula definition, it is a rollup field.
             // Their accompanying fields for date, state and base cause CRM exceptions when being translated, so we need to skip these
-            if (attribute.FormulaDefinition) {
+            else if (attribute.FormulaDefinition) {
                 if (attribute.AttributeType === "Money") {
                     /// Skip _Base, _Date, _State
                     all.push(attribute.SchemaName + "_Base", attribute.SchemaName + "_Date", attribute.SchemaName + "_State");
@@ -142,8 +155,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
-        XrmTranslator.SetLoadButtonDisabled(false);
-        XrmTranslator.SetSaveButtonDisabled(false);
+        XrmTranslator.EnableLoadAndSave();
     }
 
     AttributeHandler.Load = function() {
@@ -191,53 +203,16 @@
     }
 
     AttributeHandler.Save = function() {
-        var toolbarType = XrmTranslator.GetCurrentToolbarTypeText ? XrmTranslator.GetCurrentToolbarTypeText() : "1. Attributes";
-        var publishMinimumMs = 5000;
-        var publishedMessageMs = 5000;
-
-        function delay(ms) {
-            return new Promise(function (resolve) {
-                setTimeout(resolve, ms);
-            });
-        }
-
-        XrmTranslator.LockGrid("Saving " + toolbarType);
-
-        return AttributeHandler.SaveOnly()
-            .then(function () {
-                XrmTranslator.UnlockGrid();
-                XrmTranslator.ShowStatusBanner({
-                    tone: "info",
-                    message: "Publishing " + toolbarType + "..."
-                });
-                XrmTranslator.SetLoadButtonDisabled(true);
-                XrmTranslator.SetSaveButtonDisabled(true);
-                return Promise.all([
-                    XrmTranslator.Publish(),
-                    delay(publishMinimumMs)
-                ]);
-            })
-            .then(function () {
-                XrmTranslator.ShowStatusBanner({
-                    tone: "success",
-                    message: "Published " + toolbarType
-                });
-                return delay(publishedMessageMs);
-            })
-            .then(function () {
-                XrmTranslator.HideStatusBanner();
-                XrmTranslator.LockGrid("Reloading " + toolbarType);
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return AttributeHandler.SaveOnly();
+            },
+            publishAction: function () {
+                return XrmTranslator.Publish();
+            },
+            reloadAction: function () {
                 return AttributeHandler.Load();
-            })
-            .then(function () {
-                XrmTranslator.SetLoadButtonDisabled(false);
-                XrmTranslator.SetSaveButtonDisabled(false);
-            })
-            .catch(function (error) {
-                XrmTranslator.HideStatusBanner();
-                XrmTranslator.SetLoadButtonDisabled(false);
-                XrmTranslator.SetSaveButtonDisabled(false);
-                XrmTranslator.errorHandler(error);
-            });
+            }
+        });
     }
 } (window.AttributeHandler = window.AttributeHandler || {}));

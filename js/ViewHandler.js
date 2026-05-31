@@ -1,5 +1,6 @@
 (function (ViewHandler, undefined) {
     "use strict";
+    var idSeparator = "|";
 
     function ApplyChanges(changes, labels) {
         for (var change in changes) {
@@ -12,40 +13,63 @@
                 continue;
             }
 
+            var found = false;
             for (var i = 0; i < labels.length; i++) {
                 var label = labels[i];
 
                 if (label.LanguageCode == change) {
                     label.Label = changes[change];
                     label.HasChanged = true;
+                    found = true;
 
                     break;
                 }
+            }
 
-                // Did not find label for this language
-                if (i === labels.length - 1) {
-                    labels.push({ LanguageCode: change, Label: changes[change] })
-                }
+            if (!found) {
+                labels.push({
+                    LanguageCode: parseInt(change, 10),
+                    Label: changes[change],
+                    HasChanged: true
+                });
             }
         }
     }
 
     function GetUpdates() {
         var records = XrmTranslator.GetGrid().records;
-
         var updates = [];
 
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
 
             if (record.w2ui && record.w2ui.changes) {
-                var view = XrmTranslator.GetAttributeByProperty("recid", record.recid);
-                var labels = view.labels.Label.LocalizedLabels;
+                var parts = String(record.recid || "").split(idSeparator);
+                var viewId = parts[0];
+                var attributeName = parts[1] || "name";
+                var view = XrmTranslator.GetAttributeByProperty("recid", viewId);
+
+                if (!view || !view.labels || !view.labels[attributeName]) {
+                    continue;
+                }
+
+                if (!view.labels[attributeName].Label) {
+                    view.labels[attributeName].Label = { LocalizedLabels: [] };
+                }
+                if (!view.labels[attributeName].Label.LocalizedLabels) {
+                    view.labels[attributeName].Label.LocalizedLabels = [];
+                }
+
+                var labels = view.labels[attributeName].Label.LocalizedLabels;
 
                 var changes = record.w2ui.changes;
 
                 ApplyChanges(changes, labels);
-                updates.push(view);
+                updates.push({
+                    recid: viewId,
+                    attributeName: attributeName,
+                    labels: view.labels[attributeName]
+                });
             }
         }
 
@@ -72,6 +96,23 @@
         1048576: "Copilot"
     };
 
+    function AddLabelRecord(records, view, attributeName, labelText) {
+        var labels = view.labels && view.labels[attributeName] && view.labels[attributeName].Label
+            ? view.labels[attributeName].Label.LocalizedLabels
+            : [];
+
+        var record = {
+           recid: view.recid + idSeparator + attributeName,
+           schemaName: (viewTypeMap[view.querytype] || ("Type " + view.querytype)) + " / " + labelText
+        };
+
+        for (var i = 0; i < labels.length; i++) {
+            record[labels[i].LanguageCode.toString()] = labels[i].Label;
+        }
+
+        records.push(record);
+    }
+
     function FillTable () {
         var grid = XrmTranslator.GetGrid();
         grid.clear();
@@ -81,29 +122,14 @@
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var view = XrmTranslator.metadata[i];
 
-            var displayNames = view.labels.Label.LocalizedLabels;
-
-            if (!displayNames || displayNames.length === 0) {
-                continue;
-            }
-
-            var record = {
-               recid: view.recid,
-               schemaName: viewTypeMap[view.querytype] || ("Type " + view.querytype)
-            };
-
-            for (var j = 0; j < displayNames.length; j++) {
-                var displayName = displayNames[j];
-
-                record[displayName.LanguageCode.toString()] = displayName.Label;
-            }
-
-            records.push(record);
+            AddLabelRecord(records, view, "name", "Name");
+            AddLabelRecord(records, view, "description", "Description");
         }
 
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     ViewHandler.Load = function() {
@@ -127,7 +153,7 @@
                 for (var i = 0; i < views.length; i++) {
                     var view = views[i];
 
-                    var retrieveLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
+                    var retrieveNameLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
                         .with({
                             urlParams: {
                                 EntityMoniker: "{'@odata.id':'savedqueries(" + view.savedqueryid + ")'}",
@@ -136,10 +162,22 @@
                             }
                         })
 
+                    var retrieveDescriptionLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
+                        .with({
+                            urlParams: {
+                                EntityMoniker: "{'@odata.id':'savedqueries(" + view.savedqueryid + ")'}",
+                                AttributeName: "'description'",
+                                IncludeUnpublished: true
+                            }
+                        })
+
                     var prop = WebApiClient.Promise.props({
                         recid: view.savedqueryid,
                         querytype: view.querytype,
-                        labels: WebApiClient.Execute(retrieveLabelsRequest)
+                        labels: WebApiClient.Promise.props({
+                            name: WebApiClient.Execute(retrieveNameLabelsRequest),
+                            description: WebApiClient.Execute(retrieveDescriptionLabelsRequest)
+                        })
                     });
 
                     requests.push(prop);
@@ -159,7 +197,7 @@
     ViewHandler.SaveOnly = function() {
         var updates = GetUpdates();
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving view batches",
+            progressLabel: "Saving 4. Views",
             batchNamePrefix: "batch_setviewlabels",
             changeSetNamePrefix: "changeset_setviewlabels",
             buildRequest: function(update) {
@@ -172,28 +210,34 @@
                             "@odata.type": "Microsoft.Dynamics.CRM.savedquery",
                             savedqueryid: update.recid
                         },
-                        AttributeName: "name"
+                        AttributeName: update.attributeName
                     }
                 });
             }
         })
             .then(function () {
-                return XrmTranslator.AddToSolution(updates.map(function(u) { return u.recid; }), XrmTranslator.ComponentType.SavedQuery);
+                var viewIds = [];
+                for (var i = 0; i < updates.length; i++) {
+                    if (viewIds.indexOf(updates[i].recid) === -1) {
+                        viewIds.push(updates[i].recid);
+                    }
+                }
+
+                return XrmTranslator.AddToSolution(viewIds, XrmTranslator.ComponentType.SavedQuery);
             });
     }
 
     ViewHandler.Save = function() {
-        XrmTranslator.LockGrid("Saving");
-
-        return ViewHandler.SaveOnly()
-            .then(function () {
-                XrmTranslator.LockGrid("Publishing");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return ViewHandler.SaveOnly();
+            },
+            publishAction: function () {
                 return XrmTranslator.Publish();
-            })
-            .then(function () {
-                XrmTranslator.LockGrid("Reloading");
+            },
+            reloadAction: function () {
                 return ViewHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+        });
     }
 } (window.ViewHandler = window.ViewHandler || {}));

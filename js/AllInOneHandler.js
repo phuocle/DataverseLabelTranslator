@@ -255,11 +255,16 @@
                         formName: fd.formName,
                         metadata: fd.metadata,
                         selectedForms: fd.selectedForms,
+                        descriptionLabels: fd.descriptionLabels,
                         prefix: formPrefix
                     });
 
-                    var records = fd.records;
+                    var records = fd.records || [];
                     prefixRecords(records, formPrefix);
+
+                    var descriptionRecord = FormHandler.CreateDescriptionRecord(fd, formPrefix);
+                    descriptionRecord._allInOneType = formPrefix;
+                    records.unshift(descriptionRecord);
 
                     // Each form is a sub-group under "3. Forms"
                     formChildren.push({
@@ -381,15 +386,30 @@
                             if (!formRecords || formRecords.length === 0) return;
                             if (!hasChanges(formRecords)) return;
 
-                            XrmTranslator.metadata = deepClone(fd.metadata);
-                            FormHandler.selectedForms = fd.selectedForms;
+                            var descriptionRows = formRecords.filter(function(record) {
+                                return record._isFormDescriptionRow;
+                            });
+                            var xmlRecords = formRecords.filter(function(record) {
+                                return !record._isFormDescriptionRow;
+                            });
 
-                            stripPrefixFromRecords(formRecords, fd.prefix);
+                            var saveChain = FormHandler.SaveDescriptionRows(fd, descriptionRows);
 
-                            grid.records = formRecords;
-                            grid.total = formRecords.length;
+                            if (hasChanges(xmlRecords)) {
+                                saveChain = saveChain.then(function() {
+                                    XrmTranslator.metadata = deepClone(fd.metadata);
+                                    FormHandler.selectedForms = fd.selectedForms;
 
-                            return FormHandler.SaveOnly(true);
+                                    stripPrefixFromRecords(xmlRecords, fd.prefix);
+
+                                    grid.records = xmlRecords;
+                                    grid.total = xmlRecords.length;
+
+                                    return FormHandler.SaveOnly(true);
+                                });
+                            }
+
+                            return saveChain;
                         });
                     })(savedState.forms.perFormData[i]);
                 }

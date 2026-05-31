@@ -330,6 +330,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     function GetUpdates(records) {
@@ -569,7 +570,7 @@
         return WebApiClient.Promise.resolve(workflowIds)
             .each(function (workflowId) {
                 var workflowUpdate = updatedWorkflows[workflowId];
-                XrmTranslator.LockGridProgress("Saving business rules", ++saveIndex, workflowIds.length);
+                XrmTranslator.LockGridProgress("Saving 10. Business Rules", ++saveIndex, workflowIds.length);
 
                 var originalXaml = null;
                 var wasActive = false;
@@ -653,14 +654,14 @@
     };
 
     BusinessRuleHandler.Save = function () {
-        XrmTranslator.LockGrid("Saving");
-
-        return BusinessRuleHandler.SaveOnly()
-            .then(function () {
-                XrmTranslator.LockGrid("Reloading");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return BusinessRuleHandler.SaveOnly();
+            },
+            reloadAction: function () {
                 return BusinessRuleHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+        });
     };
 
 }(window.BusinessRuleHandler = window.BusinessRuleHandler || {}));

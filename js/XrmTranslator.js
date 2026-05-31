@@ -1388,6 +1388,89 @@
         return selected || "";
     };
 
+    XrmTranslator.Delay = function (ms) {
+        return new Promise(function (resolve) {
+            setTimeout(resolve, ms);
+        });
+    };
+
+    XrmTranslator.EnableLoadAndSave = function () {
+        XrmTranslator.SetLoadButtonDisabled(false);
+        XrmTranslator.SetSaveButtonDisabled(false);
+    };
+
+    XrmTranslator.RunTypeSaveFlow = function (options) {
+        options = options || {};
+
+        var toolbarType = options.toolbarType || XrmTranslator.GetCurrentToolbarTypeText();
+        var publishMinimumMs = options.publishMinimumMs || 5000;
+        var publishedMessageMs = options.publishedMessageMs || 5000;
+        var saveAction = options.saveAction || function () { return Promise.resolve(); };
+        var publishAction = options.publishAction || function () { return Promise.resolve(); };
+        var reloadAction = options.reloadAction || function () { return Promise.resolve(); };
+
+        XrmTranslator.LockGrid("Saving " + toolbarType);
+
+        return Promise.resolve()
+        .then(function () {
+            return saveAction();
+        })
+        .then(function (saveResult) {
+            XrmTranslator.UnlockGrid();
+            XrmTranslator.StartOperationStatus({
+                phase: "publishing",
+                blockSave: true,
+                blockLoad: true,
+                tone: "info",
+                message: "Publishing " + toolbarType
+            });
+
+            return Promise.all([
+                publishAction(saveResult),
+                XrmTranslator.Delay(publishMinimumMs)
+            ])
+            .then(function () {
+                return saveResult;
+            });
+        })
+        .then(function (saveResult) {
+            XrmTranslator.UpdateOperationStatus({
+                phase: "published",
+                blockSave: true,
+                blockLoad: true,
+                tone: "success",
+                message: "Published " + toolbarType
+            });
+
+            return XrmTranslator.Delay(publishedMessageMs)
+            .then(function () {
+                return saveResult;
+            });
+        })
+        .then(function (saveResult) {
+            XrmTranslator.UpdateOperationStatus({
+                phase: "reloading",
+                blockSave: true,
+                blockLoad: true,
+                tone: "info",
+                message: "Reloading " + toolbarType
+            });
+            XrmTranslator.HideStatusBanner();
+            XrmTranslator.LockGrid("Reloading " + toolbarType);
+            return reloadAction(saveResult);
+        })
+        .then(function (reloadResult) {
+            XrmTranslator.ClearOperationStatus({ hideBanner: true });
+            return reloadResult;
+        })
+        .catch(function (error) {
+            XrmTranslator.ClearOperationStatus({ hideBanner: true });
+            XrmTranslator.UnlockGrid();
+            XrmTranslator.EnableLoadAndSave();
+            XrmTranslator.errorHandler(error);
+        });
+    };
+
     XrmTranslator.SetUserLanguage = function (userId, language) {
         return WebApiClient.Update({
             overriddenSetName: "usersettingscollection",
@@ -3276,7 +3359,18 @@
             XrmTranslator.entity = entity;
             SetHandler();
 
-            if (XrmTranslator.GetType() === "attributes") {
+            if ([
+                "attributes",
+                "options",
+                "forms",
+                "views",
+                "formMeta",
+                "entityMeta",
+                "relationships",
+                "charts",
+                "bpf",
+                "businessRules"
+            ].indexOf(XrmTranslator.GetType()) !== -1) {
                 XrmTranslator.LockGrid("Loading " + XrmTranslator.GetCurrentToolbarTypeText());
             }
             else if (XrmTranslator.GetType() !== "allInOne" && XrmTranslator.GetType() !== "ribbons") {

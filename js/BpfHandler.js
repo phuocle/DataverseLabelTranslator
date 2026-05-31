@@ -105,6 +105,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     function GetUpdates(records) {
@@ -396,7 +397,7 @@
 
         return WebApiClient.Promise.resolve(workflowIds)
             .each(function (workflowId) {
-                XrmTranslator.LockGridProgress("Saving business process flows", ++saveIndex, workflowIds.length);
+                XrmTranslator.LockGridProgress("Saving 9. Business Process Flows", ++saveIndex, workflowIds.length);
                 var stageUpdates = updatedWorkflows[workflowId];
                 var originalXaml = null;
 
@@ -475,14 +476,14 @@
     };
 
     BpfHandler.Save = function () {
-        XrmTranslator.LockGrid("Saving");
-
-        return BpfHandler.SaveOnly()
-            .then(function () {
-                XrmTranslator.LockGrid("Reloading");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return BpfHandler.SaveOnly();
+            },
+            reloadAction: function () {
                 return BpfHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+        });
     };
 
 }(window.BpfHandler = window.BpfHandler || {}));

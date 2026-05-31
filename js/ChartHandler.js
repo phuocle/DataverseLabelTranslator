@@ -83,6 +83,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     ChartHandler.Load = function () {
@@ -138,7 +139,7 @@
     ChartHandler.SaveOnly = function () {
         var updates = GetUpdates();
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving chart batches",
+            progressLabel: "Saving 8. Charts",
             batchNamePrefix: "batch_setchartlabels",
             changeSetNamePrefix: "changeset_setchartlabels",
             buildRequest: function(update) {
@@ -162,18 +163,17 @@
     }
 
     ChartHandler.Save = function () {
-        XrmTranslator.LockGrid("Saving");
-
-        return ChartHandler.SaveOnly()
-            .then(function () {
-                XrmTranslator.LockGrid("Publishing");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return ChartHandler.SaveOnly();
+            },
+            publishAction: function () {
                 return XrmTranslator.Publish();
-            })
-            .then(function () {
-                XrmTranslator.LockGrid("Reloading");
+            },
+            reloadAction: function () {
                 return ChartHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+        });
     }
 
 }(window.ChartHandler = window.ChartHandler || {}));

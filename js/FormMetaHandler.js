@@ -95,6 +95,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     FormMetaHandler.Load = function() {
@@ -151,7 +152,7 @@
     FormMetaHandler.SaveOnly = function() {
         var updates = GetUpdates();
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving form metadata batches",
+            progressLabel: "Saving 5. Form Metadata",
             batchNamePrefix: "batch_setformmetalabels",
             changeSetNamePrefix: "changeset_setformmetalabels",
             buildRequest: function(update) {
@@ -180,23 +181,21 @@
     }
 
     FormMetaHandler.Save = function() {
-        XrmTranslator.LockGrid("Saving");
-
-        return FormMetaHandler.SaveOnly()
-            .then(function () {
-                XrmTranslator.LockGrid("Publishing");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return FormMetaHandler.SaveOnly();
+            },
+            publishAction: function () {
                 var entityName = XrmTranslator.GetEntity();
                 if (entityName.toLowerCase() === "none") {
                     return XrmTranslator.PublishDashboard(GetUpdates());
                 }
-                else {
-                    return XrmTranslator.Publish();
-                }
-            })
-            .then(function () {
-                XrmTranslator.LockGrid("Reloading");
+
+                return XrmTranslator.Publish();
+            },
+            reloadAction: function () {
                 return FormMetaHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+        });
     }
 } (window.FormMetaHandler = window.FormMetaHandler || {}));

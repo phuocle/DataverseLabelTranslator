@@ -124,7 +124,7 @@
 
     function SaveOptionValueUpdates(updates) {
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving option set batches",
+            progressLabel: "Saving 2. Option Sets",
             batchNamePrefix: "batch_updateoptionvalue",
             changeSetNamePrefix: "changeset_updateoptionvalue",
             buildRequest: function(payload, context) {
@@ -199,6 +199,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     OptionSetHandler.Load = function () {
@@ -269,33 +270,30 @@
     }
 
     OptionSetHandler.Save = function() {
-        XrmTranslator.LockGrid("Saving");
-
         var records = XrmTranslator.GetAllRecords();
         var updates = GetUpdates(records);
         var updateIds = GetUpdateIds(records);
 
-        if (!updates || updates.length === 0) {
-            XrmTranslator.LockGrid("Reloading");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                if (!updates || updates.length === 0) {
+                    return Promise.resolve();
+                }
 
-            return OptionSetHandler.Load();
-        }
-
-        return SaveOptionValueUpdates(updates)
-            .then(function () {
-                XrmTranslator.LockGrid("Publishing");
+                return SaveOptionValueUpdates(updates)
+                    .then(function () {
+                        return Promise.all([
+                            XrmTranslator.AddToSolution(updateIds[0], XrmTranslator.ComponentType.Attribute),
+                            XrmTranslator.AddToSolution(updateIds[1], XrmTranslator.ComponentType.OptionSet, true, true)
+                        ]);
+                    });
+            },
+            publishAction: function () {
                 return XrmTranslator.Publish(updateIds[2]);
-            })
-            .then(function () {
-                return Promise.all([
-                    XrmTranslator.AddToSolution(updateIds[0], XrmTranslator.ComponentType.Attribute),
-                    XrmTranslator.AddToSolution(updateIds[1], XrmTranslator.ComponentType.OptionSet, true, true)
-                ]);
-            })
-            .then(function () {
-                XrmTranslator.LockGrid("Reloading");
+            },
+            reloadAction: function () {
                 return OptionSetHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+        });
     }
 } (window.OptionSetHandler = window.OptionSetHandler || {}));
