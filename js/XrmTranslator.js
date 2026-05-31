@@ -2869,17 +2869,17 @@
         var hasDescription = typesWithDescription.indexOf(selectedType) !== -1;
         var toolbar = GetToolbar();
         var componentItem = toolbar.get("component");
-        var displayNameItem = toolbar.get("component:DisplayName");
+        var displayTextItem = toolbar.get("component:DisplayText");
 
-        if (displayNameItem) {
-            displayNameItem.text = selectedType === "globalOptionSets" ? "Display Text" : "DisplayName";
+        if (displayTextItem) {
+            displayTextItem.text = "Display Text";
         }
 
         if (hasDescription) {
             toolbar.enable("component");
         } else {
             if (componentItem) {
-                componentItem.selected = "DisplayName";
+                componentItem.selected = "DisplayText";
             }
             toolbar.disable("component");
         }
@@ -3649,9 +3649,9 @@
                     var el   = this.get('component:' + item.selected);
                     return el ? CompactToolbarText(el.text, 18) : 'Component';
                 },
-                selected: 'DisplayName',
+                selected: 'DisplayText',
                 items: [
-                    { id: 'DisplayName', text: 'DisplayName', icon: 'icon-label' },
+                    { id: 'DisplayText', text: 'Display Text', icon: 'icon-label' },
                     { id: 'Description', text: 'Description', icon: 'icon-description' }
                 ]
             },

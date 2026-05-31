@@ -71,6 +71,9 @@ powershell -ExecutionPolicy Bypass -File scripts\check-ai-config.ps1
 ### /pl-ai-sync
 Regenerate and validate AI tool adapters from canonical `.agents/skills/pl-*/SKILL.md`. Do not commit or push automatically.
 
+### /pl-unit-tests
+Run Vitest unit tests and optional coverage for Dataverse Label Translator. Use `npm test` for tests and `npm run test:coverage` for coverage. Unit tests must fake Dataverse/Xrm/browser APIs instead of calling live services. Do not deploy, commit, or push automatically.
+
 ### /pl-commit
 Full local git workflow: stage all -> commit -> verify clean. Do not push unless the user explicitly asks.
 

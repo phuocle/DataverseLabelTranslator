@@ -1,6 +1,11 @@
 (function (AttributeHandler, undefined) {
     "use strict";
 
+    function GetMetadataComponent() {
+        var component = XrmTranslator.GetComponent();
+        return component === "DisplayText" ? "DisplayName" : component;
+    }
+
     function ApplyChanges(changes, labels) {
         for (var change in changes) {
             if (!changes.hasOwnProperty(change)) {
@@ -74,7 +79,7 @@
                     continue;
                 }
 
-                var labels = attribute[XrmTranslator.GetComponent()].LocalizedLabels;
+                var labels = attribute[GetMetadataComponent()].LocalizedLabels;
 
                 var changes = record.w2ui.changes;
 
@@ -132,7 +137,7 @@
                 continue;
             }
 
-            var displayNames = attribute[XrmTranslator.GetComponent()].LocalizedLabels;
+            var displayNames = attribute[GetMetadataComponent()].LocalizedLabels;
             
             if (!displayNames || displayNames.length === 0) {
                 continue;

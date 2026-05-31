@@ -7,7 +7,7 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
 
     function GetComponent() {
         var component = XrmTranslator.GetComponent();
-        if (component === "DisplayName") {
+        if (component === "DisplayText") {
             return "Label";
         }
         return component;
@@ -18,7 +18,7 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
     }
 
     function IsDisplayTextComponent() {
-        return XrmTranslator.GetComponent() === "DisplayName";
+        return XrmTranslator.GetComponent() === "DisplayText";
     }
 
     function IsEmptyLabelValue(value) {

@@ -17,7 +17,7 @@ Use these user-facing component names:
 - `Display Text`
 - `Description`
 
-Internal metadata names may differ. Preserve existing internal ids unless every caller, grid selector, and save payload mapper is updated. For type `18. Global Option Sets`, the internal component id remains `DisplayName`, and the handler maps it to Dataverse `Label`.
+Internal metadata names may differ. The toolbar/component id for this user-facing concept is `DisplayText`. Each handler must map `DisplayText` to the correct backing metadata/API field, for example Dataverse metadata `DisplayName`, option set `Label`, or sitemap title XML.
 
 ## Empty Cell Convention
 

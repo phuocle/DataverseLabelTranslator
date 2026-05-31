@@ -59,7 +59,7 @@ function createHarness(options) {
   options = options || {};
   var grid = options.grid || createGrid();
   var state = {
-    component: options.component || "DisplayName",
+    component: options.component || "DisplayText",
     solution: Object.prototype.hasOwnProperty.call(options, "solution") ? options.solution : "solution-1",
     metadataById: options.metadataById || {},
     records: options.records || [],
@@ -212,7 +212,7 @@ describe("GlobalOptionSetHandler.Load", function () {
       validBoolean
     ];
     var context = await setup({
-      component: "DisplayName",
+      component: "DisplayText",
       retrieve: function () {
         return Promise.resolve({
           value: responses.map(function (_, index) { return { objectid: "id" + index }; })
@@ -283,7 +283,7 @@ describe("GlobalOptionSetHandler.Load", function () {
 
   it("skips display text option sets that do not have option values", async function () {
     var context = await setup({
-      component: "DisplayName",
+      component: "DisplayText",
       retrieve: function () {
         return Promise.resolve({ value: [{ objectid: "empty" }] });
       },
@@ -327,7 +327,7 @@ describe("GlobalOptionSetHandler.Load", function () {
 
   it("covers fallback labels and names while filling rows", async function () {
     var context = await setup({
-      component: "DisplayName",
+      component: "DisplayText",
       retrieve: function () {
         return Promise.resolve({ value: [{ objectid: "named" }, { objectid: "unnamed" }, { objectid: "boolean" }] });
       },
@@ -384,7 +384,7 @@ describe("GlobalOptionSetHandler.Load", function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
     var grid = createGrid();
     var context = await setup({
-      component: "DisplayName",
+      component: "DisplayText",
       baseLanguage: 1041,
       grid: grid,
       metadataById: { os1: option },
@@ -473,7 +473,7 @@ describe("GlobalOptionSetHandler.Save", function () {
   it("saves display text clears for non-base languages and publishes once", async function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
     var context = await setup({
-      component: "DisplayName",
+      component: "DisplayText",
       metadataById: { os1: option },
       records: [
         { recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { "1033": "A updated", "1041": "", "1066": null } } },
@@ -520,7 +520,7 @@ describe("GlobalOptionSetHandler.Save", function () {
   it("blocks empty base-language display text with row context", async function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
     var context = await setup({
-      component: "DisplayName",
+      component: "DisplayText",
       metadataById: { os1: option },
       records: [
         { recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { "1033": "   " } } }
@@ -535,7 +535,7 @@ describe("GlobalOptionSetHandler.Save", function () {
 
   it("reports fallback row context when display text base language is empty", async function () {
     var context = await setup({
-      component: "DisplayName",
+      component: "DisplayText",
       baseLanguage: 9999,
       metadataById: {
         same: optionSet({ MetadataId: "same", Name: "pl_same" }),
@@ -567,7 +567,7 @@ describe("GlobalOptionSetHandler.Save", function () {
   it("allows display text base-language clears when no base language is known", async function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
     var context = await setup({
-      component: "DisplayName",
+      component: "DisplayText",
       baseLanguage: null,
       metadataById: { os1: option },
       records: [
@@ -681,7 +681,7 @@ describe("GlobalOptionSetHandler.Save", function () {
   it("ignores parent display text changes because the parent row is readonly", async function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
     var context = await setup({
-      component: "DisplayName",
+      component: "DisplayText",
       metadataById: { os1: option },
       records: [
         { recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { "1041": "Ignored parent label" } } }

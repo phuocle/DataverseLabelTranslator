@@ -15,7 +15,7 @@
     function GetComponent () {
         var component = XrmTranslator.GetComponent();
         
-        if (component === "DisplayName") {
+        if (component === "DisplayText") {
             return "Label";
         }
         

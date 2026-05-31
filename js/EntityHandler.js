@@ -1,6 +1,11 @@
 (function (EntityHandler, undefined) {
     "use strict";
 
+    function GetMetadataComponent() {
+        var component = XrmTranslator.GetComponent();
+        return component === "DisplayText" ? "DisplayName" : component;
+    }
+
     function ApplyChanges(changes, labels) {
         for (var change in changes) {
             if (!changes.hasOwnProperty(change)) {
@@ -41,8 +46,8 @@
             if (record.w2ui && record.w2ui.changes) {
                 var labels = null;
 
-                if (record.schemaName === "Display Name") {
-                    labels = update[XrmTranslator.GetComponent()].LocalizedLabels;
+                if (record.schemaName === "Display Text") {
+                    labels = update[GetMetadataComponent()].LocalizedLabels;
                 } else if (record.schemaName === "Collection Name") {
                     labels = update.DisplayCollectionName.LocalizedLabels;
                 }
@@ -64,7 +69,7 @@
 
         var entity = XrmTranslator.metadata;
 
-        var displayNames = entity[XrmTranslator.GetComponent()].LocalizedLabels;
+        var displayNames = entity[GetMetadataComponent()].LocalizedLabels;
         var collectionNames = entity.DisplayCollectionName.LocalizedLabels;
 
         if (!displayNames && !collectionNames) {
@@ -73,7 +78,7 @@
 
         var singular = {
             recid: XrmTranslator.metadata.MetadataId + "|1",
-            schemaName: "Display Name"
+            schemaName: "Display Text"
         };
 
         var plural = {

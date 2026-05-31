@@ -147,7 +147,7 @@
                 continue;
             }
 
-            var isTitle = component === "DisplayName";
+            var isTitle = component === "DisplayText";
             var containerTag = isTitle ? "Titles" : "Descriptions";
             var itemTag = isTitle ? "Title" : "Description";
             var attrName = isTitle ? "Title" : "Description";
@@ -188,12 +188,12 @@
     }
 
     function FillSiteMapNodeRecord(record, node, component) {
-        var labels = component === "DisplayName" ? node.titles : node.descriptions;
+        var labels = component === "DisplayText" ? node.titles : node.descriptions;
         if (labels && labels.length > 0) {
             for (var l = 0; l < labels.length; l++) {
                 record[labels[l].lcid] = labels[l].text;
             }
-        } else if (component === "DisplayName" && node.entityLabels) {
+        } else if (component === "DisplayText" && node.entityLabels) {
             var installedLangs = XrmTranslator.installedLanguages.LocaleIds;
             for (var il = 0; il < installedLangs.length; il++) {
                 var langStr = installedLangs[il].toString();
@@ -201,7 +201,7 @@
                     record[langStr] = node.entityLabels[langStr];
                 }
             }
-        } else if (component === "DisplayName" && node.defaultTitle) {
+        } else if (component === "DisplayText" && node.defaultTitle) {
             var defaultLangs = XrmTranslator.installedLanguages.LocaleIds;
             for (var dl = 0; dl < defaultLangs.length; dl++) {
                 record[defaultLangs[dl].toString()] = node.defaultTitle;
