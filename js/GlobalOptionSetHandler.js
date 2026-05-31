@@ -1,3 +1,5 @@
+window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
+
 (function (GlobalOptionSetHandler, undefined) {
     "use strict";
 
@@ -317,8 +319,8 @@
         return XrmTranslator.RunTypeSaveFlow({
             saveAction: function () {
                 var updates = GetUpdates();
-                var optionValueUpdates = updates.optionValueUpdates || [];
-                var optionSetDescriptionUpdates = updates.optionSetDescriptionUpdates || [];
+                var optionValueUpdates = updates.optionValueUpdates;
+                var optionSetDescriptionUpdates = updates.optionSetDescriptionUpdates;
 
                 if (optionValueUpdates.length === 0 && optionSetDescriptionUpdates.length === 0) {
                     return {
@@ -410,4 +412,4 @@
         });
     };
 
-}(window.GlobalOptionSetHandler = window.GlobalOptionSetHandler || {}));
+}(window.GlobalOptionSetHandler));
