@@ -157,6 +157,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     ContentSnippetHandler.Load = function () {
@@ -192,20 +193,16 @@
         .catch(XrmTranslator.errorHandler);
     }
 
-    ContentSnippetHandler.Save = function() {
-        XrmTranslator.LockGrid("Saving");
-
+    ContentSnippetHandler.SaveOnly = function() {
         var records = XrmTranslator.GetAllRecords();
         var updates = GetUpdates(records);
 
         if (!updates || updates.length === 0) {
-            XrmTranslator.LockGrid("Reloading");
-
-            return ContentSnippetHandler.Load();
+            return WebApiClient.Promise.resolve();
         }
 
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving content snippet batches",
+            progressLabel: "Saving " + XrmTranslator.GetCurrentToolbarTypeText(),
             batchNamePrefix: "batch_savecontentsnippets",
             changeSetNamePrefix: "changeset_savecontentsnippets",
             buildRequest: function(payload) {
@@ -220,12 +217,17 @@
 
                 return request;
             }
-        })
-            .then(function (response) {
-                XrmTranslator.LockGrid("Reloading");
+        });
+    }
 
+    ContentSnippetHandler.Save = function() {
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return ContentSnippetHandler.SaveOnly();
+            },
+            reloadAction: function () {
                 return ContentSnippetHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+        });
     }
 } (window.ContentSnippetHandler = window.ContentSnippetHandler || {}));

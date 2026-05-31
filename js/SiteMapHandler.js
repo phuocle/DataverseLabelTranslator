@@ -217,6 +217,7 @@
 
         if (!siteMapData || siteMapData.length === 0) {
             grid.unlock();
+            XrmTranslator.EnableLoadAndSave();
             return;
         }
 
@@ -253,6 +254,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     function BuildSiteMapData(sitemaps) {
@@ -411,6 +413,7 @@
         } else {
             // No solution selected — load all sitemaps
             XrmTranslator.UnlockGrid();
+            XrmTranslator.EnableLoadAndSave();
             return DialogHelper.alert("Please select a solution before loading sitemaps.");
         }
 
@@ -420,6 +423,7 @@
 
                 if (sitemaps.length === 0) {
                     XrmTranslator.UnlockGrid();
+                    XrmTranslator.EnableLoadAndSave();
                     return DialogHelper.alert("No sitemaps found" + (solutionId && solutionId !== "all" ? " in the selected solution." : "."));
                 }
 
@@ -453,106 +457,112 @@
     }
 
     SiteMapHandler.Save = function () {
-        XrmTranslator.LockGrid("Saving");
+        var updatedSiteMapIds = [];
 
-        if (!siteMapData || siteMapData.length === 0) {
-            XrmTranslator.UnlockGrid();
-            return;
-        }
-
-        var records = XrmTranslator.GetAllRecords();
-        var updatesBySiteMap = {};
-        var processedRecords = {};
-
-        for (var i = 0; i < records.length; i++) {
-            var record = records[i];
-            if (!record._siteMapId || !record.w2ui || !record.w2ui.changes || processedRecords[record.recid]) {
-                continue;
-            }
-
-            processedRecords[record.recid] = true;
-
-            var siteMap = GetLoadedSiteMapData(record._siteMapId);
-            var nodeInfo = GetLoadedSiteMapNode(siteMap, record._siteMapCompositeId);
-            if (!siteMap || !nodeInfo) {
-                continue;
-            }
-
-            var changes = record.w2ui.changes;
-            var installedLangs = XrmTranslator.installedLanguages.LocaleIds;
-            var labels = [];
-
-            // Include all language values (original + changed) so defaults are saved too.
-            for (var il = 0; il < installedLangs.length; il++) {
-                var lang = installedLangs[il].toString();
-                var text = changes.hasOwnProperty(lang) ? changes[lang] : record[lang];
-                if (text) {
-                    labels.push({ lcid: lang, text: text });
-                }
-            }
-
-            if (labels.length > 0) {
-                if (!updatesBySiteMap[siteMap.sitemapid]) {
-                    updatesBySiteMap[siteMap.sitemapid] = [];
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                if (!siteMapData || siteMapData.length === 0) {
+                    return [];
                 }
 
-                updatesBySiteMap[siteMap.sitemapid].push({
-                    id: nodeInfo.id,
-                    compositeId: nodeInfo.compositeId,
-                    nodeType: nodeInfo.nodeType,
-                    labels: labels
-                });
-            }
-        }
+                var records = XrmTranslator.GetAllRecords();
+                var updatesBySiteMap = {};
+                var processedRecords = {};
 
-        var updatedSiteMapIds = Object.keys(updatesBySiteMap);
-        if (updatedSiteMapIds.length === 0) {
-            XrmTranslator.UnlockGrid();
-            return;
-        }
+                for (var i = 0; i < records.length; i++) {
+                    var record = records[i];
+                    if (!record._siteMapId || !record.w2ui || !record.w2ui.changes || processedRecords[record.recid]) {
+                        continue;
+                    }
 
-        var saveChain = WebApiClient.Promise.resolve();
+                    processedRecords[record.recid] = true;
 
-        for (var s = 0; s < updatedSiteMapIds.length; s++) {
-            (function(siteMapId, index) {
-                saveChain = saveChain.then(function() {
-                    var currentSiteMap = GetLoadedSiteMapData(siteMapId);
-                    var updatedXml = ApplyXmlUpdates(currentSiteMap.sitemapxml, updatesBySiteMap[siteMapId]);
+                    var siteMap = GetLoadedSiteMapData(record._siteMapId);
+                    var nodeInfo = GetLoadedSiteMapNode(siteMap, record._siteMapCompositeId);
+                    if (!siteMap || !nodeInfo) {
+                        continue;
+                    }
 
-                    XrmTranslator.LockGridProgress("Saving sitemaps", index + 1, updatedSiteMapIds.length);
+                    var changes = record.w2ui.changes;
+                    var installedLangs = XrmTranslator.installedLanguages.LocaleIds;
+                    var labels = [];
 
-                    return WebApiClient.Update({
-                        entityName: "sitemap",
-                        entityId: currentSiteMap.sitemapid,
-                        entity: {
-                            sitemapxml: updatedXml
+                    // Include all language values (original + changed) so defaults are saved too.
+                    for (var il = 0; il < installedLangs.length; il++) {
+                        var lang = installedLangs[il].toString();
+                        var text = changes.hasOwnProperty(lang) ? changes[lang] : record[lang];
+                        if (text) {
+                            labels.push({ lcid: lang, text: text });
                         }
-                    })
-                    .then(function() {
-                        currentSiteMap.sitemapxml = updatedXml;
-                    });
-                });
-            })(updatedSiteMapIds[s], s);
-        }
+                    }
 
-        return saveChain
-        .then(function () {
-            XrmTranslator.LockGrid("Publishing");
-            return XrmTranslator.RunAsBaseLanguage(function () {
-                return WebApiClient.Execute(WebApiClient.Requests.PublishAllXmlRequest);
-            });
-        })
-        .then(function () {
-            return XrmTranslator.AddToSolution(
-                updatedSiteMapIds,
-                XrmTranslator.ComponentType.SiteMap
-            );
-        })
-        .then(function () {
-            XrmTranslator.LockGrid("Reloading");
-            return SiteMapHandler.Load();
-        })
-        .catch(XrmTranslator.errorHandler);
+                    if (labels.length > 0) {
+                        if (!updatesBySiteMap[siteMap.sitemapid]) {
+                            updatesBySiteMap[siteMap.sitemapid] = [];
+                        }
+
+                        updatesBySiteMap[siteMap.sitemapid].push({
+                            id: nodeInfo.id,
+                            compositeId: nodeInfo.compositeId,
+                            nodeType: nodeInfo.nodeType,
+                            labels: labels
+                        });
+                    }
+                }
+
+                updatedSiteMapIds = Object.keys(updatesBySiteMap);
+                if (updatedSiteMapIds.length === 0) {
+                    return [];
+                }
+
+                var saveChain = WebApiClient.Promise.resolve();
+
+                for (var s = 0; s < updatedSiteMapIds.length; s++) {
+                    (function(siteMapId, index) {
+                        saveChain = saveChain.then(function() {
+                            var currentSiteMap = GetLoadedSiteMapData(siteMapId);
+                            var updatedXml = ApplyXmlUpdates(currentSiteMap.sitemapxml, updatesBySiteMap[siteMapId]);
+
+                            XrmTranslator.LockGridProgress("Saving " + XrmTranslator.GetCurrentToolbarTypeText(), index + 1, updatedSiteMapIds.length);
+
+                            return WebApiClient.Update({
+                                entityName: "sitemap",
+                                entityId: currentSiteMap.sitemapid,
+                                entity: {
+                                    sitemapxml: updatedXml
+                                }
+                            })
+                            .then(function() {
+                                currentSiteMap.sitemapxml = updatedXml;
+                            });
+                        });
+                    })(updatedSiteMapIds[s], s);
+                }
+
+                return saveChain.then(function () {
+                    return updatedSiteMapIds;
+                });
+            },
+            publishAction: function (ids) {
+                ids = ids || updatedSiteMapIds;
+                if (!ids || ids.length === 0) {
+                    return Promise.resolve();
+                }
+
+                return XrmTranslator.RunAsBaseLanguage(function () {
+                    return WebApiClient.Execute(WebApiClient.Requests.PublishAllXmlRequest);
+                })
+                .then(function () {
+                    return XrmTranslator.AddToSolution(
+                        ids,
+                        XrmTranslator.ComponentType.SiteMap
+                    );
+                });
+            },
+            reloadAction: function () {
+                return SiteMapHandler.Load();
+            }
+        });
     };
 
 }(window.SiteMapHandler = window.SiteMapHandler || {}));

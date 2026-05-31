@@ -366,6 +366,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     function GetUpdates(records) {
@@ -406,8 +407,6 @@
         return getSolutionAppActionIds()
         .then(retrieveEntityCommands)
         .then(function (commands) {
-            XrmTranslator.LockGridProgress("Loading command labels", 0, commands.length);
-
             var requests = [];
             for (var i = 0; i < commands.length; i++) {
                 requests.push(retrieveCommandLabels(commands[i]));
@@ -431,7 +430,7 @@
         }
 
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving command labels",
+            progressLabel: "Saving " + XrmTranslator.GetCurrentToolbarTypeText(),
             batchNamePrefix: "batch_setcommandlabels",
             changeSetNamePrefix: "changeset_setcommandlabels",
             buildRequest: function (update) {
@@ -452,18 +451,17 @@
     };
 
     ModernCommandHandler.Save = function () {
-        XrmTranslator.LockGrid("Saving");
-
-        return ModernCommandHandler.SaveOnly()
-            .then(function () {
-                XrmTranslator.LockGrid("Publishing");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return ModernCommandHandler.SaveOnly();
+            },
+            publishAction: function () {
                 return XrmTranslator.Publish();
-            })
-            .then(function () {
-                XrmTranslator.LockGrid("Reloading");
+            },
+            reloadAction: function () {
                 return ModernCommandHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+        });
     };
 
 }(window.ModernCommandHandler = window.ModernCommandHandler || {}));

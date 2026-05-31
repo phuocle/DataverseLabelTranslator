@@ -14,6 +14,7 @@
     };
     var ribbonState = null;
     var ribbonLoadReleaseTimer = null;
+    var ribbonLoadStatusSuppressed = false;
 
     function escapeODataString(value) {
         return String(value || "").replace(/'/g, "''");
@@ -222,6 +223,10 @@
     }
 
     function showRibbonLoadStatus(message, tone, autoHideMs) {
+        if (ribbonLoadStatusSuppressed) {
+            return;
+        }
+
         XrmTranslator.ShowStatusBanner({
             tone: tone || "info",
             message: message,
@@ -842,12 +847,14 @@
 
     function importRibbonSolution(importZipBase64) {
         var importJobId = createGuid();
+        var toolbarType = XrmTranslator.GetTypeStateLabel("ribbons");
 
         XrmTranslator.StartOperationStatus({
             phase: "importing",
             tone: "info",
-            message: "Importing ribbon solution. Save and Load are temporarily disabled.",
+            message: "Publishing " + toolbarType,
             type: "ribbons",
+            toolbarType: toolbarType,
             entityLogicalName: ribbonState.entityInfo.logicalName,
             importJobId: importJobId,
             operationId: importJobId,
@@ -867,8 +874,9 @@
             XrmTranslator.UpdateOperationStatus({
                 phase: "startingPublish",
                 tone: "info",
-                message: "Ribbon import completed. Starting Publish XML. Save and Load are temporarily disabled.",
+                message: "Publishing " + toolbarType,
                 type: "ribbons",
+                toolbarType: toolbarType,
                 entityLogicalName: ribbonState.entityInfo.logicalName,
                 importJobId: importJobId,
                 operationId: importJobId,
@@ -908,11 +916,13 @@
     }
 
     function publishAllXmlAsync() {
+        var toolbarType = XrmTranslator.GetTypeStateLabel("ribbons");
         XrmTranslator.UpdateOperationStatus({
             phase: "startingPublish",
             tone: "info",
-            message: "Starting Publish XML. Save and Load are temporarily disabled.",
+            message: "Publishing " + toolbarType,
             type: "ribbons",
+            toolbarType: toolbarType,
             entityLogicalName: ribbonState.entityInfo.logicalName,
             blockSave: true,
             blockLoad: true
@@ -931,6 +941,7 @@
                 jobId: jobId,
                 operation: "PublishAllXmlAsync",
                 type: "ribbons",
+                toolbarType: toolbarType,
                 entityLogicalName: ribbonState.entityInfo.logicalName
             });
         });
@@ -971,8 +982,8 @@
         grid.clear();
         XrmTranslator.AddSummary(records);
         grid.add(records);
-        XrmTranslator.SetSaveButtonDisabled(true);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     RibbonHandler.Load = function () {
@@ -983,11 +994,10 @@
         }
 
         var exported = null;
-        var successBannerMs = 4000;
         var errorBannerMs = 8000;
 
+        ribbonLoadStatusSuppressed = true;
         setRibbonLoadButtonsDisabled(true, true);
-        showRibbonLoadStatus("Preparing ribbon labels for " + entityInfo.logicalName + ".");
 
         return ensureHelperSolution()
         .then(function (solution) {
@@ -1019,12 +1029,18 @@
             };
             XrmTranslator.metadata = records;
             fillTable(records);
-            showRibbonLoadStatus("Ribbon labels loaded.", "success", successBannerMs);
-            scheduleRibbonLoadButtonsRelease(false, successBannerMs);
+            ribbonLoadStatusSuppressed = false;
+            XrmTranslator.HideStatusBanner();
+            XrmTranslator.EnableLoadAndSave();
         })
         .catch(function (error) {
-            showRibbonLoadStatus("Ribbon labels failed to load.", "error", errorBannerMs);
-            scheduleRibbonLoadButtonsRelease(!XrmTranslator.HasPendingChanges(), errorBannerMs);
+            ribbonLoadStatusSuppressed = false;
+            XrmTranslator.ShowStatusBanner({
+                tone: "error",
+                message: "Ribbon labels failed to load.",
+                autoHideMs: errorBannerMs
+            });
+            XrmTranslator.EnableLoadAndSave();
             XrmTranslator.errorHandler(error);
             XrmTranslator.GetGrid().unlock();
         });
@@ -1039,7 +1055,7 @@
 
         var changes = collectRibbonChanges();
         if (changes.length === 0) {
-            XrmTranslator.SetSaveButtonDisabled(true);
+            XrmTranslator.EnableLoadAndSave();
             return DialogHelper.alert("There are no ribbon changes to save.", {
                 title: "Ribbons"
             });
@@ -1049,10 +1065,8 @@
         var updatedCustomizationsXml = null;
         var importData = null;
 
-        XrmTranslator.ShowStatusBanner({
-            tone: "info",
-            message: "Preparing ribbon backup."
-        });
+        var toolbarType = XrmTranslator.GetTypeStateLabel("ribbons");
+        XrmTranslator.LockGrid("Saving " + toolbarType);
 
         return prepareBackupArtifact(changes)
         .then(function(preparedBackup) {
@@ -1063,7 +1077,8 @@
         .then(function(backupDecision) {
             if (backupDecision === "cancel" || !backupDecision) {
                 XrmTranslator.HideStatusBanner();
-                XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                XrmTranslator.UnlockGrid();
+                XrmTranslator.EnableLoadAndSave();
                 return false;
             }
 
@@ -1072,21 +1087,24 @@
             }
 
             XrmTranslator.StartOperationStatus({
-                phase: "preparingImport",
+                phase: "publishing",
                 tone: "info",
-                message: "Preparing ribbon import. Save and Load are temporarily disabled.",
+                message: "Publishing " + toolbarType,
                 type: "ribbons",
+                toolbarType: toolbarType,
                 entityLogicalName: ribbonState.entityInfo.logicalName,
                 blockSave: true,
                 blockLoad: true
             });
+            XrmTranslator.LockGrid("Publishing " + toolbarType);
             updatedCustomizationsXml = applyRibbonXmlChanges(ribbonState.customizationsXml, changes);
             return createImportSolutionBase64(updatedCustomizationsXml);
         })
         .then(function(createdImportData) {
             if (!createdImportData) {
                 XrmTranslator.ClearOperationStatus();
-                XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+                XrmTranslator.UnlockGrid();
+                XrmTranslator.EnableLoadAndSave();
                 return null;
             }
 
@@ -1120,7 +1138,8 @@
                     autoHideMs: 8000
                 }
             });
-            XrmTranslator.SetSaveButtonDisabled(!XrmTranslator.HasPendingChanges());
+            XrmTranslator.UnlockGrid();
+            XrmTranslator.EnableLoadAndSave();
             XrmTranslator.errorHandler(error);
         });
     };

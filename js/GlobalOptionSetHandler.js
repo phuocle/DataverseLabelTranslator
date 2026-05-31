@@ -113,6 +113,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     function GetSelectedSolutionOptionSetIds() {
@@ -166,65 +167,78 @@
     };
 
     GlobalOptionSetHandler.Save = function () {
-        XrmTranslator.LockGrid("Saving");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                var updates = GetUpdates();
 
-        var updates = GetUpdates();
+                if (!updates || updates.length === 0) {
+                    return {
+                        optionSetNames: [],
+                        optionSetIds: []
+                    };
+                }
 
-        if (!updates || updates.length === 0) {
-            XrmTranslator.LockGrid("Reloading");
-            return GlobalOptionSetHandler.Load();
-        }
-
-        var optionSetNames = [];
-        updates.forEach(function (u) {
-            if (optionSetNames.indexOf(u.OptionSetName) === -1) {
-                optionSetNames.push(u.OptionSetName);
-            }
-        });
-
-        var optionSetIds = [];
-        for (var i = 0; i < XrmTranslator.metadata.length; i++) {
-            var os = XrmTranslator.metadata[i];
-            if (optionSetNames.indexOf(os.Name) !== -1 && optionSetIds.indexOf(os.MetadataId) === -1) {
-                optionSetIds.push(os.MetadataId);
-            }
-        }
-
-        return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving global option set batches",
-            batchNamePrefix: "batch_updateglobaloptionvalue",
-            changeSetNamePrefix: "changeset_updateglobaloptionvalue",
-            buildRequest: function(payload) {
-                return new WebApiClient.BatchRequest({
-                    method: "POST",
-                    url: WebApiClient.GetApiUrl() + "UpdateOptionValue",
-                    payload: payload
+                var optionSetNames = [];
+                updates.forEach(function (u) {
+                    if (optionSetNames.indexOf(u.OptionSetName) === -1) {
+                        optionSetNames.push(u.OptionSetName);
+                    }
                 });
-            }
-        })
-            .then(function () {
-                XrmTranslator.LockGrid("Publishing");
+
+                var optionSetIds = [];
+                for (var i = 0; i < XrmTranslator.metadata.length; i++) {
+                    var os = XrmTranslator.metadata[i];
+                    if (optionSetNames.indexOf(os.Name) !== -1 && optionSetIds.indexOf(os.MetadataId) === -1) {
+                        optionSetIds.push(os.MetadataId);
+                    }
+                }
+
+                return XrmTranslator.ExecuteChangeSetBatches(updates, {
+                    progressLabel: "Saving " + XrmTranslator.GetCurrentToolbarTypeText(),
+                    batchNamePrefix: "batch_updateglobaloptionvalue",
+                    changeSetNamePrefix: "changeset_updateglobaloptionvalue",
+                    buildRequest: function(payload) {
+                        return new WebApiClient.BatchRequest({
+                            method: "POST",
+                            url: WebApiClient.GetApiUrl() + "UpdateOptionValue",
+                            payload: payload
+                        });
+                    }
+                })
+                .then(function () {
+                    return {
+                        optionSetNames: optionSetNames,
+                        optionSetIds: optionSetIds
+                    };
+                });
+            },
+            publishAction: function (result) {
+                var optionSetNames = result && result.optionSetNames ? result.optionSetNames : [];
+                var optionSetIds = result && result.optionSetIds ? result.optionSetIds : [];
+
+                if (optionSetNames.length === 0) {
+                    return Promise.resolve();
+                }
 
                 return XrmTranslator.RunAsBaseLanguage(function () {
-                        var optionSetXml = optionSetNames.map(function (n) {
-                            return "<optionset>" + n + "</optionset>";
-                        }).join("");
-                        var xml = "<importexportxml><optionsets>" + optionSetXml + "</optionsets></importexportxml>";
+                    var optionSetXml = optionSetNames.map(function (n) {
+                        return "<optionset>" + n + "</optionset>";
+                    }).join("");
+                    var xml = "<importexportxml><optionsets>" + optionSetXml + "</optionsets></importexportxml>";
 
-                        var request = WebApiClient.Requests.PublishXmlRequest.with({
-                            payload: { ParameterXml: xml }
-                        });
-                        return WebApiClient.Execute(request);
+                    var request = WebApiClient.Requests.PublishXmlRequest.with({
+                        payload: { ParameterXml: xml }
                     });
-            })
-            .then(function () {
-                return XrmTranslator.AddToSolution(optionSetIds, XrmTranslator.ComponentType.OptionSet, true, true);
-            })
-            .then(function () {
-                XrmTranslator.LockGrid("Reloading");
+                    return WebApiClient.Execute(request);
+                })
+                .then(function () {
+                    return XrmTranslator.AddToSolution(optionSetIds, XrmTranslator.ComponentType.OptionSet, true, true);
+                });
+            },
+            reloadAction: function () {
                 return GlobalOptionSetHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+        });
     };
 
 }(window.GlobalOptionSetHandler = window.GlobalOptionSetHandler || {}));

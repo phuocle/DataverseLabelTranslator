@@ -1,6 +1,10 @@
 (function (FormMetaHandler, undefined) {
     "use strict";
 
+    function GetAttributeName() {
+        return XrmTranslator.GetComponent() === "Description" ? "description" : "name";
+    }
+
     function ApplyChanges(changes, labels) {
         for (var change in changes) {
             if (!changes.hasOwnProperty(change)) {
@@ -12,20 +16,25 @@
                 continue;
             }
 
+            var found = false;
             for (var i = 0; i < labels.length; i++) {
                 var label = labels[i];
 
                 if (label.LanguageCode == change) {
                     label.Label = changes[change];
                     label.HasChanged = true;
+                    found = true;
 
                     break;
                 }
+            }
 
-                // Did not find label for this language
-                if (i === labels.length - 1) {
-                    labels.push({ LanguageCode: change, Label: changes[change] })
-                }
+            if (!found) {
+                labels.push({
+                    LanguageCode: parseInt(change, 10),
+                    Label: changes[change],
+                    HasChanged: true
+                });
             }
         }
     }
@@ -40,6 +49,18 @@
 
             if (record.w2ui && record.w2ui.changes) {
                 var view = XrmTranslator.GetAttributeByProperty("recid", record.recid);
+
+                if (!view || !view.labels) {
+                    continue;
+                }
+
+                if (!view.labels.Label) {
+                    view.labels.Label = { LocalizedLabels: [] };
+                }
+                if (!view.labels.Label.LocalizedLabels) {
+                    view.labels.Label.LocalizedLabels = [];
+                }
+
                 var labels = view.labels.Label.LocalizedLabels;
 
                 var changes = record.w2ui.changes;
@@ -72,11 +93,7 @@
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var form = XrmTranslator.metadata[i];
 
-            var displayNames = form.labels.Label.LocalizedLabels;
-
-            if (!displayNames || displayNames.length === 0) {
-                continue;
-            }
+            var displayNames = form.labels && form.labels.Label ? form.labels.Label.LocalizedLabels : [];
 
             var record = {
                recid: form.recid,
@@ -119,12 +136,13 @@
 
                 for (var i = 0; i < forms.length; i++) {
                     var form = forms[i];
+                    var attributeName = GetAttributeName();
 
                     var retrieveLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
                         .with({
                             urlParams: {
                                 EntityMoniker: "{'@odata.id':'systemforms(" + form.formid + ")'}",
-                                AttributeName: "'name'",
+                                AttributeName: "'" + attributeName + "'",
                                 IncludeUnpublished: true
                             }
                         })
@@ -165,7 +183,7 @@
                             "@odata.type": "Microsoft.Dynamics.CRM.systemform",
                             formid: update.recid
                         },
-                        AttributeName: "name"
+                        AttributeName: GetAttributeName()
                     }
                 });
             }

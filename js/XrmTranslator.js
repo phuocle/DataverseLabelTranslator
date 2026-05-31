@@ -78,6 +78,27 @@
         "type:webresources",
         "type:globalOptionSets"
     ];
+    var TYPE_STATE_LABELS = {
+        allInOne: "0. All-In-One",
+        attributes: "1. Attributes",
+        options: "2. Option Sets",
+        forms: "3. Forms",
+        views: "4. Views",
+        formMeta: "5. Form Metadata",
+        entityMeta: "6. Entity Metadata",
+        relationships: "7. Relationships",
+        charts: "8. Charts",
+        bpf: "9. Business Process Flows",
+        businessRules: "10. Business Rules",
+        ribbons: "11. Ribbons",
+        commands: "12. Commands",
+        entityMessages: "13. Entity Messages",
+        content: "14. Content Snippets",
+        sitemap: "15. Sitemap",
+        dashboards: "16. Dashboards",
+        webresources: "17. Web Resources",
+        globalOptionSets: "18. Global Option Sets"
+    };
     var ALLOWED_ROLE_NAMES = {
         "system administrator": true,
         "system customizer": true
@@ -85,6 +106,10 @@
     RegExp.escape= function(s) {
         return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     };
+
+    function getTypeStateLabel(type) {
+        return TYPE_STATE_LABELS[type] || String(type || "");
+    }
 
     function GetRootGridRecords(grid) {
         return grid.records.filter(function (record) {
@@ -422,6 +447,7 @@
             source: "DataverseLabelTranslator",
             phase: options.phase || existingState.phase || "running",
             type: options.type || existingState.type || null,
+            toolbarType: options.toolbarType || existingState.toolbarType || null,
             entityLogicalName: options.entityLogicalName || existingState.entityLogicalName || null,
             operationId: options.operationId || existingState.operationId || null,
             importJobId: options.importJobId || existingState.importJobId || null,
@@ -485,6 +511,14 @@
         });
         applyOperationButtons();
         EnforceToolbarOperationButtonsSoon();
+    }
+
+    function getOperationToolbarType(stateOrJob) {
+        if (stateOrJob && stateOrJob.toolbarType) {
+            return stateOrJob.toolbarType;
+        }
+
+        return getTypeStateLabel(stateOrJob && stateOrJob.type);
     }
 
     function clearPublishXmlJobPoll() {
@@ -553,11 +587,13 @@
             return Promise.resolve(null);
         }
 
+        var toolbarType = getOperationToolbarType(state) || "11. Ribbons";
         XrmTranslator.UpdateOperationStatus({
             phase: "startingPublish",
             tone: "info",
-            message: "Ribbon import completed. Starting Publish XML. Save and Load are temporarily disabled.",
+            message: "Publishing " + toolbarType,
             type: state.type || "ribbons",
+            toolbarType: toolbarType,
             entityLogicalName: state.entityLogicalName || null,
             importJobId: state.importJobId || null,
             operationId: state.operationId || state.importJobId || null,
@@ -578,6 +614,7 @@
                 jobId: jobId,
                 operation: "PublishAllXmlAsync",
                 type: state.type || "ribbons",
+                toolbarType: toolbarType,
                 entityLogicalName: state.entityLogicalName || null
             });
         });
@@ -678,16 +715,18 @@
         }
 
         var attemptsRemaining = getPublishXmlJobAttemptsRemaining(job);
+        var toolbarType = getOperationToolbarType(job) || "Publish XML";
         var state = buildOperationState({
             phase: "publishing",
             tone: "warning",
             type: job.type || "ribbons",
+            toolbarType: toolbarType,
             entityLogicalName: job.entityLogicalName || null,
             jobId: job.jobId,
             code: job.jobId,
             blockSave: true,
             blockLoad: true,
-            message: "Publish XML is running. Save and Load are temporarily disabled until this server job finishes. The page will unlock automatically. Recovery checks left: " + attemptsRemaining + ". Job ID: "
+            message: "Publishing " + toolbarType + ". Save and Load are temporarily disabled until this server job finishes. The page will unlock automatically. Recovery checks left: " + attemptsRemaining + ". Job ID: "
         }, getStoredOperationState());
 
         clearImportJobPoll();
@@ -1385,7 +1424,11 @@
             }
         }
 
-        return selected || "";
+        return selected || getTypeStateLabel(XrmTranslator.GetType()) || "";
+    };
+
+    XrmTranslator.GetTypeStateLabel = function (type) {
+        return getTypeStateLabel(type);
     };
 
     XrmTranslator.Delay = function (ms) {
@@ -1419,6 +1462,8 @@
             XrmTranslator.UnlockGrid();
             XrmTranslator.StartOperationStatus({
                 phase: "publishing",
+                type: XrmTranslator.GetType(),
+                toolbarType: toolbarType,
                 blockSave: true,
                 blockLoad: true,
                 tone: "info",
@@ -1436,6 +1481,8 @@
         .then(function (saveResult) {
             XrmTranslator.UpdateOperationStatus({
                 phase: "published",
+                type: XrmTranslator.GetType(),
+                toolbarType: toolbarType,
                 blockSave: true,
                 blockLoad: true,
                 tone: "success",
@@ -1450,6 +1497,8 @@
         .then(function (saveResult) {
             XrmTranslator.UpdateOperationStatus({
                 phase: "reloading",
+                type: XrmTranslator.GetType(),
+                toolbarType: toolbarType,
                 blockSave: true,
                 blockLoad: true,
                 tone: "info",
@@ -1844,6 +1893,7 @@
             source: "DataverseLabelTranslator",
             operation: job.operation || "PublishAllXmlAsync",
             type: job.type || null,
+            toolbarType: job.toolbarType || getTypeStateLabel(job.type),
             entityLogicalName: job.entityLogicalName || null,
             createdOn: job.createdOn || new Date().toISOString(),
             blockedAttempts: 0,
@@ -1858,6 +1908,8 @@
 
     XrmTranslator.ClearPublishXmlJob = function(options) {
         options = options || {};
+        var job = getStoredPublishXmlJob();
+        var toolbarType = getOperationToolbarType(job);
         clearPublishXmlJobPoll();
         persistPublishXmlJob(null);
 
@@ -1869,7 +1921,7 @@
         if (options.showCompleted) {
             showStatusBanner({
                 tone: "success",
-                message: "Publish XML completed. Save and Load are available.",
+                message: toolbarType ? "Published " + toolbarType : "Publish XML completed. Save and Load are available.",
                 autoHideMs: options.autoHideMs || 5000
             });
         }
@@ -2769,7 +2821,7 @@
         });
     }
 
-    var typesWithDescription = ["attributes", "options", "entityMeta", "globalOptionSets", "sitemap"];
+    var typesWithDescription = ["attributes", "options", "views", "formMeta", "entityMeta", "globalOptionSets", "sitemap"];
 
     function UpdateComponentDropdown(selectedType) {
         var hasDescription = typesWithDescription.indexOf(selectedType) !== -1;
@@ -3359,23 +3411,7 @@
             XrmTranslator.entity = entity;
             SetHandler();
 
-            if ([
-                "attributes",
-                "options",
-                "forms",
-                "views",
-                "formMeta",
-                "entityMeta",
-                "relationships",
-                "charts",
-                "bpf",
-                "businessRules"
-            ].indexOf(XrmTranslator.GetType()) !== -1) {
-                XrmTranslator.LockGrid("Loading " + XrmTranslator.GetCurrentToolbarTypeText());
-            }
-            else if (XrmTranslator.GetType() !== "allInOne" && XrmTranslator.GetType() !== "ribbons") {
-                XrmTranslator.LockGrid("Loading " + entity + " attributes");
-            }
+            XrmTranslator.LockGrid("Loading " + XrmTranslator.GetCurrentToolbarTypeText());
 
             // Reset column sorting
             XrmTranslator.GetGrid().sort();

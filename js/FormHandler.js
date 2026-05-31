@@ -216,18 +216,14 @@
             var formData = allFormData[i];
             var prefix = getFormPrefix(formData.formId);
             var formRecords = deepClone(formData.records || []);
-            var formChildren = [];
 
             prefixRecords(formRecords, prefix);
-            formChildren.push(createFormDescriptionRecord(formData, prefix));
-            formChildren = formChildren.concat(formRecords);
 
             loadedFormsData.push({
                 formId: formData.formId,
                 formName: formData.formName,
                 metadata: deepClone(formData.metadata),
                 selectedForms: formData.selectedForms ? formData.selectedForms.slice() : [],
-                descriptionLabels: deepClone(formData.descriptionLabels),
                 prefix: prefix
             });
 
@@ -251,7 +247,7 @@
                 _isGroupNode: true,
                 _isFormGroupNode: true,
                 w2ui: {
-                    children: formChildren,
+                    children: formRecords,
                     editable: false,
                     hideCheckBox: true
                 }
@@ -325,25 +321,6 @@
         return "form~" + formId + "~";
     }
 
-    function createFormDescriptionRecord(formData, prefix) {
-        var labels = formData.descriptionLabels && formData.descriptionLabels.Label
-            ? formData.descriptionLabels.Label.LocalizedLabels
-            : [];
-
-        var record = {
-            recid: prefix + "description",
-            schemaName: "[Form] Description",
-            _isFormDescriptionRow: true,
-            _formId: formData.formId
-        };
-
-        for (var i = 0; i < labels.length; i++) {
-            record[labels[i].LanguageCode.toString()] = labels[i].Label;
-        }
-
-        return record;
-    }
-
     function prefixRecords(records, prefix) {
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
@@ -387,51 +364,6 @@
             return false;
         });
     }
-
-    function saveFormDescriptionRows(formData, descriptionRows) {
-        var changedRows = descriptionRows.filter(function(row) {
-            return row.w2ui && row.w2ui.changes;
-        });
-
-        if (changedRows.length === 0) {
-            return WebApiClient.Promise.resolve();
-        }
-
-        var labelsResponse = formData.descriptionLabels || { Label: { LocalizedLabels: [] } };
-        if (!labelsResponse.Label) {
-            labelsResponse.Label = { LocalizedLabels: [] };
-        }
-        if (!labelsResponse.Label.LocalizedLabels) {
-            labelsResponse.Label.LocalizedLabels = [];
-        }
-
-        for (var i = 0; i < changedRows.length; i++) {
-            ApplyLocalizedLabelChanges(changedRows[i].w2ui.changes, labelsResponse.Label.LocalizedLabels);
-        }
-
-        XrmTranslator.LockGridProgress("Saving 3. Forms", 1, 1);
-
-        return WebApiClient.Execute(WebApiClient.Requests.SetLocLabelsRequest.with({
-            payload: {
-                Labels: labelsResponse.Label.LocalizedLabels,
-                EntityMoniker: {
-                    "@odata.type": "Microsoft.Dynamics.CRM.systemform",
-                    formid: formData.formId
-                },
-                AttributeName: "description"
-            }
-        }))
-        .then(function() {
-            if (XrmTranslator.GetEntity().toLowerCase() === "none") {
-                return XrmTranslator.AddToSolution([formData.formId], XrmTranslator.ComponentType.SystemForm, true, true);
-            }
-
-            return XrmTranslator.AddToSolution([formData.formId], XrmTranslator.ComponentType.SystemForm);
-        });
-    }
-
-    FormHandler.CreateDescriptionRecord = createFormDescriptionRecord;
-    FormHandler.SaveDescriptionRows = saveFormDescriptionRows;
 
     function isFormGroupGrid(records) {
         return records.some(function(record) {
@@ -596,27 +528,15 @@
 
                 var grid = XrmTranslator.GetGrid();
                 var records = grid.records.filter(function(r) { return !r.w2ui || !r.w2ui.summary; });
-                var retrieveDescriptionLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
-                    .with({
-                        urlParams: {
-                            EntityMoniker: "{'@odata.id':'systemforms(" + form.formid + ")'}",
-                            AttributeName: "'description'",
-                            IncludeUnpublished: true
-                        }
-                    });
 
-                return WebApiClient.Execute(retrieveDescriptionLabelsRequest)
-                .then(function(descriptionLabels) {
-                    allFormData.push({
-                        formId: form.formid,
-                        formName: form.name || form.formid,
-                        formType: form.type,
-                        formTypeName: formTypeMap[form.type] || ("Type " + form.type),
-                        metadata: JSON.parse(JSON.stringify(XrmTranslator.metadata)),
-                        selectedForms: FormHandler.selectedForms ? FormHandler.selectedForms.slice() : [],
-                        descriptionLabels: descriptionLabels,
-                        records: JSON.parse(JSON.stringify(records))
-                    });
+                allFormData.push({
+                    formId: form.formid,
+                    formName: form.name || form.formid,
+                    formType: form.type,
+                    formTypeName: formTypeMap[form.type] || ("Type " + form.type),
+                    metadata: JSON.parse(JSON.stringify(XrmTranslator.metadata)),
+                    selectedForms: FormHandler.selectedForms ? FormHandler.selectedForms.slice() : [],
+                    records: JSON.parse(JSON.stringify(records))
                 });
             })
             .then(function() {
@@ -784,29 +704,16 @@
                             return;
                         }
 
-                        var descriptionRows = deepClone(group.w2ui.children.filter(function(record) {
-                            return record._isFormDescriptionRow;
-                        }));
-                        var formRecords = deepClone(group.w2ui.children.filter(function(record) {
-                            return !record._isFormDescriptionRow;
-                        }));
+                        var formRecords = deepClone(group.w2ui.children);
                         stripPrefixFromRecords(formRecords, formData.prefix);
 
-                        var saveChain = saveFormDescriptionRows(formData, descriptionRows);
+                        XrmTranslator.metadata = deepClone(formData.metadata);
+                        FormHandler.selectedForms = formData.selectedForms ? formData.selectedForms.slice() : [];
 
-                        if (hasChanges(formRecords)) {
-                            saveChain = saveChain.then(function() {
-                                XrmTranslator.metadata = deepClone(formData.metadata);
-                                FormHandler.selectedForms = formData.selectedForms ? formData.selectedForms.slice() : [];
+                        grid.records = formRecords;
+                        grid.total = formRecords.length;
 
-                                grid.records = formRecords;
-                                grid.total = formRecords.length;
-
-                                return FormHandler.SaveOnly(true);
-                            });
-                        }
-
-                        return saveChain;
+                        return FormHandler.SaveOnly(true);
                     });
                 })(FormHandler.loadedFormsData[i]);
             }
@@ -840,7 +747,7 @@
         var update = ApplyUpdates(updates, XrmTranslator.metadata, formXml);
 
         var executeSave = function () {
-            XrmTranslator.LockGridProgress("Saving 3. Forms", 1, 1);
+            XrmTranslator.LockGridProgress("Saving " + XrmTranslator.GetCurrentToolbarTypeText(), 1, 1);
             return WebApiClient.Update({
                 entityName: "systemform",
                 entityId: XrmTranslator.metadata.formid,
@@ -874,7 +781,7 @@
 
                 // Direct payload from RemoveOverriddenCellLabels.
                 return XrmTranslator.RunAsBaseLanguage(function () {
-                    XrmTranslator.LockGridProgress("Saving 3. Forms", 1, 1);
+                    XrmTranslator.LockGridProgress("Saving " + XrmTranslator.GetCurrentToolbarTypeText(), 1, 1);
                     return WebApiClient.Update({
                         entityName: "systemform",
                         entityId: XrmTranslator.metadata.formid,

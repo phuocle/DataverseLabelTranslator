@@ -1,6 +1,9 @@
 (function (ViewHandler, undefined) {
     "use strict";
-    var idSeparator = "|";
+
+    function GetAttributeName() {
+        return XrmTranslator.GetComponent() === "Description" ? "description" : "name";
+    }
 
     function ApplyChanges(changes, labels) {
         for (var change in changes) {
@@ -44,23 +47,22 @@
             var record = records[i];
 
             if (record.w2ui && record.w2ui.changes) {
-                var parts = String(record.recid || "").split(idSeparator);
-                var viewId = parts[0];
-                var attributeName = parts[1] || "name";
+                var viewId = record.recid;
+                var attributeName = GetAttributeName();
                 var view = XrmTranslator.GetAttributeByProperty("recid", viewId);
 
-                if (!view || !view.labels || !view.labels[attributeName]) {
+                if (!view || !view.labels) {
                     continue;
                 }
 
-                if (!view.labels[attributeName].Label) {
-                    view.labels[attributeName].Label = { LocalizedLabels: [] };
+                if (!view.labels.Label) {
+                    view.labels.Label = { LocalizedLabels: [] };
                 }
-                if (!view.labels[attributeName].Label.LocalizedLabels) {
-                    view.labels[attributeName].Label.LocalizedLabels = [];
+                if (!view.labels.Label.LocalizedLabels) {
+                    view.labels.Label.LocalizedLabels = [];
                 }
 
-                var labels = view.labels[attributeName].Label.LocalizedLabels;
+                var labels = view.labels.Label.LocalizedLabels;
 
                 var changes = record.w2ui.changes;
 
@@ -68,7 +70,7 @@
                 updates.push({
                     recid: viewId,
                     attributeName: attributeName,
-                    labels: view.labels[attributeName]
+                    labels: view.labels
                 });
             }
         }
@@ -96,14 +98,14 @@
         1048576: "Copilot"
     };
 
-    function AddLabelRecord(records, view, attributeName, labelText) {
-        var labels = view.labels && view.labels[attributeName] && view.labels[attributeName].Label
-            ? view.labels[attributeName].Label.LocalizedLabels
+    function AddLabelRecord(records, view) {
+        var labels = view.labels && view.labels.Label
+            ? view.labels.Label.LocalizedLabels
             : [];
 
         var record = {
-           recid: view.recid + idSeparator + attributeName,
-           schemaName: (viewTypeMap[view.querytype] || ("Type " + view.querytype)) + " / " + labelText
+           recid: view.recid,
+           schemaName: viewTypeMap[view.querytype] || ("Type " + view.querytype)
         };
 
         for (var i = 0; i < labels.length; i++) {
@@ -122,8 +124,7 @@
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var view = XrmTranslator.metadata[i];
 
-            AddLabelRecord(records, view, "name", "Name");
-            AddLabelRecord(records, view, "description", "Description");
+            AddLabelRecord(records, view);
         }
 
         XrmTranslator.AddSummary(records);
@@ -152,21 +153,13 @@
 
                 for (var i = 0; i < views.length; i++) {
                     var view = views[i];
+                    var attributeName = GetAttributeName();
 
-                    var retrieveNameLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
+                    var retrieveLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
                         .with({
                             urlParams: {
                                 EntityMoniker: "{'@odata.id':'savedqueries(" + view.savedqueryid + ")'}",
-                                AttributeName: "'name'",
-                                IncludeUnpublished: true
-                            }
-                        })
-
-                    var retrieveDescriptionLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
-                        .with({
-                            urlParams: {
-                                EntityMoniker: "{'@odata.id':'savedqueries(" + view.savedqueryid + ")'}",
-                                AttributeName: "'description'",
+                                AttributeName: "'" + attributeName + "'",
                                 IncludeUnpublished: true
                             }
                         })
@@ -174,10 +167,7 @@
                     var prop = WebApiClient.Promise.props({
                         recid: view.savedqueryid,
                         querytype: view.querytype,
-                        labels: WebApiClient.Promise.props({
-                            name: WebApiClient.Execute(retrieveNameLabelsRequest),
-                            description: WebApiClient.Execute(retrieveDescriptionLabelsRequest)
-                        })
+                        labels: WebApiClient.Execute(retrieveLabelsRequest)
                     });
 
                     requests.push(prop);

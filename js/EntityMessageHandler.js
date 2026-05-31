@@ -328,8 +328,8 @@
         grid.clear();
         XrmTranslator.AddSummary(records);
         grid.add(records);
-        XrmTranslator.SetSaveButtonDisabled(true);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     function collectChanges(records) {
@@ -405,8 +405,6 @@
         var solutionUniqueName;
         var entityInfo;
 
-        XrmTranslator.LockGrid("Loading entity messages");
-
         return Promise.all([
             getSolutionUniqueName(XrmTranslator.GetSolution()),
             getSelectedEntityInfo()
@@ -452,6 +450,7 @@
         })
         .catch(function (error) {
             XrmTranslator.GetGrid().unlock();
+            XrmTranslator.EnableLoadAndSave();
             XrmTranslator.errorHandler(error);
         });
     };
@@ -463,11 +462,10 @@
 
         var changes = collectChanges(XrmTranslator.GetAllRecords());
         if (changes.length === 0) {
-            XrmTranslator.SetSaveButtonDisabled(true);
             return Promise.resolve(false);
         }
 
-        XrmTranslator.LockGrid("Re-exporting translations");
+        XrmTranslator.LockGridProgress("Saving " + XrmTranslator.GetCurrentToolbarTypeText(), 1, 2);
 
         return TranslationPackageService.ExportTranslations(state.solutionUniqueName)
         .then(TranslationPackageService.LoadPackage)
@@ -476,7 +474,7 @@
             return TranslationPackageService.WritePackage(packageData);
         })
         .then(function (updatedBase64) {
-            XrmTranslator.LockGrid("Importing translations");
+            XrmTranslator.LockGridProgress("Saving " + XrmTranslator.GetCurrentToolbarTypeText(), 2, 2);
             return TranslationPackageService.ImportTranslations(updatedBase64);
         })
         .then(function () {
@@ -486,45 +484,16 @@
     };
 
     EntityMessageHandler.Save = function () {
-        XrmTranslator.StartOperationStatus({
-            phase: "importingTranslations",
-            tone: "info",
-            message: "Importing entity message translations. Save and Load are temporarily disabled.",
-            type: "entityMessages",
-            entityLogicalName: state && state.entityInfo ? state.entityInfo.logicalName : XrmTranslator.GetEntity(),
-            blockSave: true,
-            blockLoad: true
-        });
-
-        return EntityMessageHandler.SaveOnly()
-        .then(function (saved) {
-            if (!saved) {
-                XrmTranslator.ClearOperationStatus();
-                XrmTranslator.UnlockGrid();
-                return false;
-            }
-
-            XrmTranslator.UpdateOperationStatus({
-                phase: "publishing",
-                tone: "info",
-                message: "Publishing entity messages for " + state.entityInfo.logicalName + ". Save and Load are temporarily disabled.",
-                type: "entityMessages",
-                entityLogicalName: state.entityInfo.logicalName,
-                blockSave: true,
-                blockLoad: true
-            });
-
-            return XrmTranslator.Publish()
-            .then(function () {
-                XrmTranslator.ClearOperationStatus();
-                XrmTranslator.LockGrid("Reloading entity messages");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return EntityMessageHandler.SaveOnly();
+            },
+            publishAction: function (saved) {
+                return saved ? XrmTranslator.Publish() : Promise.resolve();
+            },
+            reloadAction: function () {
                 return EntityMessageHandler.Load();
-            });
-        })
-        .catch(function (error) {
-            XrmTranslator.ClearOperationStatus();
-            XrmTranslator.GetGrid().unlock();
-            XrmTranslator.errorHandler(error);
+            }
         });
     };
 

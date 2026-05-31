@@ -175,7 +175,6 @@
     AllInOneHandler.Load = function() {
         var grid = XrmTranslator.GetGrid();
         grid.clear();
-        XrmTranslator.LockGrid("Loading ......");
 
         // Suppress grid.unlock() from individual handlers
         var originalUnlock = grid.unlock.bind(grid);
@@ -255,16 +254,11 @@
                         formName: fd.formName,
                         metadata: fd.metadata,
                         selectedForms: fd.selectedForms,
-                        descriptionLabels: fd.descriptionLabels,
                         prefix: formPrefix
                     });
 
                     var records = fd.records || [];
                     prefixRecords(records, formPrefix);
-
-                    var descriptionRecord = FormHandler.CreateDescriptionRecord(fd, formPrefix);
-                    descriptionRecord._allInOneType = formPrefix;
-                    records.unshift(descriptionRecord);
 
                     // Each form is a sub-group under "3. Forms"
                     formChildren.push({
@@ -310,6 +304,7 @@
             var allRecords = allGroups.map(function(g) { return g.node; });
             grid.add(allRecords);
             XrmTranslator.UnlockGrid();
+            XrmTranslator.EnableLoadAndSave();
         })
         .catch(function(err) {
             grid.unlock = originalUnlock;
@@ -323,115 +318,104 @@
 
     AllInOneHandler.Save = function() {
         var grid = XrmTranslator.GetGrid();
-
-        XrmTranslator.LockGrid("Saving ......");
+        var originalRecords = grid.records;
+        var originalTotal = grid.total;
 
         var dataRecords = extractDataRecords(grid.records);
         var allRecordsClone = deepClone(dataRecords);
 
         var groups = groupRecordsByPrefix(allRecordsClone);
 
-        var chain = WebApiClient.Promise.resolve();
+        var saveAction = function () {
+            var chain = WebApiClient.Promise.resolve();
 
-        // Process each handler type
-        for (var h = 0; h < handlerTypes.length; h++) {
-            (function(ht) {
-                chain = chain.then(function() {
-                    var typeRecords = groups[ht.prefix];
-                    if (!typeRecords || typeRecords.length === 0) return;
+            // Process each handler type
+            for (var h = 0; h < handlerTypes.length; h++) {
+                (function(ht) {
+                    chain = chain.then(function() {
+                        var typeRecords = groups[ht.prefix];
+                        if (!typeRecords || typeRecords.length === 0) return;
 
-                    // Check if any records of this type have changes
-                    if (!hasChanges(typeRecords)) return;
+                        // Check if any records of this type have changes
+                        if (!hasChanges(typeRecords)) return;
 
-                    // Restore metadata
-                    var state = savedState[ht.type];
-                    if (!state) return;
+                        // Restore metadata
+                        var state = savedState[ht.type];
+                        if (!state) return;
 
-                    XrmTranslator.metadata = deepClone(state.metadata);
+                        XrmTranslator.metadata = deepClone(state.metadata);
 
-                    if (ht.type === "bpf" && state.extra && state.extra.bpfData) {
-                        BpfHandler.SetBpfData(state.extra.bpfData);
+                        if (ht.type === "bpf" && state.extra && state.extra.bpfData) {
+                            BpfHandler.SetBpfData(state.extra.bpfData);
+                        }
+
+                        // Strip prefixes from records
+                        stripPrefixFromRecords(typeRecords, ht.prefix);
+
+                        // Swap grid records for the handler
+                        grid.records = typeRecords;
+                        grid.total = typeRecords.length;
+
+                        return ht.handler().SaveOnly();
+                    });
+                })(handlerTypes[h]);
+            }
+
+            // Process Forms (per-form save)
+            chain = chain.then(function() {
+                if (!savedState.forms || !savedState.forms.perFormData) return;
+
+                return XrmTranslator.RunAsBaseLanguage(function () {
+                    var formRecordGroups = {};
+                    for (var prefix in groups) {
+                        if (prefix.indexOf("form~") === 0) {
+                            formRecordGroups[prefix] = groups[prefix];
+                        }
                     }
 
-                    // Strip prefixes from records
-                    stripPrefixFromRecords(typeRecords, ht.prefix);
+                    var formChain = WebApiClient.Promise.resolve();
 
-                    // Swap grid records for the handler
-                    grid.records = typeRecords;
-                    grid.total = typeRecords.length;
+                    for (var i = 0; i < savedState.forms.perFormData.length; i++) {
+                        (function(fd) {
+                            formChain = formChain.then(function() {
+                                var formRecords = formRecordGroups[fd.prefix];
+                                if (!formRecords || formRecords.length === 0) return;
+                                if (!hasChanges(formRecords)) return;
 
-                    return ht.handler().SaveOnly();
+                                XrmTranslator.metadata = deepClone(fd.metadata);
+                                FormHandler.selectedForms = fd.selectedForms;
+
+                                stripPrefixFromRecords(formRecords, fd.prefix);
+
+                                grid.records = formRecords;
+                                grid.total = formRecords.length;
+
+                                return FormHandler.SaveOnly(true);
+                            });
+                        })(savedState.forms.perFormData[i]);
+                    }
+
+                    return formChain;
                 });
-            })(handlerTypes[h]);
-        }
-
-        // Process Forms (per-form save)
-        chain = chain.then(function() {
-            if (!savedState.forms || !savedState.forms.perFormData) return;
-
-            return XrmTranslator.RunAsBaseLanguage(function () {
-                var formRecordGroups = {};
-                for (var prefix in groups) {
-                    if (prefix.indexOf("form~") === 0) {
-                        formRecordGroups[prefix] = groups[prefix];
-                    }
-                }
-
-                var formChain = WebApiClient.Promise.resolve();
-
-                for (var i = 0; i < savedState.forms.perFormData.length; i++) {
-                    (function(fd) {
-                        formChain = formChain.then(function() {
-                            var formRecords = formRecordGroups[fd.prefix];
-                            if (!formRecords || formRecords.length === 0) return;
-                            if (!hasChanges(formRecords)) return;
-
-                            var descriptionRows = formRecords.filter(function(record) {
-                                return record._isFormDescriptionRow;
-                            });
-                            var xmlRecords = formRecords.filter(function(record) {
-                                return !record._isFormDescriptionRow;
-                            });
-
-                            var saveChain = FormHandler.SaveDescriptionRows(fd, descriptionRows);
-
-                            if (hasChanges(xmlRecords)) {
-                                saveChain = saveChain.then(function() {
-                                    XrmTranslator.metadata = deepClone(fd.metadata);
-                                    FormHandler.selectedForms = fd.selectedForms;
-
-                                    stripPrefixFromRecords(xmlRecords, fd.prefix);
-
-                                    grid.records = xmlRecords;
-                                    grid.total = xmlRecords.length;
-
-                                    return FormHandler.SaveOnly(true);
-                                });
-                            }
-
-                            return saveChain;
-                        });
-                    })(savedState.forms.perFormData[i]);
-                }
-
-                return formChain;
             });
-        });
 
-        // PublishAllXml once at the end, then release lock and reload
-        chain = chain.then(function() {
-            return XrmTranslator.RunAsBaseLanguage(function () {
-                return WebApiClient.Execute(WebApiClient.Requests.PublishAllXmlRequest);
+            return chain.then(function() {
+                grid.records = originalRecords;
+                grid.total = originalTotal;
             });
-        })
-        .then(function() {
-            return AllInOneHandler.Load();
-        })
-        .catch(function(err) {
-            XrmTranslator.errorHandler(err);
-        });
+        };
 
-        return chain;
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: saveAction,
+            publishAction: function () {
+                return XrmTranslator.RunAsBaseLanguage(function () {
+                    return WebApiClient.Execute(WebApiClient.Requests.PublishAllXmlRequest);
+                });
+            },
+            reloadAction: function () {
+                return AllInOneHandler.Load();
+            }
+        });
     };
 
 }(window.AllInOneHandler = window.AllInOneHandler || {}));

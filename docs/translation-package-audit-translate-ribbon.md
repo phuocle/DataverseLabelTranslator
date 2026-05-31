@@ -26,7 +26,7 @@ Generated: 2026-05-30
 | Attribute/form display labels | 42 | Covered by `1. Attributes` and `3. Forms` | No action. |
 | Attribute descriptions | 26 | Covered by `1. Attributes` when component is `Description` | No action. |
 | Form names | 3 | Covered by `5. Form Metadata` | No action for names. |
-| Form descriptions | 2 | Covered by `3. Forms` | `3. Forms` includes a `[Form] Description` row per form and saves `systemform.description`. |
+| Form descriptions | 2 | Covered by `5. Form Metadata` | Use toolbar component `Description`; saves `systemform.description`. |
 | View names | 7 | Covered by `4. Views` | No action for names. |
 | View descriptions | 1 | Covered by `4. Views` | `4. Views` includes both `Name` and `Description` rows and saves `savedquery.description`. |
 | Chart name | 1 | Covered by `8. Charts` | Row object is `savedqueryvisualization`. |
@@ -47,8 +47,8 @@ Generated: 2026-05-30
 
 The P1 gaps from the original audit are implemented in the runtime handlers:
 
-1. `3. Forms` loads every selected entity form, adds a `[Form] Description` child row, retrieves `systemform.description` labels through `RetrieveLocLabels`, and saves edited description labels through `SetLocLabels`. The same `[Form] Description` row is also included under the `3. Forms` group in `0. All-In-One`.
-2. `4. Views` loads each savedquery with separate `Name` and `Description` rows, retrieves `savedquery.name` and `savedquery.description`, and saves the changed attribute through `SetLocLabels`. Description rows are rendered even when the current description label collection is empty so users can add a new translation.
+1. `5. Form Metadata` follows the toolbar component selector. `DisplayName` retrieves and saves `systemform.name`; `Description` retrieves and saves `systemform.description`. `3. Forms` remains scoped to labels inside the form XML and does not include form metadata descriptions.
+2. `4. Views` follows the toolbar component selector. `DisplayName` retrieves and saves `savedquery.name`; `Description` retrieves and saves `savedquery.description`. Description rows are rendered even when the current description label collection is empty so users can add a new translation.
 
 ## Recommendation
 

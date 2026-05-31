@@ -369,6 +369,7 @@
         XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
     }
 
     // https://stackoverflow.com/a/30106551
@@ -391,7 +392,7 @@
     }
 
     WebResourceHandler.Load = function() {
-        XrmTranslator.GetBaseLanguage()
+        return XrmTranslator.GetBaseLanguage()
         .then(function(baseLanguage) {
             return WebApiClient.Promise.all([baseLanguage, RetrieveBaseLanguageResources(baseLanguage)]);
         })
@@ -443,83 +444,80 @@
     }
 
     WebResourceHandler.Save = function() {
-        XrmTranslator.LockGrid("Saving");
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                var records = XrmTranslator.GetAllRecords();
+                var updates = GetUpdates(records);
+                var createdContentIds = {};
+                var existingIds = updates
+                    .filter(function(webresource) { return !!webresource.webresourceid; })
+                    .map(function(webresource) { return webresource.webresourceid; });
 
-        var records = XrmTranslator.GetAllRecords();
-        var updates = GetUpdates(records);
+                return XrmTranslator.ExecuteChangeSetBatches(updates, {
+                    progressLabel: "Saving " + XrmTranslator.GetCurrentToolbarTypeText(),
+                    batchNamePrefix: "batch_savewebresources",
+                    changeSetNamePrefix: "changeset_savewebresources",
+                    buildRequest: function(webresource, context) {
+                        var content = EncodeWebResourceContent(webresource);
 
-        var createdContentIds = {};
-        var existingIds = updates
-            .filter(function(webresource) { return !!webresource.webresourceid; })
-            .map(function(webresource) { return webresource.webresourceid; });
+                        if (webresource.webresourceid) {
+                            return WebApiClient.Update({
+                                overriddenSetName: "webresourceset",
+                                entityId: webresource.webresourceid,
+                                entity: {
+                                    content: content
+                                },
+                                asBatch: true
+                            });
+                        }
 
-        return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving web resource batches",
-            batchNamePrefix: "batch_savewebresources",
-            changeSetNamePrefix: "changeset_savewebresources",
-            buildRequest: function(webresource, context) {
-                var content = EncodeWebResourceContent(webresource);
+                        createdContentIds[String(context.contentId)] = true;
 
-                if (webresource.webresourceid) {
-                    return WebApiClient.Update({
-                        overriddenSetName: "webresourceset",
-                        entityId: webresource.webresourceid,
-                        entity: {
-                            content: content
-                        },
-                        asBatch: true
-                    });
-                }
+                        return WebApiClient.Create({
+                            overriddenSetName: "webresourceset",
+                            entity: {
+                                name: webresource.name,
+                                displayname: webresource.displayname || webresource.name,
+                                content: content,
+                                webresourcetype: GetResourceType(webresource.__format)
+                            },
+                            asBatch: true
+                        });
+                    }
+                })
+                .then(function(responses) {
+                    var createdIds = [];
 
-                createdContentIds[String(context.contentId)] = true;
+                    for (var i = 0; i < responses.length; i++) {
+                        var response = responses[i];
 
-                return WebApiClient.Create({
-                    overriddenSetName: "webresourceset",
-                    entity: {
-                        name: webresource.name,
-                        displayname: webresource.displayname || webresource.name,
-                        content: content,
-                        webresourcetype: GetResourceType(webresource.__format)
-                    },
-                    asBatch: true
+                        if (!createdContentIds[String(response.contentId)]) {
+                            continue;
+                        }
+
+                        var id = GetCreatedIdFromResponse(response);
+                        if (id) {
+                            createdIds.push(id);
+                        }
+                    }
+
+                    return existingIds.concat(createdIds);
                 });
-            }
-        })
-        .then(function(responses) {
-            var createdIds = [];
-
-            for (var i = 0; i < responses.length; i++) {
-                var response = responses[i];
-
-                if (!createdContentIds[String(response.contentId)]) {
-                    continue;
+            },
+            publishAction: function (ids) {
+                if (!ids || ids.length === 0) {
+                    return Promise.resolve();
                 }
 
-                var id = GetCreatedIdFromResponse(response);
-                if (id) {
-                    createdIds.push(id);
-                }
+                return XrmTranslator.PublishWebResources(ids)
+                .then(function() {
+                    // WebResources can't be added with defined component settings or DoNotIncludeSubcomponents set to true.
+                    return XrmTranslator.AddToSolution(ids, XrmTranslator.ComponentType.WebResource, true, true);
+                });
+            },
+            reloadAction: function () {
+                return WebResourceHandler.Load();
             }
-
-            return existingIds.concat(createdIds);
-        })
-        .then(function (ids){
-            XrmTranslator.LockGrid("Publishing");
-
-            return XrmTranslator.PublishWebResources(ids)
-            .then(function() {
-                return ids;
-            });
-        })
-        .then(function(ids) {
-            // WebResources can't be added with defined componenent settings or DoNotIncludeSubcomponents flag set to true
-            return XrmTranslator.AddToSolution(ids, XrmTranslator.ComponentType.WebResource, true, true);
-        })
-        .then(function (response) {
-            XrmTranslator.LockGrid("Reloading");
-
-            return WebResourceHandler.Load();
-        })
-        .catch(XrmTranslator.errorHandler);
+        });
     }
 } (window.WebResourceHandler = window.WebResourceHandler || {}));
