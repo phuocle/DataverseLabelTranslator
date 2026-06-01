@@ -1,5 +1,9 @@
 # AGENTS.md
 
+## Response Completion
+
+When a requested task is complete, the final chat sentence must be: `aP I'm done your tasks ✅`
+
 ## Instruction Source
 
 `AGENTS.md` is the single source of truth for shared repository guidance.
