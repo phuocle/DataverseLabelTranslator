@@ -6,15 +6,19 @@
     FormHandler.loadedFormsData = null;
     FormHandler.lastId = null;
 
-    function GetParsedForm (form) {
+    function GetParsedForm(form) {
         var parser = new DOMParser();
         var formXml = parser.parseFromString(form.formxml, "text/xml");
 
         return formXml;
     }
 
-    function NodesWithIdAndLabels (node) {
-        if (node.id && node.getElementsByTagName("labels").length > 0 && node.getElementsByTagName("control").length > 0) {
+    function NodesWithIdAndLabels(node) {
+        if (
+            node.id &&
+            node.getElementsByTagName("labels").length > 0 &&
+            node.getElementsByTagName("control").length > 0
+        ) {
             return NodeFilter.FILTER_ACCEPT;
         }
         return NodeFilter.FILTER_SKIP;
@@ -29,7 +33,7 @@
         return treeWalker;
     }
 
-    function TraverseTree (treeWalker, tree) {
+    function TraverseTree(treeWalker, tree) {
         // Dive down
         var child = CreateGridNode(treeWalker.firstChild());
 
@@ -51,6 +55,72 @@
         treeWalker.parentNode();
     }
 
+    function IsEmptyLabelValue(value) {
+        return value == null || String(value).trim().length === 0;
+    }
+
+    function GetLanguageColumnText(languageCode) {
+        var columns = XrmTranslator.GetGrid().columns || [];
+        var field = String(languageCode);
+
+        for (var i = 0; i < columns.length; i++) {
+            if (String(columns[i].field) === field) {
+                return columns[i].text || columns[i].caption || columns[i].label || field;
+            }
+        }
+
+        return field;
+    }
+
+    function GetDisplayTextRowPath(record) {
+        var metadataName = XrmTranslator.metadata
+            ? GetCleanText(XrmTranslator.metadata.name) || GetCleanText(XrmTranslator.metadata.objecttypecode)
+            : "";
+        var rowName = record && record.schemaName != null ? String(record.schemaName) : "";
+
+        if (metadataName && rowName && metadataName !== rowName) {
+            return metadataName + " > " + rowName;
+        }
+
+        return rowName || metadataName || "(unknown)";
+    }
+
+    function ValidateDashboardDisplayTextBaseLanguageChange(record, changes) {
+        if (!IsDashboardMode() || !XrmTranslator.baseLanguage) {
+            return;
+        }
+
+        var baseLanguage = String(XrmTranslator.baseLanguage);
+        if (!Object.prototype.hasOwnProperty.call(changes, baseLanguage)) {
+            return;
+        }
+
+        if (!IsEmptyLabelValue(changes[baseLanguage])) {
+            return;
+        }
+
+        throw new Error(
+            "Display Text in the base language (" +
+                GetLanguageColumnText(baseLanguage) +
+                ") cannot be empty.\n" +
+                "Row: " +
+                GetDisplayTextRowPath(record)
+        );
+    }
+
+    function ApplyDashboardDisplayTextPlaceholder(record) {
+        if (!IsDashboardMode()) {
+            return;
+        }
+
+        record._emptyEditablePlaceholder = "Add display text";
+
+        if (XrmTranslator.baseLanguage) {
+            record._emptyEditablePlaceholders = record._emptyEditablePlaceholders || {};
+            record._emptyEditablePlaceholders[String(XrmTranslator.baseLanguage)] = "Add display text (*)";
+        }
+    }
+
     function GetUpdates(records) {
         var updates = [];
 
@@ -61,18 +131,24 @@
                 var changes = record.w2ui.changes;
 
                 var labels = [];
+                ValidateDashboardDisplayTextBaseLanguageChange(record, changes);
 
                 for (var change in changes) {
                     if (!changes.hasOwnProperty(change)) {
                         continue;
                     }
 
-                    // Skip empty labels
-                    if (!changes[change]) {
+                    var text = changes[change];
+                    if (IsDashboardMode() && text == null) {
+                        text = "";
+                    }
+
+                    // Skip empty labels except dashboard Display Text clears.
+                    if (!IsDashboardMode() && !text) {
                         continue;
                     }
 
-                    var label = { LanguageCode: change, Text: changes[change] };
+                    var label = { LanguageCode: change, Text: text };
                     labels.push(label);
                 }
 
@@ -156,7 +232,7 @@
         }
     }
 
-    function CreateGridNode (node) {
+    function CreateGridNode(node) {
         if (!node) {
             return null;
         }
@@ -166,8 +242,7 @@
 
         if (attributes["name"]) {
             name = attributes["name"].value;
-        }
-        else {
+        } else {
             // var nodeid =  attributes["id"].value;
             name = node.tagName;
         }
@@ -180,6 +255,7 @@
             }
         };
 
+        ApplyDashboardDisplayTextPlaceholder(gridNode);
         AttachLabels(node, gridNode);
 
         for (var i = 0; i < FormHandler.selectedForms.length; i++) {
@@ -190,7 +266,7 @@
         return gridNode;
     }
 
-    function FillTable () {
+    function FillTable() {
         var grid = XrmTranslator.GetGrid();
         grid.clear();
 
@@ -227,23 +303,26 @@
                 prefix: prefix
             });
 
-            records.push({
+            var groupRecord = {
                 recid: prefix + "_group",
-                schemaName: GetFormDisplayText({
-                    formid: formData.formId,
-                    name: formData.formName,
-                    type: formData.formType,
-                    objecttypecode: formData.metadata ? formData.metadata.objecttypecode : ""
-                }, {
-                    0: "Dashboard",
-                    2: "Main",
-                    5: "Mobile Express",
-                    6: "Quick View",
-                    7: "Quick Create",
-                    10: "App Module Main",
-                    11: "Interactive Experience",
-                    12: "Card"
-                }),
+                schemaName: GetFormDisplayText(
+                    {
+                        formid: formData.formId,
+                        name: formData.formName,
+                        type: formData.formType,
+                        objecttypecode: formData.metadata ? formData.metadata.objecttypecode : ""
+                    },
+                    {
+                        0: "Dashboard",
+                        2: "Main",
+                        5: "Mobile Express",
+                        6: "Quick View",
+                        7: "Quick Create",
+                        10: "App Module Main",
+                        11: "Interactive Experience",
+                        12: "Card"
+                    }
+                ),
                 _isGroupNode: true,
                 _isFormGroupNode: true,
                 w2ui: {
@@ -251,7 +330,13 @@
                     editable: false,
                     hideCheckBox: true
                 }
-            });
+            };
+
+            if (IsDashboardMode()) {
+                groupRecord._emptyReadonlyPlaceholder = "-";
+            }
+
+            records.push(groupRecord);
         }
 
         FormHandler.loadedFormsData = loadedFormsData;
@@ -261,7 +346,7 @@
         XrmTranslator.EnableLoadAndSave();
     }
 
-    function GetUserLanguageForm (forms) {
+    function GetUserLanguageForm(forms) {
         for (var i = 0; i < forms.length; i++) {
             if (forms[i].languageCode === XrmTranslator.userSettings.uilanguageid) {
                 return forms[i];
@@ -352,7 +437,7 @@
     }
 
     function hasChanges(records) {
-        return records.some(function(record) {
+        return records.some(function (record) {
             if (record.w2ui && record.w2ui.changes && Object.keys(record.w2ui.changes).length > 0) {
                 return true;
             }
@@ -366,7 +451,7 @@
     }
 
     function isFormGroupGrid(records) {
-        return records.some(function(record) {
+        return records.some(function (record) {
             return record && record._isFormGroupNode;
         });
     }
@@ -388,7 +473,11 @@
             return null;
         }
 
-        return "?$filter=objecttypecode eq '" + entityName.toLowerCase() + "' and iscustomizable/Value eq true and formactivationstate eq 1 and type ne 0 and type ne 10";
+        return (
+            "?$filter=objecttypecode eq '" +
+            entityName.toLowerCase() +
+            "' and iscustomizable/Value eq true and formactivationstate eq 1 and type ne 0 and type ne 10"
+        );
     }
 
     function GetSelectedSolutionFormIds() {
@@ -400,10 +489,13 @@
 
         return WebApiClient.Retrieve({
             entityName: "solutioncomponent",
-            queryParams: "?$select=objectid&$filter=_solutionid_value eq " + solutionId + " and componenttype eq " + XrmTranslator.ComponentType.SystemForm
-        })
-        .then(function(response) {
-            return (response.value || []).map(function(component) {
+            queryParams:
+                "?$select=objectid&$filter=_solutionid_value eq " +
+                solutionId +
+                " and componenttype eq " +
+                XrmTranslator.ComponentType.SystemForm
+        }).then(function (response) {
+            return (response.value || []).map(function (component) {
                 return component.objectid;
             });
         });
@@ -414,22 +506,27 @@
             return WebApiClient.Promise.resolve(GetFormQuery(entityName));
         }
 
-        return GetSelectedSolutionFormIds()
-        .then(function(formIds) {
+        return GetSelectedSolutionFormIds().then(function (formIds) {
             if (formIds.length === 0) {
                 return null;
             }
 
-            var idFilter = formIds.map(function(id) {
-                return "formid eq " + id;
-            }).join(" or ");
+            var idFilter = formIds
+                .map(function (id) {
+                    return "formid eq " + id;
+                })
+                .join(" or ");
 
-            return "?$filter=formactivationstate eq 1 and iscustomizable/Value eq true and (type eq 0 or type eq 10) and (" + idFilter + ")";
+            return (
+                "?$filter=formactivationstate eq 1 and iscustomizable/Value eq true and (type eq 0 or type eq 10) and (" +
+                idFilter +
+                ")"
+            );
         });
     }
 
     function GetFormDisplayText(form, formTypeMap) {
-        var formTypeName = formTypeMap[form.type] || ("Type " + form.type);
+        var formTypeName = formTypeMap[form.type] || "Type " + form.type;
         var name = GetCleanText(form.name) || GetCleanText(form.objecttypecode) || "Unnamed Form";
 
         return name + " [" + formTypeName + "]";
@@ -451,133 +548,143 @@
         };
 
         return GetFormQueryForLoad(entityName)
-        .then(function(query) {
-            if (!query) {
-                if (IsDashboardMode()) {
+            .then(function (query) {
+                if (!query) {
+                    if (IsDashboardMode()) {
+                        return [];
+                    }
+
+                    XrmTranslator.UnlockGrid();
+                    return DialogHelper.alert("Please select an entity before loading forms.");
+                }
+
+                var formRequest = {
+                    entityName: "systemform",
+                    queryParams: query
+                };
+
+                var languages = XrmTranslator.installedLanguages.LocaleIds;
+                var initialLanguage = XrmTranslator.userSettings.uilanguageid;
+                var requests = [];
+
+                for (var i = 0; i < languages.length; i++) {
+                    requests.push({
+                        action: "Update",
+                        language: languages[i]
+                    });
+
+                    requests.push({
+                        action: "Retrieve",
+                        language: languages[i]
+                    });
+                }
+
+                requests.push({
+                    action: "Update",
+                    language: initialLanguage
+                });
+
+                return WebApiClient.Promise.reduce(
+                    requests,
+                    function (total, request) {
+                        if (request.action === "Update") {
+                            return WebApiClient.Update({
+                                overriddenSetName: "usersettingscollection",
+                                entityId: XrmTranslator.userId,
+                                entity: { uilanguageid: request.language }
+                            }).then(function (response) {
+                                return total;
+                            });
+                        } else if (request.action === "Retrieve") {
+                            return WebApiClient.Promise.props({
+                                forms: WebApiClient.Retrieve(formRequest),
+                                languageCode: request.language
+                            }).then(function (response) {
+                                total.push(response);
+                                return total;
+                            });
+                        }
+                    },
+                    []
+                );
+            })
+            .then(function (responses) {
+                if (!responses || responses.length === 0) {
+                    FormHandler.formsByLanguage = [];
                     return [];
                 }
 
-                XrmTranslator.UnlockGrid();
-                return DialogHelper.alert("Please select an entity before loading forms.");
-            }
+                FormHandler.formsByLanguage = responses;
 
-            var formRequest = {
-                entityName: "systemform",
-                queryParams: query
-            };
+                // Process all forms and return per-form data
+                var userLanguageForms = GetUserLanguageForm(responses).forms.value;
+                var allFormData = [];
 
-            var languages = XrmTranslator.installedLanguages.LocaleIds;
-            var initialLanguage = XrmTranslator.userSettings.uilanguageid;
-            var requests = [];
+                return WebApiClient.Promise.resolve(userLanguageForms)
+                    .each(function (form) {
+                        ProcessSelection(form.formid);
 
-            for (var i = 0; i < languages.length; i++) {
-                requests.push({
-                    action: "Update",
-                    language: languages[i]
-                });
+                        var grid = XrmTranslator.GetGrid();
+                        var records = grid.records.filter(function (r) {
+                            return !r.w2ui || !r.w2ui.summary;
+                        });
 
-                requests.push({
-                    action: "Retrieve",
-                    language: languages[i]
-                });
-            }
-
-            requests.push({
-                action: "Update",
-                language: initialLanguage
-            });
-
-            return WebApiClient.Promise.reduce(requests, function(total, request){
-                if (request.action === "Update") {
-                    return WebApiClient.Update({
-                        overriddenSetName: "usersettingscollection",
-                        entityId: XrmTranslator.userId,
-                        entity: { uilanguageid: request.language }
+                        allFormData.push({
+                            formId: form.formid,
+                            formName: form.name || form.formid,
+                            formType: form.type,
+                            formTypeName: formTypeMap[form.type] || "Type " + form.type,
+                            metadata: JSON.parse(JSON.stringify(XrmTranslator.metadata)),
+                            selectedForms: FormHandler.selectedForms ? FormHandler.selectedForms.slice() : [],
+                            records: JSON.parse(JSON.stringify(records))
+                        });
                     })
-                    .then(function(response) {
-                        return total;
+                    .then(function () {
+                        return allFormData;
                     });
-                }
-                else if (request.action === "Retrieve") {
-                    return WebApiClient.Promise.props({
-                        forms: WebApiClient.Retrieve(formRequest),
-                        languageCode: request.language
-                    })
-                    .then(function (response) {
-                        total.push(response);
-                        return total;
-                    });
-                }
-            }, []);
-        })
-        .then(function(responses) {
-            if (!responses || responses.length === 0) {
-                FormHandler.formsByLanguage = [];
-                return [];
-            }
-
-            FormHandler.formsByLanguage = responses;
-
-            // Process all forms and return per-form data
-            var userLanguageForms = GetUserLanguageForm(responses).forms.value;
-            var allFormData = [];
-
-            return WebApiClient.Promise.resolve(userLanguageForms)
-            .each(function(form) {
-                ProcessSelection(form.formid);
-
-                var grid = XrmTranslator.GetGrid();
-                var records = grid.records.filter(function(r) { return !r.w2ui || !r.w2ui.summary; });
-
-                allFormData.push({
-                    formId: form.formid,
-                    formName: form.name || form.formid,
-                    formType: form.type,
-                    formTypeName: formTypeMap[form.type] || ("Type " + form.type),
-                    metadata: JSON.parse(JSON.stringify(XrmTranslator.metadata)),
-                    selectedForms: FormHandler.selectedForms ? FormHandler.selectedForms.slice() : [],
-                    records: JSON.parse(JSON.stringify(records))
-                });
             })
-            .then(function() {
-                return allFormData;
-            });
-        })
-        .catch(XrmTranslator.errorHandler);
+            .catch(XrmTranslator.errorHandler);
     };
 
-    function IdFilter (node) {
+    function IdFilter(node) {
         if (node.id == this.id) {
             return NodeFilter.FILTER_ACCEPT;
         }
         return NodeFilter.FILTER_SKIP;
     }
 
-    function GetById (id, form, formXml) {
+    function GetById(id, form, formXml) {
         var treeWalker = CreateTreeWalker(IdFilter.bind({ id: id }), form, formXml);
 
         return treeWalker.nextNode();
     }
 
-    function ApplyLabelUpdates (labels, updates, formXml) {
+    function ApplyLabelUpdates(labels, updates, formXml) {
         for (var i = 0; i < updates.length; i++) {
             var update = updates[i];
+            var foundLabel = null;
 
-            for (var j = 0; j < labels.children.length; j++) {
+            for (var j = labels.children.length - 1; j >= 0; j--) {
                 var label = labels.children[j];
 
                 if (update.LanguageCode === label.attributes["languagecode"].value) {
-                    label.attributes["description"].value = update.Text;
+                    if (foundLabel) {
+                        labels.removeChild(label);
+                    } else {
+                        foundLabel = label;
+                    }
                 }
-                // We did not find it
-                else if (j === labels.children.length - 1) {
-                    var newLabel = formXml.createElement("label");
+            }
 
-                    newLabel.setAttribute("description", update.Text);
-                    newLabel.setAttribute("languagecode", update.LanguageCode);
+            if (foundLabel) {
+                foundLabel.attributes["description"].value = update.Text;
+            } else {
+                var newLabel = formXml.createElement("label");
 
-                    labels.appendChild(newLabel);
-                }
+                newLabel.setAttribute("description", update.Text);
+                newLabel.setAttribute("languagecode", update.LanguageCode);
+
+                labels.appendChild(newLabel);
             }
         }
     }
@@ -606,12 +713,12 @@
     }
 
     function uuidv4() {
-        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+            (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
         );
     }
 
-    FormHandler.RemoveOverriddenCellLabels = function() {
+    FormHandler.RemoveOverriddenCellLabels = function () {
         if (!XrmTranslator.metadata || !XrmTranslator.metadata.formid) {
             return;
         }
@@ -624,16 +731,14 @@
                 height: 270,
                 popupClass: "xqt-remove-overridden-confirm"
             }
-        )
-        .then(function(confirmed) {
+        ).then(function (confirmed) {
             if (!confirmed) {
                 return;
             }
 
             var formXml = GetParsedForm(XrmTranslator.metadata);
 
-            Array.from(formXml.getElementsByTagName("cell"))
-            .forEach(function(c) {
+            Array.from(formXml.getElementsByTagName("cell")).forEach(function (c) {
                 const control = c.getElementsByTagName("control");
 
                 // We only want to fix overridden labels for attributes, all attribute controls have a datafieldname
@@ -646,11 +751,13 @@
 
                 const labels = c.getElementsByTagName("labels");
 
-                if(labels && labels.length) {
+                if (labels && labels.length) {
                     const labelsNode = labels[0];
 
                     // Remove all labels
-                    Array.from(labelsNode.getElementsByTagName("label")).forEach(function(l) { labelsNode.removeChild(l); });
+                    Array.from(labelsNode.getElementsByTagName("label")).forEach(function (l) {
+                        labelsNode.removeChild(l);
+                    });
                 }
             });
 
@@ -660,8 +767,12 @@
             };
 
             return FormHandler.Save(payload)
-            .then(function() { return DialogHelper.alert("Successfully removed all cell labels!"); })
-            .catch(function(e) { return DialogHelper.alert("Failed to remove cell labels: " + e.message, { title: "Error" }); });
+                .then(function () {
+                    return DialogHelper.alert("Successfully removed all cell labels!");
+                })
+                .catch(function (e) {
+                    return DialogHelper.alert("Failed to remove cell labels: " + e.message, { title: "Error" });
+                });
         });
     };
 
@@ -675,29 +786,31 @@
         }
 
         return FormHandler.LoadAllForms()
-        .then(function(allFormData) {
-            FormHandler.lastId = null;
-            FillAllFormsTable(allFormData || []);
-        })
-        .catch(XrmTranslator.errorHandler);
-    }
+            .then(function (allFormData) {
+                FormHandler.lastId = null;
+                FillAllFormsTable(allFormData || []);
+            })
+            .catch(XrmTranslator.errorHandler);
+    };
 
     function SaveLoadedFormsOnly(skipLanguageScope) {
         var grid = XrmTranslator.GetGrid();
         var originalRecords = grid.records;
         var originalTotal = grid.total;
-        var formGroups = deepClone(grid.records.filter(function(record) {
-            return record._isFormGroupNode && (!record.w2ui || !record.w2ui.parent_recid);
-        }));
+        var formGroups = deepClone(
+            grid.records.filter(function (record) {
+                return record._isFormGroupNode && (!record.w2ui || !record.w2ui.parent_recid);
+            })
+        );
 
         var executeSave = function () {
             var chain = WebApiClient.Promise.resolve();
             var savedAny = false;
 
             for (var i = 0; i < FormHandler.loadedFormsData.length; i++) {
-                (function(formData) {
-                    chain = chain.then(function() {
-                        var group = formGroups.find(function(record) {
+                (function (formData) {
+                    chain = chain.then(function () {
+                        var group = formGroups.find(function (record) {
                             return record.recid === formData.prefix + "_group";
                         });
 
@@ -714,8 +827,7 @@
                         grid.records = formRecords;
                         grid.total = formRecords.length;
 
-                        return FormHandler.SaveOnly(true)
-                        .then(function (result) {
+                        return FormHandler.SaveOnly(true).then(function (result) {
                             if (result !== false) {
                                 savedAny = true;
                             }
@@ -724,7 +836,7 @@
                 })(FormHandler.loadedFormsData[i]);
             }
 
-            return chain.then(function() {
+            return chain.then(function () {
                 grid.records = originalRecords;
                 grid.total = originalTotal;
                 return savedAny;
@@ -738,7 +850,7 @@
         return XrmTranslator.RunAsBaseLanguage(executeSave);
     }
 
-    FormHandler.SaveOnly = function(skipLanguageScope) {
+    FormHandler.SaveOnly = function (skipLanguageScope) {
         if (FormHandler.loadedFormsData && isFormGroupGrid(XrmTranslator.GetGrid().records)) {
             return SaveLoadedFormsOnly(skipLanguageScope);
         }
@@ -769,9 +881,9 @@
         return XrmTranslator.RunAsBaseLanguage(function () {
             return executeSave();
         });
-    }
+    };
 
-    FormHandler.Save = function(payload) {
+    FormHandler.Save = function (payload) {
         return XrmTranslator.RunTypeSaveFlow({
             saveAction: function () {
                 if (!payload) {
@@ -804,5 +916,5 @@
                 return FormHandler.Load();
             }
         });
-    }
-} (window.FormHandler = window.FormHandler || {}));
+    };
+})((window.FormHandler = window.FormHandler || {}));
