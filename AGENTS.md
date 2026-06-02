@@ -62,11 +62,11 @@ Use this table first when mapping a numbered toolbar type to code and tests. Typ
 | 13  | Entity Messages        | `js/EntityMessageHandler.js`   | None yet                               |
 | 14  | Content Snippets       | `js/ContentSnippetHandler.js`  | None yet                               |
 | 15  | Sitemap                | `js/SiteMapHandler.js`         | None yet                               |
-| 16  | Dashboards             | `js/FormHandler.js`            | None yet                               |
+| 16  | Dashboards             | `js/DashboardHandler.js`       | None yet                               |
 | 17  | Web Resources          | `js/WebResourceHandler.js`     | `tests/WebResourceHandler.test.js`     |
 | 18  | Global Option Sets     | `js/GlobalOptionSetHandler.js` | `tests/GlobalOptionSetHandler.test.js` |
 
-Dashboards intentionally share `js/FormHandler.js`; there is no `js/DashboardHandler.js`. Dashboard-only behavior must be gated with `XrmTranslator.GetType() === "dashboards"` so regular Forms behavior does not change.
+Dashboards use `js/DashboardHandler.js`. Dashboard grids intentionally show only the dashboard parent rows; do not load dashboard tabs, sections, or cells into type 16. Parent dashboard rows are editable directly across language columns. `js/FormHandler.js` is only for type 3 Forms.
 
 ## Layout
 

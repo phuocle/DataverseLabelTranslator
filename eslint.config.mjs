@@ -11,6 +11,7 @@ const appGlobals = {
   BusinessRuleHandler: "readonly",
   ChartHandler: "readonly",
   ContentSnippetHandler: "readonly",
+  DashboardHandler: "readonly",
   DataverseDataWebResourceService: "readonly",
   DialogHelper: "readonly",
   EntityHandler: "readonly",

@@ -18,6 +18,7 @@
   <File LocalPath="js/BusinessRuleHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/BusinessRuleHandler.js" />
   <File LocalPath="js/ChartHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/ChartHandler.js" />
   <File LocalPath="js/ContentSnippetHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/ContentSnippetHandler.js" />
+  <File LocalPath="js/DashboardHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/DashboardHandler.js" />
   <File LocalPath="js/DataverseDataWebResourceService.js" UniqueName="pl_/DataverseLabelTranslator/js/DataverseDataWebResourceService.js" />
   <File LocalPath="js/DialogHelper.js" UniqueName="pl_/DataverseLabelTranslator/js/DialogHelper.js" />
   <File LocalPath="js/EntityHandler.js" UniqueName="pl_/DataverseLabelTranslator/js/EntityHandler.js" />

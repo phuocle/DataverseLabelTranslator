@@ -1237,9 +1237,12 @@
         else if (XrmTranslator.GetType() === "options") {
             currentHandler = OptionSetHandler;
         }
-        else if (["forms", "dashboards"].indexOf(XrmTranslator.GetType()) !== -1) {
+        else if (XrmTranslator.GetType() === "forms") {
             w2ui['grid_toolbar'].show("removeOverriddenAttributeLabels");
             currentHandler = FormHandler;
+        }
+        else if (XrmTranslator.GetType() === "dashboards") {
+            currentHandler = DashboardHandler;
         }
         else if (XrmTranslator.GetType() === "views") {
             currentHandler = ViewHandler;
