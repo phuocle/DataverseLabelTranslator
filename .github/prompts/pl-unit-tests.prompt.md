@@ -5,7 +5,7 @@ argument-hint: '[coverage|<test-filter>]'
 agent: agent
 ---
 
-<!-- Generated from ../../.agents/skills/pl-unit-tests/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+<!-- Generated from ../../.agents/skills/pl-unit-tests/SKILL.md. Do not edit manually; run DataverseLabelTranslator.Scripts/sync-ai-config.ps1. -->
 
 Run the Dataverse Label Translator `/pl-unit-tests` workflow.
 

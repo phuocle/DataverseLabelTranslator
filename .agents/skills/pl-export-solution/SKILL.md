@@ -1,4 +1,4 @@
----
+﻿---
 name: "pl-export-solution"
 display-name: "PL Export Solution"
 description: "Export the DataverseLabelTranslator solution with cleaned labels and final managed/unmanaged release ZIPs."
@@ -27,8 +27,8 @@ Do not read the version from Dataverse or from `Solution.xml`. When a new versio
 Each run must leave exactly these two ZIP files in the versioned release folder:
 
 ```text
-D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator.zip
-D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator.zip
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
 Temporary raw export files must be created outside the release folder and removed after the final ZIPs are packed.
@@ -36,7 +36,7 @@ Temporary raw export files must be created outside the release folder and remove
 The cleaned unpacked solution must remain available for review at:
 
 ```text
-D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\unpack
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\1.0.0.0\dataverse\unpack
 ```
 
 After packing, do not stage anything. Leave the generated ZIP files as normal git changes. The `/pl-commit` command is responsible for staging and committing when needed. Do not commit and do not push.
@@ -87,20 +87,20 @@ If this fails, show the error and stop.
 
 ### Step 4: Prepare Paths
 
-Use the hard-coded version and reset only that version's `dataverse` folder. Do not delete or rewrite `release\$Version\appsource`.
+Use the hard-coded version and reset only that version's `dataverse` folder. Do not delete or rewrite `DataverseLabelTranslator.Release\$Version\appsource`.
 
 ```powershell
 $RepoRoot = "D:\github\DataverseLabelTranslator"
 $Version = "1.0.0.0"
 $BaseLanguageCode = 1033
-$ReleaseDir = Join-Path $RepoRoot "release\$Version"
+$ReleaseDir = Join-Path $RepoRoot "DataverseLabelTranslator.Release\$Version"
 $DataverseDir = Join-Path $ReleaseDir "dataverse"
 $SolutionsDir = Join-Path $DataverseDir "solutions"
 $ReleaseUnpackDir = Join-Path $DataverseDir "unpack"
 $TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) "DataverseLabelTranslator-export-$Version"
 $TempRawDir = Join-Path $TempRoot "raw"
 $TempUnpackDir = Join-Path $TempRoot "unpack"
-$CleanLanguageScript = Join-Path $RepoRoot "scripts\clean-language.ps1"
+$CleanLanguageScript = Join-Path $RepoRoot "DataverseLabelTranslator.Scripts\clean-language.ps1"
 
 if (Test-Path -LiteralPath $DataverseDir) {
     Remove-Item -LiteralPath $DataverseDir -Recurse -Force
@@ -218,19 +218,19 @@ Do not run `git push`.
 Leave these files as normal uncommitted git changes:
 
 ```text
-release\$Version\dataverse\solutions\DataverseLabelTranslator.zip
-release\$Version\dataverse\solutions\DataverseLabelTranslator_managed.zip
+DataverseLabelTranslator.Release\$Version\dataverse\solutions\DataverseLabelTranslator.zip
+DataverseLabelTranslator.Release\$Version\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
-The `release\$Version\dataverse\unpack` folder is for manual review only and should be ignored by git.
+The `DataverseLabelTranslator.Release\$Version\dataverse\unpack` folder is for manual review only and should be ignored by git.
 
 ### Step 12: Report Result
 
 Report:
 
 - Release version: `1.0.0.0`
-- Release folder: `D:\github\DataverseLabelTranslator\release\1.0.0.0`
-- Unpacked review folder: `D:\github\DataverseLabelTranslator\release\1.0.0.0\dataverse\unpack`
+- Release folder: `D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\1.0.0.0`
+- Unpacked review folder: `D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\1.0.0.0\dataverse\unpack`
 - Exported files: `DataverseLabelTranslator.zip`, `DataverseLabelTranslator_managed.zip`
 - Confirm the ZIP files were generated but not staged.
-- Confirm `release\1.0.0.0\dataverse\unpack` is present for review and ignored by git.
+- Confirm `DataverseLabelTranslator.Release\1.0.0.0\dataverse\unpack` is present for review and ignored by git.

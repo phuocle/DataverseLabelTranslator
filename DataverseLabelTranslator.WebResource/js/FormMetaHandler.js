@@ -1,0 +1,214 @@
+(function (FormMetaHandler, undefined) {
+    "use strict";
+
+    function GetAttributeName() {
+        return XrmTranslator.GetComponent() === "Description" ? "description" : "name";
+    }
+
+    function ApplyChanges(changes, labels) {
+        for (var change in changes) {
+            if (!changes.hasOwnProperty(change)) {
+                continue;
+            }
+
+            // Skip empty labels
+            if (!changes[change]) {
+                continue;
+            }
+
+            var found = false;
+            for (var i = 0; i < labels.length; i++) {
+                var label = labels[i];
+
+                if (label.LanguageCode == change) {
+                    label.Label = changes[change];
+                    label.HasChanged = true;
+                    found = true;
+
+                    break;
+                }
+            }
+
+            if (!found) {
+                labels.push({
+                    LanguageCode: parseInt(change, 10),
+                    Label: changes[change],
+                    HasChanged: true
+                });
+            }
+        }
+    }
+
+    function GetUpdates() {
+        var records = XrmTranslator.GetGrid().records;
+
+        var updates = [];
+
+        for (var i = 0; i < records.length; i++) {
+            var record = records[i];
+
+            if (record.w2ui && record.w2ui.changes) {
+                var view = XrmTranslator.GetAttributeByProperty("recid", record.recid);
+
+                if (!view || !view.labels) {
+                    continue;
+                }
+
+                if (!view.labels.Label) {
+                    view.labels.Label = { LocalizedLabels: [] };
+                }
+                if (!view.labels.Label.LocalizedLabels) {
+                    view.labels.Label.LocalizedLabels = [];
+                }
+
+                var labels = view.labels.Label.LocalizedLabels;
+
+                var changes = record.w2ui.changes;
+
+                ApplyChanges(changes, labels);
+                updates.push(view);
+            }
+        }
+
+        return updates;
+    }
+
+    var formTypeMap = {
+        0: "Dashboard",
+        2: "Main",
+        5: "Mobile Express",
+        6: "Quick View",
+        7: "Quick Create",
+        10: "App Module Main",
+        11: "Interactive Experience",
+        12: "Card Form"
+    };
+
+    function FillTable() {
+        var grid = XrmTranslator.GetGrid();
+        grid.clear();
+
+        var records = [];
+
+        for (var i = 0; i < XrmTranslator.metadata.length; i++) {
+            var form = XrmTranslator.metadata[i];
+
+            var displayNames = form.labels && form.labels.Label ? form.labels.Label.LocalizedLabels : [];
+
+            var record = {
+                recid: form.recid,
+                schemaName: formTypeMap[form.type] || "Type " + form.type
+            };
+
+            for (var j = 0; j < displayNames.length; j++) {
+                var displayName = displayNames[j];
+
+                record[displayName.LanguageCode.toString()] = displayName.Label;
+            }
+
+            records.push(record);
+        }
+
+        XrmTranslator.AddSummary(records);
+        grid.add(records);
+        grid.unlock();
+        XrmTranslator.EnableLoadAndSave();
+    }
+
+    FormMetaHandler.Load = function () {
+        var entityName = XrmTranslator.GetEntity();
+
+        var entityMetadataId = XrmTranslator.entityMetadata[entityName];
+
+        var formRequest = {
+            entityName: "systemform",
+            queryParams:
+                "?$filter=objecttypecode eq '" +
+                entityName.toLowerCase() +
+                "' and iscustomizable/Value eq true and formactivationstate eq 1"
+        };
+
+        if (entityName.toLowerCase() === "none") {
+            formRequest.queryParams =
+                "?$filter=formactivationstate eq 1 and iscustomizable/Value eq true and (type eq 0 or type eq 10)";
+        }
+
+        return WebApiClient.Retrieve(formRequest)
+            .then(function (response) {
+                var forms = response.value;
+                var requests = [];
+
+                for (var i = 0; i < forms.length; i++) {
+                    var form = forms[i];
+                    var attributeName = GetAttributeName();
+
+                    var retrieveLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest.with({
+                        urlParams: {
+                            EntityMoniker: "{'@odata.id':'systemforms(" + form.formid + ")'}",
+                            AttributeName: "'" + attributeName + "'",
+                            IncludeUnpublished: true
+                        }
+                    });
+
+                    var prop = WebApiClient.Promise.props({
+                        recid: form.formid,
+                        type: form.type,
+                        labels: WebApiClient.Execute(retrieveLabelsRequest)
+                    });
+
+                    requests.push(prop);
+                }
+
+                return WebApiClient.Promise.all(requests);
+            })
+            .then(function (responses) {
+                var forms = responses;
+                XrmTranslator.metadata = forms;
+
+                FillTable();
+            })
+            .catch(XrmTranslator.errorHandler);
+    };
+
+    FormMetaHandler.SaveOnly = function () {
+        var updates = GetUpdates();
+        return XrmTranslator.ExecuteChangeSetBatches(updates, {
+            progressLabel: "Saving 5. Form Metadata",
+            batchNamePrefix: "batch_setformmetalabels",
+            changeSetNamePrefix: "changeset_setformmetalabels",
+            buildRequest: function (update) {
+                return new WebApiClient.BatchRequest({
+                    method: "POST",
+                    url: WebApiClient.GetApiUrl() + "SetLocLabels",
+                    payload: {
+                        Labels: update.labels.Label.LocalizedLabels,
+                        EntityMoniker: {
+                            "@odata.type": "Microsoft.Dynamics.CRM.systemform",
+                            formid: update.recid
+                        },
+                        AttributeName: GetAttributeName()
+                    }
+                });
+            }
+        });
+    };
+
+    FormMetaHandler.Save = function () {
+        return XrmTranslator.RunTypeSaveFlow({
+            saveAction: function () {
+                return FormMetaHandler.SaveOnly();
+            },
+            publishAction: function () {
+                var entityName = XrmTranslator.GetEntity();
+                if (entityName.toLowerCase() === "none") {
+                    return XrmTranslator.PublishDashboard(GetUpdates());
+                }
+
+                return XrmTranslator.Publish();
+            },
+            reloadAction: function () {
+                return FormMetaHandler.Load();
+            }
+        });
+    };
+})((window.FormMetaHandler = window.FormMetaHandler || {}));

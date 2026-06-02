@@ -5,7 +5,7 @@ argument-hint: "<local-path>"
 disable-model-invocation: true
 ---
 
-<!-- Generated from ../../.agents/skills/pl-deploy-web-resource/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+<!-- Generated from ../../.agents/skills/pl-deploy-web-resource/SKILL.md. Do not edit manually; run DataverseLabelTranslator.Scripts/sync-ai-config.ps1. -->
 
 # pl-deploy-web-resource
 
@@ -45,11 +45,11 @@ If the file is not in the mapping, derive from convention:
 
 | File pattern | UniqueName |
 |---|---|
-| `js/*.js` | `pl_/DataverseLabelTranslator/js/<filename>` |
-| `css/*.css` | `pl_/DataverseLabelTranslator/css/<filename>` |
-| `html/App.html` | `pl_/DataverseLabelTranslator/html/App.html` |
-| `img/*.svg` | `pl_/DataverseLabelTranslator/img/<filename>` |
-| `img/*.png` | `pl_/DataverseLabelTranslator/img/<filename>` |
+| `DataverseLabelTranslator.WebResource/js/*.js` | `pl_/DataverseLabelTranslator/js/<filename>` |
+| `DataverseLabelTranslator.WebResource/css/*.css` | `pl_/DataverseLabelTranslator/css/<filename>` |
+| `DataverseLabelTranslator.WebResource/html/App.html` | `pl_/DataverseLabelTranslator/html/App.html` |
+| `DataverseLabelTranslator.WebResource/img/*.svg` | `pl_/DataverseLabelTranslator/img/<filename>` |
+| `DataverseLabelTranslator.WebResource/img/*.png` | `pl_/DataverseLabelTranslator/img/<filename>` |
 
 For new files that do not match the convention, ask the user for the desired Dataverse unique name.
 

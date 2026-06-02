@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Project Path="DataverseLabelTranslator.Server/DataverseLabelTranslator.Server.csproj" />
+  <Project Path="DataverseLabelTranslator.Shared/DataverseLabelTranslator.Shared.shproj" Id="93307388-fb80-40b6-8c14-296079edcf93" />
+  <Project Path="DataverseLabelTranslator.WebResource/DataverseLabelTranslator.WebResource.csproj" />
+</Solution>

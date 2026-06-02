@@ -11,7 +11,7 @@ Use this skill when the user asks to run, verify, debug, or explain unit tests, 
 
 ## What This Skill Does
 
-1. Runs the repo's Vitest unit tests from the repository root.
+1. Runs the client Vitest unit tests from `DataverseLabelTranslator.WebResource`.
 2. Runs coverage when requested and checks the configured coverage thresholds.
 3. Keeps unit tests isolated from Dataverse by using fakes/mocks instead of live Web API calls.
 4. Reports exact failing suites/tests and the command output needed to act on failures.
@@ -21,33 +21,34 @@ Use this skill when the user asks to run, verify, debug, or explain unit tests, 
 Run all unit tests:
 
 ```powershell
-npm test
+npm --prefix DataverseLabelTranslator.WebResource test
 ```
 
 Run coverage:
 
 ```powershell
-npm run test:coverage
+npm --prefix DataverseLabelTranslator.WebResource run test:coverage
 ```
 
 Inspect the machine-readable coverage summary:
 
 ```powershell
-Get-Content coverage\coverage-summary.json
+Get-Content DataverseLabelTranslator.WebResource\coverage\coverage-summary.json
 ```
 
 Open the HTML coverage report after coverage succeeds:
 
 ```powershell
-start coverage\index.html
+start DataverseLabelTranslator.WebResource\coverage\index.html
 ```
 
 ## Current Coverage Target
 
-`vitest.config.mjs` currently includes coverage for:
+`DataverseLabelTranslator.WebResource\vitest.config.mjs` currently includes coverage for:
 
 ```text
 js/GlobalOptionSetHandler.js
+js/WebResourceHandler.js
 ```
 
 Thresholds are 100% for lines, functions, branches, and statements.
@@ -64,8 +65,8 @@ Thresholds are 100% for lines, functions, branches, and statements.
 ## Workflow
 
 1. Check `git status --short` so test changes are not confused with unrelated work.
-2. Run `npm test` unless the user specifically asked only for coverage.
-3. If coverage is requested, run `npm run test:coverage`.
+2. Run `npm --prefix DataverseLabelTranslator.WebResource test` unless the user specifically asked only for coverage.
+3. If coverage is requested, run `npm --prefix DataverseLabelTranslator.WebResource run test:coverage`.
 4. If a test fails, report the failing file, suite/test name, and the relevant assertion/error.
 5. If coverage fails, report the uncovered file/metric from the coverage output.
 6. If tests pass, summarize the command and result.
@@ -75,7 +76,7 @@ Thresholds are 100% for lines, functions, branches, and statements.
 If `node_modules` is missing, run:
 
 ```powershell
-npm install
+npm --prefix DataverseLabelTranslator.WebResource install
 ```
 
 Do not commit `node_modules`.

@@ -145,7 +145,7 @@ If translating an attribute does not update its form label, the form likely has 
 
 ## Architecture
 
-The active codebase lives at the repository root. It uses handler-based IIFE modules orchestrated by `XrmTranslator.js`.
+The active web resource codebase lives under `DataverseLabelTranslator.WebResource`. It is a DynamicsCrm.DevKit WebResource `.csproj` for fast local web resource deployment, and it also contains the npm lint/test tooling for the plain JavaScript dashboard.
 
 The Dataverse app hosts one main web resource: `pl_/DataverseLabelTranslator/html/App.html`.
 
@@ -157,36 +157,55 @@ Every handler implements:
 ### Project Structure
 
 ```text
-html/
-  App.html
-js/
-  XrmTranslator.js
-  AllInOneHandler.js
-  AttributeHandler.js
-  OptionSetHandler.js
-  GlobalOptionSetHandler.js
-  FormHandler.js
-  FormMetaHandler.js
-  ViewHandler.js
-  EntityHandler.js
-  ChartHandler.js
-  BpfHandler.js
-  BusinessRuleHandler.js
-  RelationshipHandler.js
-  RibbonHandler.js
-  ModernCommandHandler.js
-  SiteMapHandler.js
-  ContentSnippetHandler.js
-  WebResourceHandler.js
-  TranslationHandler.js
-  TranslationDictionaryService.js
-  DialogHelper.js
-css/
-  w2ui.css
-  style.css
-img/
-  app-icon.svg
+DataverseLabelTranslator.WebResource/
+  DataverseLabelTranslator.WebResource.csproj
+  package.json
+  vitest.config.mjs
+  eslint.config.mjs
+  deploy.debug.bat        # commit-safe DevKit deploy script using root .env
+  html/
+    App.html
+  js/
+    XrmTranslator.js
+    AllInOneHandler.js
+    AttributeHandler.js
+    OptionSetHandler.js
+    GlobalOptionSetHandler.js
+    FormHandler.js
+    FormMetaHandler.js
+    ViewHandler.js
+    EntityHandler.js
+    ChartHandler.js
+    BpfHandler.js
+    BusinessRuleHandler.js
+    RelationshipHandler.js
+    RibbonHandler.js
+    ModernCommandHandler.js
+    SiteMapHandler.js
+    ContentSnippetHandler.js
+    WebResourceHandler.js
+    TranslationHandler.js
+    TranslationDictionaryService.js
+    DialogHelper.js
+  css/
+    w2ui.css
+    style.css
+  img/
+    app-icon.svg
+  tests/
+    GlobalOptionSetHandler.test.js
+    WebResourceHandler.test.js
+DataverseLabelTranslator.Scripts/
+  release-appsource.ps1
+  deploy-azure.ps1
+  sync-ai-config.ps1
+DataverseLabelTranslator.Documents/
+  type-convention-from-global-option-sets.md
 ```
+
+### Local DevKit Environment
+
+DevKit batch files load local connection settings from the repository root `.env` file. Values in `.env` intentionally override inherited `DEVKIT_*` process environment variables for that batch run. Commit `.env.example`, copy it to `.env`, and fill the local values there. `.env` is ignored by git.
 
 ## Tech Stack
 
@@ -205,8 +224,8 @@ MIT License
 
 Confirmed on May 29, 2026, the production release flow is:
 
-1. Run `$pl-export-solution` to export `DataverseLabelTranslator`, clean labels, and create final Dataverse solution ZIPs under `release/<version>/dataverse/solutions/`.
-2. Run `$pl-release-appsource` to build the AppSource Marketplace upload ZIP from the existing managed solution. This step does not export Dataverse again. The final upload file is `release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`.
-3. Run `$pl-deploy-azure` to upload only that final AppSource ZIP to Azure Blob Storage and generate Partner Center SAS details in `release/<version>/appsource/zip/release.md`.
+1. Run `$pl-export-solution` to export `DataverseLabelTranslator`, clean labels, and create final Dataverse solution ZIPs under `DataverseLabelTranslator.Release/<version>/dataverse/solutions/`.
+2. Run `$pl-release-appsource` to build the AppSource Marketplace upload ZIP from the existing managed solution. This step does not export Dataverse again. The final upload file is `DataverseLabelTranslator.Release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`.
+3. Run `$pl-deploy-azure` to upload only that final AppSource ZIP to Azure Blob Storage and generate Partner Center SAS details in `DataverseLabelTranslator.Release/<version>/appsource/zip/release.md`.
 
 `release.md` contains private SAS details and must stay ignored/uncommitted. Paste the generated SAS package URL into Partner Center, but do not paste it into commits, issues, or chat logs.

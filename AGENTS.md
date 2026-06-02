@@ -24,6 +24,8 @@ This repository is the active codebase for **Dataverse Label Translator**:
 - **WebApiClient** 4.1.6
 - Publisher prefix `pl_`, solution `DataverseLabelTranslator`
 - Web resources under `pl_/DataverseLabelTranslator/`
+- Web resource source lives in `DataverseLabelTranslator.WebResource`, a DynamicsCrm.DevKit WebResource `.csproj` used for fast local web resource deployment.
+- DevKit `.bat` files are commit-safe and must read connection values from root `.env` / `DEVKIT_*` environment variables. Commit `.env.example`, never commit `.env`.
 - Translation dashboard only; PropertyEditor resources are intentionally excluded from this solution.
 
 The HTML dashboard loads JavaScript through `<script>` tags. There is no build step; JavaScript files deploy directly as Dataverse web resources. MCP server connects to the dev Dataverse environment.
@@ -43,38 +45,41 @@ Every handler: `Load()` fetches metadata and fills the w2ui grid, `Save()` extra
 
 ## Toolbar Type Files
 
-Use this table first when mapping a numbered toolbar type to code and tests. Type selection and handler dispatch live in `js/XrmTranslator.js`.
+Use this table first when mapping a numbered toolbar type to code and tests. Type selection and handler dispatch live in `DataverseLabelTranslator.WebResource/js/XrmTranslator.js`.
 
 | #   | Toolbar Type           | Handler JS                     | Test File                              |
 | --- | ---------------------- | ------------------------------ | -------------------------------------- |
-| 1   | Attributes             | `js/AttributeHandler.js`       | None yet                               |
-| 2   | Option Sets            | `js/OptionSetHandler.js`       | None yet                               |
-| 3   | Forms                  | `js/FormHandler.js`            | None yet                               |
-| 4   | Views                  | `js/ViewHandler.js`            | None yet                               |
-| 5   | Form Metadata          | `js/FormMetaHandler.js`        | None yet                               |
-| 6   | Entity Metadata        | `js/EntityHandler.js`          | None yet                               |
-| 7   | Relationships          | `js/RelationshipHandler.js`    | None yet                               |
-| 8   | Charts                 | `js/ChartHandler.js`           | None yet                               |
-| 9   | Business Process Flows | `js/BpfHandler.js`             | None yet                               |
-| 10  | Business Rules         | `js/BusinessRuleHandler.js`    | None yet                               |
-| 11  | Ribbons                | `js/RibbonHandler.js`          | None yet                               |
-| 12  | Commands               | `js/ModernCommandHandler.js`   | None yet                               |
-| 13  | Entity Messages        | `js/EntityMessageHandler.js`   | None yet                               |
-| 14  | Content Snippets       | `js/ContentSnippetHandler.js`  | None yet                               |
-| 15  | Sitemap                | `js/SiteMapHandler.js`         | None yet                               |
-| 16  | Dashboards             | `js/DashboardHandler.js`       | None yet                               |
-| 17  | Web Resources          | `js/WebResourceHandler.js`     | `tests/WebResourceHandler.test.js`     |
-| 18  | Global Option Sets     | `js/GlobalOptionSetHandler.js` | `tests/GlobalOptionSetHandler.test.js` |
+| 1   | Attributes             | `DataverseLabelTranslator.WebResource/js/AttributeHandler.js`       | None yet                                                           |
+| 2   | Option Sets            | `DataverseLabelTranslator.WebResource/js/OptionSetHandler.js`       | None yet                                                           |
+| 3   | Forms                  | `DataverseLabelTranslator.WebResource/js/FormHandler.js`            | None yet                                                           |
+| 4   | Views                  | `DataverseLabelTranslator.WebResource/js/ViewHandler.js`            | None yet                                                           |
+| 5   | Form Metadata          | `DataverseLabelTranslator.WebResource/js/FormMetaHandler.js`        | None yet                                                           |
+| 6   | Entity Metadata        | `DataverseLabelTranslator.WebResource/js/EntityHandler.js`          | None yet                                                           |
+| 7   | Relationships          | `DataverseLabelTranslator.WebResource/js/RelationshipHandler.js`    | None yet                                                           |
+| 8   | Charts                 | `DataverseLabelTranslator.WebResource/js/ChartHandler.js`           | None yet                                                           |
+| 9   | Business Process Flows | `DataverseLabelTranslator.WebResource/js/BpfHandler.js`             | None yet                                                           |
+| 10  | Business Rules         | `DataverseLabelTranslator.WebResource/js/BusinessRuleHandler.js`    | None yet                                                           |
+| 11  | Ribbons                | `DataverseLabelTranslator.WebResource/js/RibbonHandler.js`          | None yet                                                           |
+| 12  | Commands               | `DataverseLabelTranslator.WebResource/js/ModernCommandHandler.js`   | None yet                                                           |
+| 13  | Entity Messages        | `DataverseLabelTranslator.WebResource/js/EntityMessageHandler.js`   | None yet                                                           |
+| 14  | Content Snippets       | `DataverseLabelTranslator.WebResource/js/ContentSnippetHandler.js`  | None yet                                                           |
+| 15  | Sitemap                | `DataverseLabelTranslator.WebResource/js/SiteMapHandler.js`         | None yet                                                           |
+| 16  | Dashboards             | `DataverseLabelTranslator.WebResource/js/DashboardHandler.js`       | None yet                                                           |
+| 17  | Web Resources          | `DataverseLabelTranslator.WebResource/js/WebResourceHandler.js`     | `DataverseLabelTranslator.WebResource/tests/WebResourceHandler.test.js` |
+| 18  | Global Option Sets     | `DataverseLabelTranslator.WebResource/js/GlobalOptionSetHandler.js` | `DataverseLabelTranslator.WebResource/tests/GlobalOptionSetHandler.test.js` |
 
-Dashboards use `js/DashboardHandler.js`. Dashboard grids intentionally show only the dashboard parent rows; do not load dashboard tabs, sections, or cells into type 16. Parent dashboard rows are editable directly across language columns. `js/FormHandler.js` is only for type 3 Forms.
+Dashboards use `DataverseLabelTranslator.WebResource/js/DashboardHandler.js`. Dashboard grids intentionally show only the dashboard parent rows; do not load dashboard tabs, sections, or cells into type 16. Parent dashboard rows are editable directly across language columns. `DataverseLabelTranslator.WebResource/js/FormHandler.js` is only for type 3 Forms.
 
 ## Layout
 
 ```text
-html/  Dataverse HTML web resources
-js/    Dashboard and library JavaScript web resources
-css/   CSS web resources
-img/   Image web resources
+DataverseLabelTranslator.WebResource/html/  Dataverse HTML web resources
+DataverseLabelTranslator.WebResource/js/    Dashboard and library JavaScript web resources
+DataverseLabelTranslator.WebResource/css/   CSS web resources
+DataverseLabelTranslator.WebResource/img/   Image web resources
+DataverseLabelTranslator.WebResource/tests/ Vitest unit tests
+DataverseLabelTranslator.Scripts/      Release, packaging, and AI config scripts
+DataverseLabelTranslator.Documents/    Repository docs
 ```
 
 ## Skills And Commands
@@ -93,20 +98,20 @@ Keep the roster below aligned with those files. Do not use `.codex/commands/` fo
 `.agents/skills/pl-*/SKILL.md` is the canonical workflow source. Keep downstream adapters generated and checked:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\sync-ai-config.ps1
-powershell -ExecutionPolicy Bypass -File scripts\check-ai-config.ps1
+powershell -ExecutionPolicy Bypass -File DataverseLabelTranslator.Scripts\sync-ai-config.ps1
+powershell -ExecutionPolicy Bypass -File DataverseLabelTranslator.Scripts\check-ai-config.ps1
 ```
 
-`scripts\sync-ai-config.ps1` regenerates Claude project skills and GitHub Copilot prompt wrappers from `.agents/skills/`.
-`scripts\check-ai-config.ps1` fails when adapters drift, deprecated files reappear, required local-secret files are not ignored, or tracked files contain DevKit/SAS secret-like values. CI runs the check through `.github/workflows/ai-config.yml`.
+`DataverseLabelTranslator.Scripts\sync-ai-config.ps1` regenerates Claude project skills and GitHub Copilot prompt wrappers from `.agents/skills/`.
+`DataverseLabelTranslator.Scripts\check-ai-config.ps1` fails when adapters drift, deprecated files reappear, required local-secret files are not ignored, or tracked files contain DevKit/SAS secret-like values. CI runs the check through `.github/workflows/ai-config.yml`.
 
 ## Code Quality
 
 Run quality gates after code edits:
 
-- Run `npm run lint` after JavaScript or test changes.
-- Run `npm run format -- <changed-files>` for files edited in the current task. Do not run repo-wide formatting unless the user explicitly asks for it.
-- Run `npm test` for unit test verification, and `npm run test:coverage` when coverage is part of the requested work.
+- Run `npm --prefix DataverseLabelTranslator.WebResource run lint` after JavaScript or test changes.
+- Run `npm --prefix DataverseLabelTranslator.WebResource run format -- <changed-files>` for files edited in the current task. Paths passed to this command should be relative to `DataverseLabelTranslator.WebResource`. Do not run repo-wide formatting unless the user explicitly asks for it.
+- Run `npm --prefix DataverseLabelTranslator.WebResource test` for unit test verification, and `npm --prefix DataverseLabelTranslator.WebResource run test:coverage` when coverage is part of the requested work.
 
 ### /pl-ai-sync
 
@@ -114,7 +119,7 @@ Regenerate and validate AI tool adapters from canonical `.agents/skills/pl-*/SKI
 
 ### /pl-unit-tests
 
-Run Vitest unit tests and optional coverage for Dataverse Label Translator. Use `npm test` for tests and `npm run test:coverage` for coverage. Unit tests must fake Dataverse/Xrm/browser APIs instead of calling live services. Do not deploy, commit, or push automatically.
+Run Vitest unit tests and optional coverage for Dataverse Label Translator. Use `npm --prefix DataverseLabelTranslator.WebResource test` for tests and `npm --prefix DataverseLabelTranslator.WebResource run test:coverage` for coverage. Unit tests must fake Dataverse/Xrm/browser APIs instead of calling live services. Do not deploy, commit, or push automatically.
 
 ### /pl-commit
 
@@ -127,7 +132,7 @@ Deploy a file to Dataverse using MCP `manage_webresource`:
 When a file listed in `.codex/mapping.xml` is changed and the user needs to test the app in Dataverse, deploy that changed file again with `/pl-deploy-web-resource <local-path>`. Do not leave mapped web resource changes only on disk when the next expected step is app testing.
 
 1. Look up `<local-path>` in `.codex/mapping.xml` to get CRM `UniqueName`.
-2. If not in mapping, auto-derive: `pl_/DataverseLabelTranslator/<type>/<basename>` where type = `js|css|html|img`.
+2. If not in mapping, auto-derive from `DataverseLabelTranslator.WebResource/<type>/<basename>` to `pl_/DataverseLabelTranslator/<type>/<basename>` where type = `js|css|html|img`.
 3. Try `manage_webresource` with `action=detail`, `web_resource_id=<UniqueName>` to check existence.
 4. If exists -> `action=update`, `web_resource_id=<UniqueName>`, `file_path=<local-path>`.
 5. If not -> `action=create`, `name=<UniqueName>`, `file_path=<local-path>`, `type=<js|css|html|svg|png>`, `solution_name=DataverseLabelTranslator`.
@@ -144,17 +149,17 @@ Export `DataverseLabelTranslator` solution via PAC CLI.
 
 Build the final AppSource all-in-one Marketplace ZIP from the existing managed release solution.
 If the user mentions a version, pass it as `-SolutionVersion <version>`.
-If the user does not mention a version, infer latest from `release/<version>/dataverse/solutions/DataverseLabelTranslator_managed.zip`; if none exists, default to `1.0.0.0`.
-Always trust the selected `release/<version>/dataverse/solutions/DataverseLabelTranslator_managed.zip` as the latest user-controlled source.
+If the user does not mention a version, infer latest from `DataverseLabelTranslator.Release/<version>/dataverse/solutions/DataverseLabelTranslator_managed.zip`; if none exists, default to `1.0.0.0`.
+Always trust the selected `DataverseLabelTranslator.Release/<version>/dataverse/solutions/DataverseLabelTranslator_managed.zip` as the latest user-controlled source.
 Do not export the Dataverse solution.
-Output must be `release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`.
+Output must be `DataverseLabelTranslator.Release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`.
 Do not upload to Azure.
 
 ### /pl-test-package-deployer
 
 Prepare the local Package Deployer cache for manual `pac tool pd` testing.
-Run `scripts/test-package-deployer.ps1`; if the user mentions a version, pass `-SolutionVersion <version>`.
-The script must find the active `%LOCALAPPDATA%\Microsoft\PowerPlatform\PD\<version>\tools` folder itself, copy `release/<version>/appsource/src/DataverseLabelTranslatorPackage` into that folder, and verify `PackageDeployer.exe` exists before copying.
+Run `DataverseLabelTranslator.Scripts/test-package-deployer.ps1`; if the user mentions a version, pass `-SolutionVersion <version>`.
+The script must find the active `%LOCALAPPDATA%\Microsoft\PowerPlatform\PD\<version>\tools` folder itself, copy `DataverseLabelTranslator.Release/<version>/appsource/src/DataverseLabelTranslatorPackage` into that folder, and verify `PackageDeployer.exe` exists before copying.
 Do not export the Dataverse solution.
 Do not launch Package Deployer.
 After the script succeeds, tell the user to run `pac tool pd`.
@@ -162,8 +167,8 @@ After the script succeeds, tell the user to run `pac tool pd`.
 ### /pl-deploy-azure
 
 Upload the final AppSource all-in-one ZIP to Azure Blob Storage and generate the Partner Center SAS details.
-Run `scripts/deploy-azure.ps1`; if the user mentions a version, pass `-SolutionVersion <version>`.
-The script must verify Azure CLI is logged in as `sales@d365iconsandtooltips.com`, verify storage account `ple` exists in resource group `SHARED`, create private container `dataverselabeltranslator` if missing, upload only `release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`, and write sensitive Partner Center details to `release/<version>/appsource/zip/release.md`.
+Run `DataverseLabelTranslator.Scripts/deploy-azure.ps1`; if the user mentions a version, pass `-SolutionVersion <version>`.
+The script must verify Azure CLI is logged in as `sales@d365iconsandtooltips.com`, verify storage account `ple` exists in resource group `SHARED`, create private container `dataverselabeltranslator` if missing, upload only `DataverseLabelTranslator.Release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`, and write sensitive Partner Center details to `DataverseLabelTranslator.Release/<version>/appsource/zip/release.md`.
 Do not export the Dataverse solution.
 Do not run Release AppSource unless the user separately asks.
 Do not paste the SAS URL into chat.

@@ -20,4 +20,4 @@ jobs:
       - name: Check AI config
         shell: pwsh
         run: |
-          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/check-ai-config.ps1
+          pwsh -NoProfile -ExecutionPolicy Bypass -File DataverseLabelTranslator.Scripts/check-ai-config.ps1

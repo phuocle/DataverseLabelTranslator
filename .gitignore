@@ -1,9 +1,15 @@
 node_modules/
 coverage/
+DataverseLabelTranslator.WebResource/node_modules/
+DataverseLabelTranslator.WebResource/coverage/
 Publish/
 __pycache__/
+DataverseLabelTranslator.Scripts/__pycache__/
 *.pyc
 .devkit/
+.vs/
+**/bin/
+**/obj/
 
 # Local environment and secrets
 .env
@@ -13,6 +19,9 @@ __pycache__/
 .mcp.*.json
 *.local
 *.local.*
+
+DynamicsCrm.DevKit.json
+DynamicsCrm.DevKit.Cli.json
 
 # Track assistant folders, but never track local credentials/secrets
 .codex/config.toml
@@ -36,8 +45,8 @@ __pycache__/
 solutions/1.before/
 solutions/2.unpack/
 solutions/3.after/
-release/*/dataverse/unpack/
-release/*/appsource/zip/url.txt
-release/*/appsource/zip/release.md
-release/*/appsource/package-project/**/bin/
-release/*/appsource/package-project/**/obj/
+DataverseLabelTranslator.Release/*/dataverse/unpack/
+DataverseLabelTranslator.Release/*/appsource/zip/url.txt
+DataverseLabelTranslator.Release/*/appsource/zip/release.md
+DataverseLabelTranslator.Release/*/appsource/package-project/**/bin/
+DataverseLabelTranslator.Release/*/appsource/package-project/**/obj/

@@ -4,7 +4,7 @@ description: "Synchronize and validate AI tool configuration generated from cano
 disable-model-invocation: true
 ---
 
-<!-- Generated from ../../.agents/skills/pl-ai-sync/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+<!-- Generated from ../../.agents/skills/pl-ai-sync/SKILL.md. Do not edit manually; run DataverseLabelTranslator.Scripts/sync-ai-config.ps1. -->
 
 # PL AI Sync
 
@@ -29,13 +29,13 @@ D:\github\DataverseLabelTranslator
 First regenerate adapters:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\sync-ai-config.ps1
+powershell -ExecutionPolicy Bypass -File DataverseLabelTranslator.Scripts\sync-ai-config.ps1
 ```
 
 Then validate the full AI config:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\check-ai-config.ps1
+powershell -ExecutionPolicy Bypass -File DataverseLabelTranslator.Scripts\check-ai-config.ps1
 ```
 
 ## Canonical Sources
@@ -48,8 +48,8 @@ AGENTS.md
 .agents/rules/
 .vscode/*.example
 .agents/*.example
-scripts/sync-ai-config.ps1
-scripts/check-ai-config.ps1
+DataverseLabelTranslator.Scripts/sync-ai-config.ps1
+DataverseLabelTranslator.Scripts/check-ai-config.ps1
 ```
 
 Generated adapters must not be edited directly:
@@ -59,7 +59,7 @@ Generated adapters must not be edited directly:
 .github/prompts/pl-*.prompt.md
 ```
 
-If a generated adapter needs to change, update `.agents/skills/pl-*/SKILL.md` or `scripts/sync-ai-config.ps1`, then rerun this skill.
+If a generated adapter needs to change, update `.agents/skills/pl-*/SKILL.md` or `DataverseLabelTranslator.Scripts/sync-ai-config.ps1`, then rerun this skill.
 
 ## Hard Rules
 
@@ -68,4 +68,4 @@ If a generated adapter needs to change, update `.agents/skills/pl-*/SKILL.md` or
 - Do not deploy, export, or upload anything.
 - Do not write credentials into tracked files.
 - Do not remove local ignored MCP config files.
-- If `scripts\check-ai-config.ps1` fails, report the exact failure and stop.
+- If `DataverseLabelTranslator.Scripts\check-ai-config.ps1` fails, report the exact failure and stop.

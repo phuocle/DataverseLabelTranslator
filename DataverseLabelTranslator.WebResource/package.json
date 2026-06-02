@@ -1,0 +1,32 @@
+{
+  "private": true,
+  "name": "dataverselabeltranslator.webresource",
+  "version": "1.0.0",
+  "description": "dataverselabeltranslator.webresource",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "check": "tsc -p jsconfig.json --noEmit",
+    "lint": "eslint js tests *.config.mjs",
+    "lint:fix": "eslint js tests *.config.mjs --fix",
+    "format": "prettier --write",
+    "format:check": "prettier --check",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@types/xrm": "^9.0.87",
+    "eslint": "^9.39.4",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.3",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.2",
+    "vitest": "^3.2.4"
+  }
+}

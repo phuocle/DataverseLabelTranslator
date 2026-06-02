@@ -5,7 +5,7 @@ argument-hint: '[-m "commit message"]'
 agent: agent
 ---
 
-<!-- Generated from ../../.agents/skills/pl-commit/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+<!-- Generated from ../../.agents/skills/pl-commit/SKILL.md. Do not edit manually; run DataverseLabelTranslator.Scripts/sync-ai-config.ps1. -->
 
 Run the Dataverse Label Translator `/pl-commit` workflow.
 

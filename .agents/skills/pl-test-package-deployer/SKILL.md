@@ -1,4 +1,4 @@
----
+﻿---
 name: "pl-test-package-deployer"
 display-name: "PL Test Package Deployer"
 description: "Prepare the local Package Deployer cache with the Dataverse Label Translator package for manual pac tool pd testing."
@@ -20,19 +20,19 @@ pac tool pd
 If the user mentions a version such as `1.1.0.0`, pass it explicitly:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\test-package-deployer.ps1 -SolutionVersion 1.1.0.0
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Scripts\test-package-deployer.ps1 -SolutionVersion 1.1.0.0
 ```
 
 If the user does not mention a version, run the script without `-SolutionVersion`. The script must infer the latest release version by scanning:
 
 ```text
-D:\github\DataverseLabelTranslator\release\<version>\appsource\src\DataverseLabelTranslatorPackage
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\<version>\appsource\src\DataverseLabelTranslatorPackage
 ```
 
 If package source does not exist yet, the script uses the versioned managed solution under:
 
 ```text
-D:\github\DataverseLabelTranslator\release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\<version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
 and runs `Release AppSource` for that selected version.
@@ -42,7 +42,7 @@ and runs `Release AppSource` for that selected version.
 The script copies the inner Package Deployer package folder:
 
 ```text
-D:\github\DataverseLabelTranslator\release\<version>\appsource\src\DataverseLabelTranslatorPackage
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\<version>\appsource\src\DataverseLabelTranslatorPackage
 ```
 
 into the active local Package Deployer tools folder, normally:
@@ -84,19 +84,19 @@ D:\github\DataverseLabelTranslator
 2. Run the script. If user mentioned a version, pass it:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\test-package-deployer.ps1 -SolutionVersion 1.1.0.0
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Scripts\test-package-deployer.ps1 -SolutionVersion 1.1.0.0
 ```
 
 If user did not mention a version:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\test-package-deployer.ps1
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Scripts\test-package-deployer.ps1
 ```
 
 If the user explicitly asks to rebuild first, pass `-BuildRelease`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\test-package-deployer.ps1 -SolutionVersion 1.1.0.0 -BuildRelease
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Scripts\test-package-deployer.ps1 -SolutionVersion 1.1.0.0 -BuildRelease
 ```
 
 3. Verify the script output includes:
@@ -110,7 +110,7 @@ powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scri
 4. Final response must only tell anh Phuoc the important paths and:
 
 ```text
-Anh hãy run: pac tool pd
+Anh hÃ£y run: pac tool pd
 ```
 
 Do not launch `pac tool pd` yourself.

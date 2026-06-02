@@ -1,4 +1,4 @@
----
+﻿---
 name: "pl-deploy-azure"
 display-name: "PL Deploy Azure"
 description: "Upload the final Dataverse Label Translator AppSource ZIP to Azure Blob Storage and write the Partner Center SAS details to release.md."
@@ -34,13 +34,13 @@ The script creates the container if it does not exist. The container stays priva
 If the user mentions a version such as `1.1.0.0`, pass it explicitly:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\deploy-azure.ps1 -SolutionVersion 1.1.0.0
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Scripts\deploy-azure.ps1 -SolutionVersion 1.1.0.0
 ```
 
 If the user does not mention a version, run without `-SolutionVersion`. The script scans the latest final ZIP under:
 
 ```text
-D:\github\DataverseLabelTranslator\release\<version>\appsource\zip\DataverseLabelTranslator.v.<major.minor.patch>.zip
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\<version>\appsource\zip\DataverseLabelTranslator.v.<major.minor.patch>.zip
 ```
 
 If the final ZIP is missing, stop and tell the user to run Release AppSource first. Do not export a solution.
@@ -62,19 +62,19 @@ D:\github\DataverseLabelTranslator
 2. Optional dry run when validating setup:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\deploy-azure.ps1 -DryRun
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Scripts\deploy-azure.ps1 -DryRun
 ```
 
 3. Run the live deploy. With explicit version:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\deploy-azure.ps1 -SolutionVersion 1.1.0.0
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Scripts\deploy-azure.ps1 -SolutionVersion 1.1.0.0
 ```
 
 Without explicit version:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scripts\deploy-azure.ps1
+powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Scripts\deploy-azure.ps1
 ```
 
 4. Verify script output includes:
@@ -89,7 +89,7 @@ powershell -ExecutionPolicy Bypass -File D:\github\DataverseLabelTranslator\scri
 5. Final response must not paste the SAS URL. Tell the user to open:
 
 ```text
-D:\github\DataverseLabelTranslator\release\<version>\appsource\zip\release.md
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\<version>\appsource\zip\release.md
 ```
 
 and paste the SAS URL into:
@@ -103,7 +103,7 @@ Partner Center -> Technical configuration -> CRM package -> URL of your package 
 The script writes sensitive Partner Center upload details to:
 
 ```text
-D:\github\DataverseLabelTranslator\release\<version>\appsource\zip\release.md
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\<version>\appsource\zip\release.md
 ```
 
 `release.md` contains the real read-only SAS URL and must remain local/private. It is ignored by git.

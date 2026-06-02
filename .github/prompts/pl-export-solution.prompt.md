@@ -4,7 +4,7 @@ description: Export the DataverseLabelTranslator solution with cleaned labels an
 agent: agent
 ---
 
-<!-- Generated from ../../.agents/skills/pl-export-solution/SKILL.md. Do not edit manually; run scripts/sync-ai-config.ps1. -->
+<!-- Generated from ../../.agents/skills/pl-export-solution/SKILL.md. Do not edit manually; run DataverseLabelTranslator.Scripts/sync-ai-config.ps1. -->
 
 Run the Dataverse Label Translator `/pl-export-solution` workflow.
 
