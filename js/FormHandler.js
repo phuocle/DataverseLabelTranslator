@@ -5,6 +5,8 @@
     FormHandler.formsByLanguage = null;
     FormHandler.loadedFormsData = null;
     FormHandler.lastId = null;
+    FormHandler.dashboardEntityLabelTextByLanguage = null;
+    FormHandler.dashboardEntityDefaultLabelByLanguage = null;
 
     function GetParsedForm(form) {
         var parser = new DOMParser();
@@ -228,6 +230,10 @@
             var text = label.attributes["description"].value;
             var languageCode = label.attributes["languagecode"].value;
 
+            if (IsDashboardDefaultCellLabel(node, languageCode, text)) {
+                text = "";
+            }
+
             gridNode[languageCode] = text;
         }
     }
@@ -364,6 +370,7 @@
             var languageForm = userLanguageForms[i];
 
             if (languageForm.formid === formId) {
+                languageForm._translationLanguageCode = GetUserLanguageForm(formsByLanguage).languageCode;
                 XrmTranslator.metadata = languageForm;
                 break;
             }
@@ -377,6 +384,7 @@
                 var languageForm = languageForms.forms.value[j];
 
                 if (languageForm.formid === formId) {
+                    languageForm._translationLanguageCode = languageForms.languageCode;
                     FormHandler.selectedForms.push(languageForm);
                     break;
                 }
@@ -464,6 +472,156 @@
         return XrmTranslator.GetType && XrmTranslator.GetType() === "dashboards";
     }
 
+    function NormalizeDashboardLabelText(text) {
+        return GetCleanText(text);
+    }
+
+    function GetDashboardEntityKey(targetEntity) {
+        return GetCleanText(targetEntity).toLowerCase();
+    }
+
+    function AddDashboardEntityLabel(languageCode, text) {
+        var normalized = NormalizeDashboardLabelText(text);
+
+        if (!languageCode || !normalized) {
+            return;
+        }
+
+        var labelsByLanguage = FormHandler.dashboardEntityLabelTextByLanguage;
+        var languageKey = String(languageCode);
+
+        labelsByLanguage[languageKey] = labelsByLanguage[languageKey] || {};
+        labelsByLanguage[languageKey][normalized] = true;
+        labelsByLanguage._all = labelsByLanguage._all || {};
+        labelsByLanguage._all[normalized] = true;
+    }
+
+    function AddDashboardEntityLabels(labelCollection) {
+        var labels = labelCollection && labelCollection.LocalizedLabels ? labelCollection.LocalizedLabels : [];
+
+        for (var i = 0; i < labels.length; i++) {
+            AddDashboardEntityLabel(labels[i].LanguageCode, labels[i].Label);
+        }
+    }
+
+    function AddDashboardEntityDefaultLabels(targetEntity, labelCollection) {
+        var targetKey = GetDashboardEntityKey(targetEntity);
+        var labels = labelCollection && labelCollection.LocalizedLabels ? labelCollection.LocalizedLabels : [];
+
+        if (!targetKey) {
+            return;
+        }
+
+        var defaultLabels = FormHandler.dashboardEntityDefaultLabelByLanguage;
+        defaultLabels[targetKey] = defaultLabels[targetKey] || {};
+
+        for (var i = 0; i < labels.length; i++) {
+            var label = labels[i];
+            var normalized = NormalizeDashboardLabelText(label.Label);
+
+            if (!label.LanguageCode || !normalized) {
+                continue;
+            }
+
+            var languageKey = String(label.LanguageCode);
+            if (!defaultLabels[targetKey][languageKey]) {
+                defaultLabels[targetKey][languageKey] = String(label.Label);
+            }
+        }
+    }
+
+    function GetDashboardCellTargetEntity(node) {
+        if (!IsDashboardMode() || !node || node.tagName !== "cell") {
+            return "";
+        }
+
+        var targets = node.getElementsByTagName("TargetEntityType");
+        if (!targets || targets.length === 0) {
+            return "";
+        }
+
+        return GetCleanText(targets[0].textContent || targets[0].innerText);
+    }
+
+    function CollectDashboardTargetEntities(form, targets) {
+        var formXml = GetParsedForm(form);
+        var cells = formXml.getElementsByTagName("cell");
+
+        for (var i = 0; i < cells.length; i++) {
+            var targetEntity = GetDashboardCellTargetEntity(cells[i]);
+
+            if (targetEntity) {
+                targets[targetEntity] = true;
+            }
+        }
+    }
+
+    function LoadDashboardEntityLabels(formsByLanguage) {
+        FormHandler.dashboardEntityLabelTextByLanguage = {};
+        FormHandler.dashboardEntityDefaultLabelByLanguage = {};
+
+        if (!IsDashboardMode()) {
+            return WebApiClient.Promise.resolve();
+        }
+
+        var targets = {};
+        for (var i = 0; i < formsByLanguage.length; i++) {
+            var forms = formsByLanguage[i].forms ? formsByLanguage[i].forms.value || [] : [];
+
+            for (var j = 0; j < forms.length; j++) {
+                CollectDashboardTargetEntities(forms[j], targets);
+            }
+        }
+
+        return WebApiClient.Promise.each(Object.keys(targets), function (targetEntity) {
+            return WebApiClient.SendRequest(
+                "GET",
+                WebApiClient.GetApiUrl({ apiVersion: "9.2" }) +
+                    "EntityDefinitions(LogicalName='" +
+                    targetEntity.replace(/'/g, "''") +
+                    "')?$select=LogicalName,DisplayName,DisplayCollectionName"
+            ).then(function (metadata) {
+                AddDashboardEntityLabels(metadata.DisplayName);
+                AddDashboardEntityLabels(metadata.DisplayCollectionName);
+                AddDashboardEntityDefaultLabels(targetEntity, metadata.DisplayCollectionName);
+                AddDashboardEntityDefaultLabels(targetEntity, metadata.DisplayName);
+            });
+        });
+    }
+
+    function GetDashboardDefaultCellLabel(node, languageCode) {
+        var targetEntity = GetDashboardCellTargetEntity(node);
+        var targetKey = GetDashboardEntityKey(targetEntity);
+
+        if (!targetKey || !languageCode || !FormHandler.dashboardEntityDefaultLabelByLanguage) {
+            return "";
+        }
+
+        var targetDefaults = FormHandler.dashboardEntityDefaultLabelByLanguage[targetKey] || {};
+        return targetDefaults[String(languageCode)] || "";
+    }
+
+    function IsDashboardDefaultCellLabel(node, languageCode, text) {
+        if (
+            !IsDashboardMode() ||
+            !GetDashboardCellTargetEntity(node) ||
+            !languageCode ||
+            (XrmTranslator.baseLanguage && String(languageCode) === String(XrmTranslator.baseLanguage))
+        ) {
+            return false;
+        }
+
+        var normalized = NormalizeDashboardLabelText(text);
+        if (!normalized || !FormHandler.dashboardEntityLabelTextByLanguage) {
+            return false;
+        }
+
+        var languageLabels = FormHandler.dashboardEntityLabelTextByLanguage[String(languageCode)] || {};
+        var allLabels = FormHandler.dashboardEntityLabelTextByLanguage._all || {};
+
+        return !!(languageLabels[normalized] || allLabels[normalized]);
+    }
+
     function GetFormQuery(entityName) {
         if (IsDashboardMode()) {
             return "?$filter=formactivationstate eq 1 and iscustomizable/Value eq true and (type eq 0 or type eq 10)";
@@ -526,9 +684,13 @@
     }
 
     function GetFormDisplayText(form, formTypeMap) {
-        var formTypeName = formTypeMap[form.type] || "Type " + form.type;
         var name = GetCleanText(form.name) || GetCleanText(form.objecttypecode) || "Unnamed Form";
 
+        if (IsDashboardMode()) {
+            return name;
+        }
+
+        var formTypeName = formTypeMap[form.type] || "Type " + form.type;
         return name + " [" + formTypeName + "]";
     }
 
@@ -616,6 +778,15 @@
 
                 FormHandler.formsByLanguage = responses;
 
+                return LoadDashboardEntityLabels(responses).then(function () {
+                    return responses;
+                });
+            })
+            .then(function (responses) {
+                if (!responses || responses.length === 0) {
+                    return [];
+                }
+
                 // Process all forms and return per-form data
                 var userLanguageForms = GetUserLanguageForm(responses).forms.value;
                 var allFormData = [];
@@ -659,10 +830,12 @@
         return treeWalker.nextNode();
     }
 
-    function ApplyLabelUpdates(labels, updates, formXml) {
+    function ApplyLabelUpdates(node, labels, updates, formXml) {
         for (var i = 0; i < updates.length; i++) {
             var update = updates[i];
             var foundLabel = null;
+            var clearLabel = IsDashboardLabelClear(update);
+            var dashboardDefaultCellLabel = clearLabel ? GetDashboardDefaultCellLabel(node, update.LanguageCode) : "";
 
             for (var j = labels.children.length - 1; j >= 0; j--) {
                 var label = labels.children[j];
@@ -674,6 +847,28 @@
                         foundLabel = label;
                     }
                 }
+            }
+
+            if (clearLabel) {
+                if (dashboardDefaultCellLabel) {
+                    if (foundLabel) {
+                        foundLabel.attributes["description"].value = dashboardDefaultCellLabel;
+                    } else {
+                        var defaultLabel = formXml.createElement("label");
+
+                        defaultLabel.setAttribute("description", dashboardDefaultCellLabel);
+                        defaultLabel.setAttribute("languagecode", update.LanguageCode);
+
+                        labels.appendChild(defaultLabel);
+                    }
+                } else if (foundLabel) {
+                    labels.removeChild(foundLabel);
+                    if (!GetDashboardCellTargetEntity(node)) {
+                        RegenerateNodeId(node);
+                    }
+                }
+
+                continue;
             }
 
             if (foundLabel) {
@@ -689,6 +884,22 @@
         }
     }
 
+    function IsDashboardLabelClear(update) {
+        return (
+            IsDashboardMode() &&
+            IsEmptyLabelValue(update.Text) &&
+            (!XrmTranslator.baseLanguage || String(update.LanguageCode) !== String(XrmTranslator.baseLanguage))
+        );
+    }
+
+    function RegenerateNodeId(node) {
+        if (!node || !node.id) {
+            return;
+        }
+
+        node.setAttribute("id", "{" + uuidv4() + "}");
+    }
+
     function SerializeXml(formXml) {
         var serializer = new XMLSerializer();
 
@@ -702,7 +913,7 @@
             var node = GetById(update.id, form, formXml);
             var labels = GetLabels(node);
 
-            ApplyLabelUpdates(labels, update.labels, formXml);
+            ApplyLabelUpdates(node, labels, update.labels, formXml);
         }
 
         var serialized = SerializeXml(formXml);
@@ -710,6 +921,112 @@
         return {
             formxml: serialized
         };
+    }
+
+    function GetFormForLanguage(languageCode) {
+        var targetLanguageCode = String(languageCode);
+
+        if (
+            XrmTranslator.metadata &&
+            XrmTranslator.metadata._translationLanguageCode &&
+            String(XrmTranslator.metadata._translationLanguageCode) === targetLanguageCode
+        ) {
+            return XrmTranslator.metadata;
+        }
+
+        for (var i = 0; FormHandler.selectedForms && i < FormHandler.selectedForms.length; i++) {
+            var selectedForm = FormHandler.selectedForms[i];
+            if (
+                selectedForm &&
+                selectedForm._translationLanguageCode &&
+                String(selectedForm._translationLanguageCode) === targetLanguageCode
+            ) {
+                return selectedForm;
+            }
+        }
+
+        return XrmTranslator.metadata;
+    }
+
+    function GetDashboardUpdatesByLanguage(updates) {
+        var groups = {};
+        var result = [];
+
+        for (var i = 0; i < updates.length; i++) {
+            var update = updates[i];
+
+            for (var j = 0; j < update.labels.length; j++) {
+                var label = update.labels[j];
+                var languageCode = String(label.LanguageCode);
+
+                if (!groups[languageCode]) {
+                    groups[languageCode] = {
+                        languageCode: languageCode,
+                        updates: []
+                    };
+                    result.push(groups[languageCode]);
+                }
+
+                groups[languageCode].updates.push({
+                    id: update.id,
+                    labels: [label]
+                });
+            }
+        }
+
+        return result;
+    }
+
+    function GetDashboardUpdatePayloads(updates) {
+        var groupedUpdates = GetDashboardUpdatesByLanguage(updates);
+        var payloads = [];
+
+        for (var i = 0; i < groupedUpdates.length; i++) {
+            var group = groupedUpdates[i];
+            var form = GetFormForLanguage(group.languageCode);
+            var formXml = GetParsedForm(form);
+
+            payloads.push({
+                languageCode: group.languageCode,
+                payload: ApplyUpdates(group.updates, form, formXml)
+            });
+        }
+
+        return payloads;
+    }
+
+    function RunAsUserLanguage(languageCode, action) {
+        var restoreLanguage = XrmTranslator.userSettings && XrmTranslator.userSettings.uilanguageid;
+
+        return XrmTranslator.SetUserLanguage(XrmTranslator.userId, languageCode)
+            .then(function () {
+                return action();
+            })
+            .then(
+                function (result) {
+                    if (restoreLanguage == null) {
+                        return result;
+                    }
+
+                    return XrmTranslator.SetUserLanguage(XrmTranslator.userId, restoreLanguage).then(function () {
+                        return result;
+                    });
+                },
+                function (error) {
+                    if (restoreLanguage == null) {
+                        throw error;
+                    }
+
+                    return XrmTranslator.SetUserLanguage(XrmTranslator.userId, restoreLanguage).then(
+                        function () {
+                            throw error;
+                        },
+                        function () {
+                            throw error;
+                        }
+                    );
+                }
+            );
     }
 
     function uuidv4() {
@@ -806,6 +1123,7 @@
         var executeSave = function () {
             var chain = WebApiClient.Promise.resolve();
             var savedAny = false;
+            var savedForms = [];
 
             for (var i = 0; i < FormHandler.loadedFormsData.length; i++) {
                 (function (formData) {
@@ -830,20 +1148,41 @@
                         return FormHandler.SaveOnly(true).then(function (result) {
                             if (result !== false) {
                                 savedAny = true;
+                                savedForms.push({
+                                    recid: formData.formId
+                                });
                             }
                         });
                     });
                 })(FormHandler.loadedFormsData[i]);
             }
 
-            return chain.then(function () {
-                grid.records = originalRecords;
-                grid.total = originalTotal;
-                return savedAny;
-            });
+            return chain.then(
+                function () {
+                    grid.records = originalRecords;
+                    grid.total = originalTotal;
+                    if (!savedAny) {
+                        return false;
+                    }
+
+                    return {
+                        savedAny: true,
+                        dashboardIds: savedForms
+                    };
+                },
+                function (error) {
+                    grid.records = originalRecords;
+                    grid.total = originalTotal;
+                    throw error;
+                }
+            );
         };
 
         if (skipLanguageScope) {
+            return executeSave();
+        }
+
+        if (IsDashboardMode()) {
             return executeSave();
         }
 
@@ -856,21 +1195,35 @@
         }
 
         var records = XrmTranslator.GetAllRecords();
-        var formXml = GetParsedForm(XrmTranslator.metadata);
         var updates = GetUpdates(records);
 
         if (updates.length === 0) {
             return WebApiClient.Promise.resolve(false);
         }
 
-        var update = ApplyUpdates(updates, XrmTranslator.metadata, formXml);
+        var updatePayloads;
+        if (IsDashboardMode()) {
+            updatePayloads = GetDashboardUpdatePayloads(updates);
+        } else {
+            updatePayloads = [ApplyUpdates(updates, XrmTranslator.metadata, GetParsedForm(XrmTranslator.metadata))];
+        }
 
         var executeSave = function () {
             XrmTranslator.LockGridProgress("Saving " + XrmTranslator.GetCurrentToolbarTypeText(), 1, 1);
-            return WebApiClient.Update({
-                entityName: "systemform",
-                entityId: XrmTranslator.metadata.formid,
-                entity: update
+            return WebApiClient.Promise.each(updatePayloads, function (updatePayload) {
+                var updateAction = function () {
+                    return WebApiClient.Update({
+                        entityName: "systemform",
+                        entityId: XrmTranslator.metadata.formid,
+                        entity: updatePayload.payload || updatePayload
+                    });
+                };
+
+                if (IsDashboardMode() && updatePayload.languageCode) {
+                    return RunAsUserLanguage(updatePayload.languageCode, updateAction);
+                }
+
+                return updateAction();
             });
         };
 
@@ -900,10 +1253,15 @@
                     });
                 });
             },
-            publishAction: function () {
+            publishAction: function (saveResult) {
                 var entityName = XrmTranslator.GetEntity();
                 if (entityName.toLowerCase() === "none") {
-                    return XrmTranslator.PublishDashboard([{ recid: XrmTranslator.metadata.formid }]);
+                    var dashboardIds =
+                        saveResult && saveResult.dashboardIds && saveResult.dashboardIds.length
+                            ? saveResult.dashboardIds
+                            : [{ recid: XrmTranslator.metadata.formid }];
+
+                    return XrmTranslator.PublishDashboard(dashboardIds);
                 }
 
                 return XrmTranslator.Publish();
