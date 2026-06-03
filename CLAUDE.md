@@ -8,11 +8,12 @@ Claude-specific project skills live in `.claude/skills/` and are generated from 
 
 - `/pl-ai-sync`
 - `/pl-commit`
-- `/pl-deploy-web-resource`
-- `/pl-export-solution`
-- `/pl-release-appsource`
-- `/pl-test-package-deployer`
-- `/pl-deploy-azure`
-- `/pl-unit-tests`
+- `/pl-deploy-server`
+- `/pl-deploy-webresource`
+- `/pl-release-1-export-solutions`
+- `/pl-release-2-prepare-appsource`
+- `/pl-release-3-test-package-deployer`
+- `/pl-release-4-deploy-azure`
+- `/pl-unit-tests-webresource`
 
 Keep shared project rules in `AGENTS.md`. Add content here only when it is specific to Claude Code.

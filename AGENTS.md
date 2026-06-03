@@ -117,7 +117,7 @@ Run quality gates after code edits:
 
 Regenerate and validate AI tool adapters from canonical `.agents/skills/pl-*/SKILL.md`. Do not commit or push automatically.
 
-### /pl-unit-tests
+### /pl-unit-tests-webresource
 
 Run Vitest unit tests and optional coverage for Dataverse Label Translator. Use `npm --prefix DataverseLabelTranslator.WebResource test` for tests and `npm --prefix DataverseLabelTranslator.WebResource run test:coverage` for coverage. Unit tests must fake Dataverse/Xrm/browser APIs instead of calling live services. Do not deploy, commit, or push automatically.
 
@@ -125,15 +125,19 @@ Run Vitest unit tests and optional coverage for Dataverse Label Translator. Use 
 
 Full local git workflow: stage all -> commit -> verify clean. Do not push unless the user explicitly asks.
 
-### /pl-deploy-web-resource
+### /pl-deploy-webresource
 
 When files are edited or created under `DataverseLabelTranslator.WebResource/html`, `css`, `js`, or `img`, run `DataverseLabelTranslator.WebResource\deploy.debug.bat` from the repo root and report only the DevKit summary or error.
 
-### /pl-export-solution
+### /pl-deploy-server
+
+When server code is edited under `DataverseLabelTranslator.Server`, run `DataverseLabelTranslator.Server\deploy.debug.bat` from the repo root and report only the DevKit summary or error.
+
+### /pl-release-1-export-solutions
 
 Export `DataverseLabelTranslator` solution via PAC CLI.
 
-### /pl-release-appsource
+### /pl-release-2-prepare-appsource
 
 Build the final AppSource all-in-one Marketplace ZIP from the existing managed release solution.
 If the user mentions a version, pass it as `-SolutionVersion <version>`.
@@ -143,7 +147,7 @@ Do not export the Dataverse solution.
 Output must be `DataverseLabelTranslator.Release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`.
 Do not upload to Azure.
 
-### /pl-test-package-deployer
+### /pl-release-3-test-package-deployer
 
 Prepare the local Package Deployer cache for manual `pac tool pd` testing.
 Run `DataverseLabelTranslator.Scripts/test-package-deployer.ps1`; if the user mentions a version, pass `-SolutionVersion <version>`.
@@ -152,7 +156,7 @@ Do not export the Dataverse solution.
 Do not launch Package Deployer.
 After the script succeeds, tell the user to run `pac tool pd`.
 
-### /pl-deploy-azure
+### /pl-release-4-deploy-azure
 
 Upload the final AppSource all-in-one ZIP to Azure Blob Storage and generate the Partner Center SAS details.
 Run `DataverseLabelTranslator.Scripts/deploy-azure.ps1`; if the user mentions a version, pass `-SolutionVersion <version>`.
