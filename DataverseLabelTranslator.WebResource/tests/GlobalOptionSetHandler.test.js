@@ -46,16 +46,31 @@ function optionSet(overrides) {
           Description: { LocalizedLabels: [] }
         }
       ],
-      Description: { LocalizedLabels: [{ LanguageCode: 1033, Label: "Parent desc" }] },
-      "@odata.context": "context",
-      "@odata.etag": "etag"
+      Description: { LocalizedLabels: [{ LanguageCode: 1033, Label: "Parent desc" }] }
     },
     overrides || {}
   );
 }
 
-function createBatchRequest(options) {
-  Object.assign(this, options);
+function createActionResult(type, object) {
+  return { ok: true, type: type, object: object || {} };
+}
+
+function getChangedOptionSetNames(input) {
+  var optionSetNames = [];
+
+  (input.optionValueUpdates || []).forEach(function (update) {
+    if (optionSetNames.indexOf(update.optionSetName) === -1) {
+      optionSetNames.push(update.optionSetName);
+    }
+  });
+  (input.optionSetDescriptionUpdates || []).forEach(function (update) {
+    if (optionSetNames.indexOf(update.optionSetName) === -1) {
+      optionSetNames.push(update.optionSetName);
+    }
+  });
+
+  return optionSetNames;
 }
 
 function createHarness(options) {
@@ -66,17 +81,20 @@ function createHarness(options) {
     solution: Object.prototype.hasOwnProperty.call(options, "solution") ? options.solution : "solution-1",
     metadataById: options.metadataById || {},
     records: options.records || [],
-    changeSetRequests: [],
-    customActionCalls: [],
-    capturedFlow: null
+    customActionCalls: []
   };
 
   var xrmTranslator = {
     baseLanguage: Object.prototype.hasOwnProperty.call(options, "baseLanguage") ? options.baseLanguage : 1033,
     metadata: [],
-    ComponentType: { OptionSet: 9 },
     GetComponent: vi.fn(function () {
       return state.component;
+    }),
+    IsDescriptionComponent: vi.fn(function () {
+      return state.component === "Description";
+    }),
+    IsDisplayTextComponent: vi.fn(function () {
+      return state.component === "DisplayText";
     }),
     GetGrid: vi.fn(function () {
       return grid;
@@ -86,90 +104,71 @@ function createHarness(options) {
     }),
     AddSummary: vi.fn(),
     EnableLoadAndSave: vi.fn(),
+    LockGrid: vi.fn(),
+    UnlockGrid: vi.fn(),
     errorHandler: vi.fn(),
     GetAllRecords: vi.fn(function () {
       return state.records;
     }),
     GetAttributeById: vi.fn(function (id) {
       return state.metadataById[id] || null;
-    }),
-    GetCurrentToolbarTypeText: vi.fn(function () {
-      return "18. Global Option Sets";
-    }),
-    ExecuteChangeSetBatches: vi.fn(function (updates, batchOptions) {
-      var requests = updates.map(function (update, index) {
-        return batchOptions.buildRequest(update, { contentId: index + 1 });
-      });
-      state.changeSetRequests.push({ updates: updates, batchOptions: batchOptions, requests: requests });
-      return Promise.resolve(requests);
-    }),
-    RunAsBaseLanguage: vi.fn(function (action) {
-      return Promise.resolve().then(action);
-    }),
-    RunTypeSaveFlow: vi.fn(function (flow) {
-      state.capturedFlow = flow;
-      return Promise.resolve()
-        .then(function () {
-          return flow.saveAction();
-        })
-        .then(function (result) {
-          if (flow.shouldPublish(result)) {
-            return flow.publishAction(result).then(function () {
-              return result;
-            });
-          }
-          return result;
-        });
-    })
-  };
-
-  var webApiClient = {
-    Promise: Promise,
-    Retrieve: vi.fn(
-      options.retrieve ||
-        function () {
-          return Promise.resolve({ value: [{ objectid: "os1" }] });
-        }
-    ),
-    SendRequest: vi.fn(
-      options.sendRequest ||
-        function () {
-          return Promise.resolve(optionSet());
-        }
-    ),
-    GetApiUrl: vi.fn(function () {
-      return "https://example.crm/api/data/v9.2/";
-    }),
-    BatchRequest: createBatchRequest,
-    Requests: {
-      PublishXmlRequest: {
-        with: vi.fn(function (request) {
-          return { name: "PublishXml", payload: request.payload };
-        })
-      }
-    },
-    Execute: vi.fn(function (request) {
-      return Promise.resolve({ executed: request });
     })
   };
 
   var helper = {
-    ExecuteCustomAction: vi.fn(
-      options.executeCustomAction ||
-        function (functionName, input) {
-          var optionSetNames = [];
-          (input.optionValueUpdates || []).forEach(function (update) {
-            if (optionSetNames.indexOf(update.optionSetName) === -1) {
-              optionSetNames.push(update.optionSetName);
-            }
-          });
-          (input.optionSetDescriptionUpdates || []).forEach(function (update) {
-            if (optionSetNames.indexOf(update.optionSetName) === -1) {
-              optionSetNames.push(update.optionSetName);
-            }
-          });
-          state.customActionCalls.push({ functionName: functionName, input: input });
-          return Promise.resolve({ ok: true, optionSetNames: optionSetNames });
+    CustomActionTypes: {
+      Loading: "Loading",
+      Saving: "Saving",
+      Publishing: "Publishing",
+      Published: "Published",
+      Other: "Other"
+    },
+    IsEmptyLabelValue: vi.fn(function (value) {
+      return value == null || String(value).trim().length === 0;
+    }),
+    GetLanguageColumnText: vi.fn(function (languageCode) {
+      var columns = (grid && grid.columns) || [];
+      var field = String(languageCode);
+
+      for (var i = 0; i < columns.length; i++) {
+        if (String(columns[i].field) === field) {
+          return columns[i].text || columns[i].caption || columns[i].label || field;
+        }
+      }
+
+      return field;
+    }),
+    GetCustomActionObject: vi.fn(function (result) {
+      return result && result.object ? result.object : {};
+    }),
+    ExecuteTypedCustomAction: vi.fn(
+      options.executeTypedCustomAction ||
+        function (functionName, type, input) {
+          state.customActionCalls.push({ functionName: functionName, type: type, input: input });
+
+          if (type === helper.CustomActionTypes.Loading) {
+            return Promise.resolve(createActionResult(type, { optionSets: options.optionSets || [] }));
+          }
+
+          if (type === helper.CustomActionTypes.Saving) {
+            return Promise.resolve(createActionResult(type, { optionSetNames: getChangedOptionSetNames(input) }));
+          }
+
+          if (type === helper.CustomActionTypes.Publishing) {
+            var publishingNames = Object.prototype.hasOwnProperty.call(options, "publishingOptionSetNames")
+              ? options.publishingOptionSetNames
+              : input.optionSetNames;
+            return Promise.resolve(createActionResult(type, { optionSetNames: publishingNames }));
+          }
+
+          if (type === helper.CustomActionTypes.Published) {
+            var publishedNames = Object.prototype.hasOwnProperty.call(options, "publishedOptionSetNames")
+              ? options.publishedOptionSetNames
+              : input.optionSetNames;
+            return Promise.resolve(createActionResult(type, { optionSetNames: publishedNames }));
+          }
+
+          return Promise.resolve(createActionResult(type, {}));
         }
     )
   };
@@ -179,37 +178,37 @@ function createHarness(options) {
     globalThis.window.GlobalOptionSetHandler = {};
   }
   globalThis.XrmTranslator = xrmTranslator;
-  globalThis.WebApiClient = webApiClient;
   globalThis.Helper = helper;
 
   return {
     grid: grid,
     state: state,
     XrmTranslator: xrmTranslator,
-    WebApiClient: webApiClient,
     Helper: helper
   };
 }
 
-async function loadHandler(harness) {
+async function loadHandler() {
   await import("../js/GlobalOptionSetHandler.js?test=" + ++importCounter);
-  return {
-    handler: globalThis.window.GlobalOptionSetHandler,
-    harness: harness
-  };
+  return globalThis.window.GlobalOptionSetHandler;
 }
 
 async function setup(options) {
   var harness = createHarness(options);
-  var loaded = await loadHandler(harness);
-  return Object.assign(loaded, harness);
+  var handler = await loadHandler();
+  return Object.assign({ handler: handler }, harness);
+}
+
+function getActionCalls(context, type) {
+  return context.state.customActionCalls.filter(function (call) {
+    return call.type === type;
+  });
 }
 
 beforeEach(function () {
   vi.restoreAllMocks();
   delete globalThis.window;
   delete globalThis.XrmTranslator;
-  delete globalThis.WebApiClient;
   delete globalThis.Helper;
 });
 
@@ -220,23 +219,13 @@ describe("GlobalOptionSetHandler.Load", function () {
     await context.handler.Load();
 
     expect(globalThis.window.GlobalOptionSetHandler).toBe(context.handler);
+    expect(context.Helper.ExecuteTypedCustomAction).toHaveBeenCalledWith("GlobalOptionSet", "Loading", {
+      solutionId: null
+    });
     expect(context.grid.add).toHaveBeenCalledWith([]);
   });
 
-  it("loads no option sets when the solution is all", async function () {
-    var context = await setup({ solution: "all" });
-
-    await context.handler.Load();
-
-    expect(context.WebApiClient.Retrieve).not.toHaveBeenCalled();
-    expect(context.WebApiClient.SendRequest).not.toHaveBeenCalled();
-    expect(context.XrmTranslator.metadata).toEqual([]);
-    expect(context.grid.add).toHaveBeenCalledWith([]);
-    expect(context.grid.unlock).toHaveBeenCalledOnce();
-    expect(context.XrmTranslator.EnableLoadAndSave).toHaveBeenCalledOnce();
-  });
-
-  it("retrieves, filters, sorts, and fills display text rows", async function () {
+  it("loads, filters, sorts, and fills display text rows", async function () {
     var validBoolean = optionSet({
       MetadataId: "bool",
       Name: "pl_boolean",
@@ -252,34 +241,20 @@ describe("GlobalOptionSetHandler.Load", function () {
       }
     });
     var validPicklist = optionSet({ MetadataId: "pick", Name: "pl_picklist" });
-    var responses = [
-      null,
-      optionSet({ MetadataId: "bad1", Name: "bad1", IsCustomizable: { Value: false } }),
-      optionSet({ MetadataId: "bad2", Name: "bad2", IsCustomizable: { Value: true }, IsGlobal: false }),
-      JSON.stringify(validPicklist),
-      validBoolean
-    ];
     var context = await setup({
       component: "DisplayText",
-      retrieve: function () {
-        return Promise.resolve({
-          value: responses.map(function (_, index) {
-            return { objectid: "id" + index };
-          })
-        });
-      },
-      sendRequest: function () {
-        return Promise.resolve(responses.shift());
-      }
+      optionSets: [
+        null,
+        optionSet({ MetadataId: "bad1", Name: "bad1", IsCustomizable: { Value: false } }),
+        optionSet({ MetadataId: "bad2", Name: "bad2", IsCustomizable: { Value: true }, IsGlobal: false }),
+        validPicklist,
+        validBoolean
+      ]
     });
 
-    await context.handler.Load();
+    var result = await context.handler.Load();
 
-    expect(context.WebApiClient.Retrieve).toHaveBeenCalledWith({
-      entityName: "solutioncomponent",
-      queryParams: "?$select=objectid&$filter=_solutionid_value eq solution-1 and componenttype eq 9"
-    });
-    expect(context.WebApiClient.SendRequest).toHaveBeenCalledTimes(5);
+    expect(result.type).toBe("Loading");
     expect(
       context.XrmTranslator.metadata.map(function (os) {
         return os.Name;
@@ -299,32 +274,24 @@ describe("GlobalOptionSetHandler.Load", function () {
     expect(records[0].w2ui.children[0]._emptyEditablePlaceholders["1033"]).toBe("Add display text (*)");
     expect(records[1].schemaName).toBe("pl_picklist");
     expect(records[1].w2ui.children).toHaveLength(2);
+    expect(context.grid.unlock).toHaveBeenCalledOnce();
+    expect(context.XrmTranslator.EnableLoadAndSave).toHaveBeenCalledOnce();
   });
 
-  it("fills description rows, including option sets without options", async function () {
+  it("fills description rows, including option sets without options or labels", async function () {
     var context = await setup({
       component: "Description",
-      retrieve: function () {
-        return Promise.resolve({
-          value: [{ objectid: "empty" }, { objectid: "withoutDescription" }, { objectid: "withOption" }]
-        });
-      },
-      sendRequest: function (_, url) {
-        if (url.indexOf("empty") !== -1) {
-          return Promise.resolve(optionSet({ MetadataId: "empty", Name: "pl_empty", Options: [] }));
-        }
-        if (url.indexOf("withoutDescription") !== -1) {
-          return Promise.resolve(
-            optionSet({
-              MetadataId: "withoutDescription",
-              Name: "pl_without_description",
-              Description: null,
-              Options: undefined
-            })
-          );
-        }
-        return Promise.resolve(optionSet({ MetadataId: "withOption", Name: "pl_with_option" }));
-      }
+      optionSets: [
+        optionSet({ MetadataId: "empty", Name: "pl_empty", Options: [] }),
+        optionSet({
+          MetadataId: "withoutDescription",
+          Name: "pl_without_description",
+          Description: null,
+          Options: undefined
+        }),
+        optionSet({ MetadataId: "withOption", Name: "pl_with_option" }),
+        optionSet({ MetadataId: "descriptionObject", Name: "pl_description_object", Description: {}, Options: [] })
+      ]
     });
 
     await context.handler.Load();
@@ -339,8 +306,11 @@ describe("GlobalOptionSetHandler.Load", function () {
     var withOption = records.find(function (record) {
       return record.schemaName === "pl_with_option";
     });
+    var descriptionObject = records.find(function (record) {
+      return record.schemaName === "pl_description_object";
+    });
 
-    expect(records).toHaveLength(3);
+    expect(records).toHaveLength(4);
     expect(empty._emptyEditablePlaceholder).toBe("Add description");
     expect(empty["1033"]).toBe("Parent desc");
     expect(empty.w2ui.editable).toBe(true);
@@ -348,17 +318,13 @@ describe("GlobalOptionSetHandler.Load", function () {
     expect(withoutDescription.w2ui.children).toEqual([]);
     expect(withOption.w2ui.children[0]._emptyEditablePlaceholder).toBe("Add description");
     expect(withOption.w2ui.children[0]["1041"]).toBe("Desc JA");
+    expect(descriptionObject["1033"]).toBeUndefined();
   });
 
   it("skips display text option sets that do not have option values", async function () {
     var context = await setup({
       component: "DisplayText",
-      retrieve: function () {
-        return Promise.resolve({ value: [{ objectid: "empty" }] });
-      },
-      sendRequest: function () {
-        return Promise.resolve(optionSet({ MetadataId: "empty", Name: "pl_empty", Options: [] }));
-      }
+      optionSets: [optionSet({ MetadataId: "empty", Name: "pl_empty", Options: [] })]
     });
 
     await context.handler.Load();
@@ -369,23 +335,19 @@ describe("GlobalOptionSetHandler.Load", function () {
   it("fills fallback component rows without editable placeholders", async function () {
     var context = await setup({
       component: "Other",
-      retrieve: function () {
-        return Promise.resolve({ value: [{ objectid: "other" }] });
-      },
-      sendRequest: function () {
-        return Promise.resolve(
-          optionSet({
-            MetadataId: "other",
-            Name: "pl_other",
-            Options: [
-              {
-                Value: 222220000,
-                Other: { LocalizedLabels: [{ LanguageCode: 1033, Label: "Other text" }] }
-              }
-            ]
-          })
-        );
-      }
+      optionSets: [
+        optionSet({
+          MetadataId: "other",
+          Name: "pl_other",
+          Options: [
+            {
+              Value: 222220000,
+              Other: { LocalizedLabels: [{ LanguageCode: 1033, Label: "Other text" }] }
+            },
+            { Value: 222220001 }
+          ]
+        })
+      ]
     });
 
     await context.handler.Load();
@@ -394,37 +356,22 @@ describe("GlobalOptionSetHandler.Load", function () {
     expect(record._emptyReadonlyPlaceholder).toBe("-");
     expect(record.w2ui.children[0]._emptyEditablePlaceholder).toBeUndefined();
     expect(record.w2ui.children[0]["1033"]).toBe("Other text");
+    expect(record.w2ui.children[1]["1033"]).toBeUndefined();
   });
 
   it("covers fallback labels and names while filling rows", async function () {
     var context = await setup({
       component: "DisplayText",
-      retrieve: function () {
-        return Promise.resolve({ value: [{ objectid: "named" }, { objectid: "unnamed" }, { objectid: "boolean" }] });
-      },
-      sendRequest: function (_, url) {
-        if (url.indexOf("unnamed") !== -1) {
-          return Promise.resolve(
-            optionSet({
-              MetadataId: "unnamed",
-              Name: undefined,
-              Options: [{ Value: 1 }, { Value: 2, Label: {} }]
-            })
-          );
-        }
-        if (url.indexOf("boolean") !== -1) {
-          return Promise.resolve(
-            optionSet({
-              MetadataId: "boolean",
-              Name: "pl_boolean_fallback",
-              Options: undefined,
-              TrueOption: { Value: 1 },
-              FalseOption: { Value: 0, Label: {} }
-            })
-          );
-        }
-        return Promise.resolve(optionSet({ MetadataId: "named", Name: "pl_named", Options: [] }));
-      }
+      optionSets: [
+        optionSet({ MetadataId: "unnamed", Name: undefined, Options: [{ Value: 1 }, { Value: 2, Label: {} }] }),
+        optionSet({
+          MetadataId: "boolean",
+          Name: "pl_boolean_fallback",
+          Options: undefined,
+          TrueOption: { Value: 1 },
+          FalseOption: { Value: 0, Label: {} }
+        })
+      ]
     });
 
     await context.handler.Load();
@@ -443,89 +390,53 @@ describe("GlobalOptionSetHandler.Load", function () {
     expect(boolean.w2ui.children[1]["1033"]).toBeUndefined();
   });
 
-  it("handles solutioncomponent responses without a value collection", async function () {
+  it("uses empty loading output and sort-name fallbacks", async function () {
     var context = await setup({
-      retrieve: function () {
-        return Promise.resolve({});
+      executeTypedCustomAction: function (functionName, type, input) {
+        context.state.customActionCalls.push({ functionName: functionName, type: type, input: input });
+        return Promise.resolve(createActionResult(type, {}));
       }
     });
 
     await context.handler.Load();
 
-    expect(context.WebApiClient.SendRequest).not.toHaveBeenCalled();
     expect(context.grid.add).toHaveBeenCalledWith([]);
-  });
 
-  it("uses caption, label, field, and empty-column fallbacks in base-language errors", async function () {
-    var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
-    var grid = createGrid();
-    var context = await setup({
+    context = await setup({
       component: "DisplayText",
-      baseLanguage: 1041,
-      grid: grid,
-      metadataById: { os1: option },
-      records: [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 1041: "" } } }]
-    });
-
-    await expect(context.handler.Save()).rejects.toThrow("Japanese (ja-jp) (1041)");
-
-    context.XrmTranslator.baseLanguage = 1066;
-    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 1066: "" } } }];
-    await expect(context.handler.Save()).rejects.toThrow("Vietnamese (vi-vn) (1066)");
-
-    grid.columns.push({ field: "7777" });
-    context.XrmTranslator.baseLanguage = 7777;
-    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 7777: "" } } }];
-    await expect(context.handler.Save()).rejects.toThrow("base language (7777)");
-
-    grid.columns = undefined;
-    context.XrmTranslator.baseLanguage = 8888;
-    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 8888: "" } } }];
-    await expect(context.handler.Save()).rejects.toThrow("base language (8888)");
-  });
-
-  it("fills description rows when localized label collections are omitted", async function () {
-    var context = await setup({
-      component: "Description",
-      retrieve: function () {
-        return Promise.resolve({ value: [{ objectid: "description" }] });
-      },
-      sendRequest: function () {
-        return Promise.resolve(
-          optionSet({
-            MetadataId: "description",
-            Name: "pl_description",
-            Description: {},
-            Options: []
-          })
-        );
-      }
+      optionSets: [
+        optionSet({ MetadataId: "emptyNameA", Name: null }),
+        optionSet({ MetadataId: "emptyNameB", Name: undefined })
+      ]
     });
 
     await context.handler.Load();
 
-    var record = context.grid.add.mock.calls[0][0][0];
-    expect(record["1033"]).toBeUndefined();
-    expect(record._emptyEditablePlaceholder).toBe("Add description");
+    expect(
+      context.XrmTranslator.metadata.map(function (os) {
+        return os.MetadataId;
+      })
+    ).toEqual(["emptyNameA", "emptyNameB"]);
   });
 
   it("passes load failures to the shared error handler", async function () {
-    var error = new Error("retrieve failed");
+    var error = new Error("load failed");
     var context = await setup({
-      retrieve: function () {
+      executeTypedCustomAction: function () {
         return Promise.reject(error);
       }
     });
 
     await context.handler.Load();
 
+    expect(context.XrmTranslator.UnlockGrid).toHaveBeenCalledOnce();
     expect(context.XrmTranslator.errorHandler).toHaveBeenCalledWith(error);
     expect(context.grid.add).not.toHaveBeenCalled();
   });
 });
 
 describe("GlobalOptionSetHandler.Save", function () {
-  it("returns no option set names when no valid changes exist", async function () {
+  it("sends an empty saving payload and stops when no valid changes exist", async function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
     var inheritedChanges = Object.create({ 1041: "Inherited" });
     var context = await setup({
@@ -541,12 +452,46 @@ describe("GlobalOptionSetHandler.Save", function () {
 
     var result = await context.handler.Save();
 
-    expect(result).toEqual({ optionSetNames: [] });
-    expect(context.Helper.ExecuteCustomAction).not.toHaveBeenCalled();
-    expect(context.WebApiClient.Execute).not.toHaveBeenCalled();
+    expect(result).toEqual(createActionResult("Saving", { optionSetNames: [] }));
+    expect(context.XrmTranslator.LockGrid).toHaveBeenCalledWith("Saving ...");
+    expect(context.Helper.ExecuteTypedCustomAction).toHaveBeenCalledTimes(1);
+    expect(context.state.customActionCalls[0]).toMatchObject({
+      functionName: "GlobalOptionSet",
+      type: "Saving",
+      input: {
+        component: "Description",
+        optionValueUpdates: [],
+        optionSetDescriptionUpdates: []
+      }
+    });
+    expect(context.XrmTranslator.UnlockGrid).toHaveBeenCalledOnce();
+    expect(context.XrmTranslator.EnableLoadAndSave).toHaveBeenCalledOnce();
   });
 
-  it("saves display text clears for non-base languages and publishes once", async function () {
+  it("stops when saving output does not include option set names", async function () {
+    var context = await setup({
+      executeTypedCustomAction: function (functionName, type, input) {
+        context.state.customActionCalls.push({ functionName: functionName, type: type, input: input });
+        return Promise.resolve(createActionResult(type, {}));
+      }
+    });
+    context.Helper.GetCustomActionObject.mockImplementationOnce(function () {
+      return null;
+    });
+
+    var result = await context.handler.Save();
+
+    expect(result).toEqual(createActionResult("Saving", {}));
+    expect(
+      context.state.customActionCalls.map(function (call) {
+        return call.type;
+      })
+    ).toEqual(["Saving"]);
+    expect(context.XrmTranslator.UnlockGrid).toHaveBeenCalledOnce();
+    expect(context.XrmTranslator.EnableLoadAndSave).toHaveBeenCalledOnce();
+  });
+
+  it("saves display text clears, publishes, marks published, and reloads", async function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
     var context = await setup({
       component: "DisplayText",
@@ -558,14 +503,19 @@ describe("GlobalOptionSetHandler.Save", function () {
           w2ui: { changes: { 1033: "A updated", 1041: "", 1066: null } }
         },
         { recid: "os1|222220001", schemaName: "222220001", w2ui: { changes: { 1041: "B updated" } } }
-      ]
+      ],
+      optionSets: []
     });
 
     var result = await context.handler.Save();
 
-    expect(result).toEqual({ ok: true, optionSetNames: ["pl_globalchoice"] });
-    expect(context.Helper.ExecuteCustomAction).toHaveBeenCalledWith("GlobalOptionSets", {
-      type: 18,
+    expect(result).toEqual(createActionResult("Published", { optionSetNames: ["pl_globalchoice"] }));
+    expect(
+      context.state.customActionCalls.map(function (call) {
+        return call.type;
+      })
+    ).toEqual(["Saving", "Publishing", "Published", "Loading"]);
+    expect(getActionCalls(context, "Saving")[0].input).toEqual({
       component: "Label",
       optionValueUpdates: [
         {
@@ -587,78 +537,36 @@ describe("GlobalOptionSetHandler.Save", function () {
       ],
       optionSetDescriptionUpdates: []
     });
-    expect(context.WebApiClient.Requests.PublishXmlRequest.with).toHaveBeenCalledWith({
-      payload: {
-        ParameterXml:
-          "<importexportxml><optionsets><optionset>pl_globalchoice</optionset></optionsets></importexportxml>"
-      }
-    });
-    expect(context.WebApiClient.Execute).toHaveBeenCalledOnce();
-    expect(context.XrmTranslator.RunAsBaseLanguage).toHaveBeenCalledOnce();
+    expect(getActionCalls(context, "Publishing")[0].input).toEqual({ optionSetNames: ["pl_globalchoice"] });
+    expect(getActionCalls(context, "Published")[0].input).toEqual({ optionSetNames: ["pl_globalchoice"] });
+    expect(context.XrmTranslator.LockGrid).toHaveBeenCalledWith("Publishing ...");
+    expect(context.XrmTranslator.LockGrid).toHaveBeenCalledWith("Published");
+    expect(context.XrmTranslator.LockGrid).toHaveBeenCalledWith("Re-Loading ...");
+    expect(context.XrmTranslator.EnableLoadAndSave).toHaveBeenCalledTimes(2);
   });
 
-  it("blocks empty base-language display text with row context", async function () {
+  it("does not reload when publishing returns no option set names", async function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
     var context = await setup({
-      component: "DisplayText",
+      component: "Description",
       metadataById: { os1: option },
-      records: [{ recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { 1033: "   " } } }]
+      records: [{ recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { 1041: "Parent JA" } } }],
+      publishingOptionSetNames: []
     });
 
-    await expect(context.handler.Save()).rejects.toThrow(
-      "Display Text in the base language (English (en-us) (1033)) cannot be empty.\nRow: pl_globalchoice > 222220000"
-    );
-    expect(context.Helper.ExecuteCustomAction).not.toHaveBeenCalled();
+    var result = await context.handler.Save();
+
+    expect(result).toEqual(createActionResult("Published", { optionSetNames: [] }));
+    expect(
+      context.state.customActionCalls.map(function (call) {
+        return call.type;
+      })
+    ).toEqual(["Saving", "Publishing", "Published"]);
+    expect(getActionCalls(context, "Published")[0].input).toEqual({ optionSetNames: [] });
+    expect(getActionCalls(context, "Loading")).toEqual([]);
   });
 
-  it("reports fallback row context when display text base language is empty", async function () {
-    var context = await setup({
-      component: "DisplayText",
-      baseLanguage: 9999,
-      metadataById: {
-        same: optionSet({ MetadataId: "same", Name: "pl_same" }),
-        optionOnly: optionSet({ MetadataId: "optionOnly", Name: "pl_option_only" }),
-        unknown: optionSet({ MetadataId: "unknown", Name: "" })
-      },
-      records: [
-        { recid: "same", schemaName: "pl_same", w2ui: { changes: { 9999: "" } } },
-        { recid: "optionOnly|abc", schemaName: null, w2ui: { changes: { 9999: "" } } },
-        { recid: "unknown|abc", schemaName: null, w2ui: { changes: { 9999: "" } } }
-      ]
-    });
-
-    await expect(context.handler.Save()).rejects.toThrow(
-      "Display Text in the base language (9999) cannot be empty.\nRow: pl_same"
-    );
-
-    context.state.records.shift();
-    await expect(context.handler.Save()).rejects.toThrow(
-      "Display Text in the base language (9999) cannot be empty.\nRow: pl_option_only"
-    );
-
-    context.state.records.shift();
-    await expect(context.handler.Save()).rejects.toThrow(
-      "Display Text in the base language (9999) cannot be empty.\nRow: (unknown)"
-    );
-  });
-
-  it("allows display text base-language clears when no base language is known", async function () {
-    var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
-    var context = await setup({
-      component: "DisplayText",
-      baseLanguage: null,
-      metadataById: { os1: option },
-      records: [{ recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { 1033: "" } } }]
-    });
-
-    await context.handler.Save();
-
-    expect(context.state.customActionCalls[0].input.optionValueUpdates[0].labels).toEqual([
-      { LanguageCode: "1033", Label: "" }
-    ]);
-  });
-
-  it("saves parent and option value descriptions, then publishes and reloads", async function () {
+  it("saves parent and option value descriptions", async function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
     var context = await setup({
       component: "Description",
@@ -666,16 +574,12 @@ describe("GlobalOptionSetHandler.Save", function () {
       records: [
         { recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { 1033: "", 1041: "Parent JA" } } },
         { recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { 1041: "" } } }
-      ],
-      retrieve: function () {
-        return Promise.resolve({ value: [] });
-      }
+      ]
     });
 
     await context.handler.Save();
 
-    expect(context.Helper.ExecuteCustomAction).toHaveBeenCalledWith("GlobalOptionSets", {
-      type: 18,
+    expect(getActionCalls(context, "Saving")[0].input).toEqual({
       component: "Description",
       optionValueUpdates: [
         {
@@ -695,66 +599,93 @@ describe("GlobalOptionSetHandler.Save", function () {
         }
       ]
     });
-    await context.state.capturedFlow.reloadAction();
-    expect(context.grid.add).toHaveBeenCalledWith([]);
   });
 
-  it("saves parent-only descriptions and publishes their option set", async function () {
+  it("blocks empty base-language display text with language and row context", async function () {
+    var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
+    var grid = createGrid();
+    var context = await setup({
+      component: "DisplayText",
+      baseLanguage: 1041,
+      grid: grid,
+      metadataById: { os1: option },
+      records: [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 1041: "" } } }]
+    });
+
+    expect(function () {
+      context.handler.Save();
+    }).toThrow(
+      "Display Text in the base language (Japanese (ja-jp) (1041)) cannot be empty.\nRow: pl_globalchoice > 1"
+    );
+
+    context.XrmTranslator.baseLanguage = 1066;
+    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 1066: "" } } }];
+    expect(function () {
+      context.handler.Save();
+    }).toThrow("Vietnamese (vi-vn) (1066)");
+
+    grid.columns.push({ field: "7777" });
+    context.XrmTranslator.baseLanguage = 7777;
+    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 7777: "" } } }];
+    expect(function () {
+      context.handler.Save();
+    }).toThrow("base language (7777)");
+
+    grid.columns = undefined;
+    context.XrmTranslator.baseLanguage = 8888;
+    context.state.records = [{ recid: "os1|1", schemaName: "1", w2ui: { changes: { 8888: "" } } }];
+    expect(function () {
+      context.handler.Save();
+    }).toThrow("base language (8888)");
+
+    expect(context.Helper.ExecuteTypedCustomAction).not.toHaveBeenCalled();
+  });
+
+  it("reports fallback row context when display text base language is empty", async function () {
+    var context = await setup({
+      component: "DisplayText",
+      baseLanguage: 9999,
+      metadataById: {
+        same: optionSet({ MetadataId: "same", Name: "pl_same" }),
+        optionOnly: optionSet({ MetadataId: "optionOnly", Name: "pl_option_only" }),
+        unknown: optionSet({ MetadataId: "unknown", Name: "" })
+      },
+      records: [
+        { recid: "same", schemaName: "pl_same", w2ui: { changes: { 9999: "" } } },
+        { recid: "optionOnly|abc", schemaName: null, w2ui: { changes: { 9999: "" } } },
+        { recid: "unknown|abc", schemaName: null, w2ui: { changes: { 9999: "" } } }
+      ]
+    });
+
+    expect(function () {
+      context.handler.Save();
+    }).toThrow("Display Text in the base language (9999) cannot be empty.\nRow: pl_same");
+
+    context.state.records.shift();
+    expect(function () {
+      context.handler.Save();
+    }).toThrow("Display Text in the base language (9999) cannot be empty.\nRow: pl_option_only");
+
+    context.state.records.shift();
+    expect(function () {
+      context.handler.Save();
+    }).toThrow("Display Text in the base language (9999) cannot be empty.\nRow: (unknown)");
+  });
+
+  it("allows display text base-language clears when no base language is known", async function () {
     var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice" });
     var context = await setup({
-      component: "Description",
+      component: "DisplayText",
+      baseLanguage: null,
       metadataById: { os1: option },
-      records: [{ recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { 1041: "Parent JA" } } }]
-    });
-
-    var result = await context.handler.Save();
-
-    expect(result).toEqual({ ok: true, optionSetNames: ["pl_globalchoice"] });
-    expect(context.state.customActionCalls[0].input.optionSetDescriptionUpdates).toEqual([
-      {
-        optionSetName: "pl_globalchoice",
-        labels: [{ LanguageCode: "1041", Label: "Parent JA" }]
-      }
-    ]);
-    expect(context.WebApiClient.Requests.PublishXmlRequest.with).toHaveBeenCalledWith({
-      payload: {
-        ParameterXml:
-          "<importexportxml><optionsets><optionset>pl_globalchoice</optionset></optionsets></importexportxml>"
-      }
-    });
-  });
-
-  it("creates missing description metadata while saving parent descriptions", async function () {
-    var option = optionSet({ MetadataId: "os1", Name: "pl_globalchoice", Description: null });
-    var context = await setup({
-      component: "Description",
-      metadataById: { os1: option },
-      records: [{ recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { 1041: "Parent JA" } } }]
+      records: [{ recid: "os1|222220000", schemaName: "222220000", w2ui: { changes: { 1033: "" } } }]
     });
 
     await context.handler.Save();
 
-    expect(context.state.customActionCalls[0].input.optionSetDescriptionUpdates[0].labels).toEqual([
-      { LanguageCode: "1041", Label: "Parent JA" }
+    expect(getActionCalls(context, "Saving")[0].input.optionValueUpdates[0].labels).toEqual([
+      { LanguageCode: "1033", Label: "" }
     ]);
-  });
-
-  it("exposes a no-op publish action for empty option set names", async function () {
-    var context = await setup();
-    context.XrmTranslator.RunTypeSaveFlow.mockImplementationOnce(function (flow) {
-      context.state.capturedFlow = flow;
-      return Promise.resolve("captured");
-    });
-
-    await context.handler.Save();
-    var result = await context.state.capturedFlow.publishAction({ optionSetNames: [] });
-    var missingResult = await context.state.capturedFlow.publishAction(null);
-
-    expect(result).toBeUndefined();
-    expect(missingResult).toBeUndefined();
-    expect(context.XrmTranslator.RunAsBaseLanguage).not.toHaveBeenCalled();
-    expect(context.state.capturedFlow.shouldPublish({ optionSetNames: [] })).toBe(false);
-    expect(context.state.capturedFlow.shouldPublish({ optionSetNames: ["pl_globalchoice"] })).toBe(true);
   });
 
   it("ignores parent display text changes because the parent row is readonly", async function () {
@@ -765,10 +696,10 @@ describe("GlobalOptionSetHandler.Save", function () {
       records: [{ recid: "os1", schemaName: "pl_globalchoice", w2ui: { changes: { 1041: "Ignored parent label" } } }]
     });
 
-    var result = await context.handler.Save();
+    await context.handler.Save();
 
-    expect(result).toEqual({ optionSetNames: [] });
-    expect(context.Helper.ExecuteCustomAction).not.toHaveBeenCalled();
+    expect(getActionCalls(context, "Saving")[0].input.optionValueUpdates).toEqual([]);
+    expect(getActionCalls(context, "Saving")[0].input.optionSetDescriptionUpdates).toEqual([]);
   });
 
   it("ignores empty labels for components that do not allow clears", async function () {
@@ -785,7 +716,7 @@ describe("GlobalOptionSetHandler.Save", function () {
 
     await context.handler.Save();
 
-    expect(context.state.customActionCalls[0].input.optionValueUpdates).toEqual([
+    expect(getActionCalls(context, "Saving")[0].input.optionValueUpdates).toEqual([
       {
         optionSetName: "pl_globalchoice",
         value: 222220001,
@@ -793,5 +724,19 @@ describe("GlobalOptionSetHandler.Save", function () {
         labels: [{ LanguageCode: "1041", Label: "Other value" }]
       }
     ]);
+  });
+
+  it("passes save failures through after unlocking and enabling actions", async function () {
+    var error = new Error("save failed");
+    var context = await setup({
+      executeTypedCustomAction: function () {
+        return Promise.reject(error);
+      }
+    });
+
+    await expect(context.handler.Save()).rejects.toThrow(error);
+
+    expect(context.XrmTranslator.UnlockGrid).toHaveBeenCalledOnce();
+    expect(context.XrmTranslator.EnableLoadAndSave).toHaveBeenCalledOnce();
   });
 });

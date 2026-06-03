@@ -3,7 +3,10 @@
     <File Path=".editorconfig" />
     <File Path="DynamicsCrm.DevKit.Cli.json" />
   </Folder>
+  <Project Path="DataverseLabelTranslator.ProxyTypes/DataverseLabelTranslator.ProxyTypes.csproj" />
   <Project Path="DataverseLabelTranslator.Server/DataverseLabelTranslator.Server.csproj" />
+  <Project Path="DataverseLabelTranslator.Shared.Test/DataverseLabelTranslator.Shared.Test.shproj" Id="373cb53d-0f8e-43d2-8e80-2d204ec671db" />
   <Project Path="DataverseLabelTranslator.Shared/DataverseLabelTranslator.Shared.shproj" Id="93307388-fb80-40b6-8c14-296079edcf93" />
+  <Project Path="DataverseLabelTranslator.Test/DataverseLabelTranslator.Test.csproj" />
   <Project Path="DataverseLabelTranslator.WebResource/DataverseLabelTranslator.WebResource.csproj" />
 </Solution>

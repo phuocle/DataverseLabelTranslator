@@ -122,6 +122,10 @@ Regenerate and validate AI tool adapters from canonical `.agents/skills/pl-*/SKI
 
 Run Vitest unit tests and optional coverage for Dataverse Label Translator. Use `npm --prefix DataverseLabelTranslator.WebResource test` for tests and `npm --prefix DataverseLabelTranslator.WebResource run test:coverage` for coverage. Unit tests must fake Dataverse/Xrm/browser APIs instead of calling live services. Do not deploy, commit, or push automatically.
 
+### /pl-unit-tests-server
+
+Regenerate early-bound proxy classes with `DataverseLabelTranslator.ProxyTypes\run.bat`, then run server-side MSTest/FakeXrmEasy tests with `dotnet test DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug`. Tests target `DataverseLabelTranslator.Server`, use `DataverseLabelTranslator.Shared.Test` helpers, and reference `DataverseLabelTranslator.ProxyTypes` for FakeXrmEasy early-bound types. Do not deploy, commit, or push automatically.
+
 ### /pl-commit
 
 Full local git workflow: stage all -> commit -> verify clean. Do not push unless the user explicitly asks.
