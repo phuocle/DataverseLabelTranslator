@@ -1,5 +1,3 @@
-window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
-
 (function (GlobalOptionSetHandler, undefined) {
     "use strict";
 
@@ -17,76 +15,6 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
         return rowName || optionSetName || "(unknown)";
     }
 
-    function ValidateDisplayTextBaseLanguageChange(record, optionSet, changes) {
-        if (!XrmTranslator.IsDisplayTextComponent() || !XrmTranslator.baseLanguage) {
-            return;
-        }
-
-        var baseLanguage = String(XrmTranslator.baseLanguage);
-        if (!Object.prototype.hasOwnProperty.call(changes, baseLanguage)) {
-            return;
-        }
-
-        if (!Helper.IsEmptyLabelValue(changes[baseLanguage])) {
-            return;
-        }
-
-        throw new Error(
-            "Display Text in the base language (" +
-                Helper.GetLanguageColumnText(baseLanguage) +
-                ") cannot be empty.\n" +
-                "Row: " +
-                GetDisplayTextRowPath(record, optionSet)
-        );
-    }
-
-    function ApplyEmptyEditablePlaceholder(record, editablePlaceholder, basePlaceholder) {
-        if (!editablePlaceholder) {
-            return;
-        }
-
-        record._emptyEditablePlaceholder = editablePlaceholder;
-
-        if (basePlaceholder && XrmTranslator.baseLanguage) {
-            record._emptyEditablePlaceholders = record._emptyEditablePlaceholders || {};
-            record._emptyEditablePlaceholders[String(XrmTranslator.baseLanguage)] = basePlaceholder;
-        }
-    }
-
-    function AddLocalizedLabelsToRecord(record, localizedLabels) {
-        localizedLabels = localizedLabels || [];
-
-        for (var i = 0; i < localizedLabels.length; i++) {
-            record[localizedLabels[i].LanguageCode.toString()] = localizedLabels[i].Label;
-        }
-    }
-
-    function GetChangedLabels(changes, allowEmpty) {
-        var labels = [];
-
-        for (var change in changes) {
-            if (!changes.hasOwnProperty(change)) {
-                continue;
-            }
-
-            var label = changes[change];
-            if (label == null) {
-                if (!allowEmpty) {
-                    continue;
-                }
-                label = "";
-            }
-
-            if (!allowEmpty && !label) {
-                continue;
-            }
-
-            labels.push({ LanguageCode: change, Label: label });
-        }
-
-        return labels;
-    }
-
     function BuildOptionSetDescriptionUpdate(optionSet, labels) {
         return {
             optionSetName: optionSet.Name,
@@ -94,13 +22,18 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
         };
     }
 
+    function GetComponent(app) {
+        return app.IsDescriptionComponent() ? Helper.ComponentTypes.Description : Helper.ComponentTypes.DisplayText;
+    }
+
     function GetUpdates() {
-        var records = XrmTranslator.GetAllRecords();
+        var app = Helper.GetTranslator();
+        var records = app.GetAllRecords();
         var optionValueUpdates = [];
         var optionSetDescriptionUpdates = [];
-        var isDescription = XrmTranslator.IsDescriptionComponent();
-        var isDisplayText = XrmTranslator.IsDisplayTextComponent();
-        var component = isDisplayText ? "Label" : XrmTranslator.GetComponent();
+        var isDescription = app.IsDescriptionComponent();
+        var isDisplayText = app.IsDisplayTextComponent();
+        var component = GetComponent(app);
 
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
@@ -110,7 +43,7 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
 
             var parts = record.recid.split(idSeparator);
             var optionSetId = parts[0];
-            var optionSet = XrmTranslator.GetAttributeById(optionSetId);
+            var optionSet = app.GetAttributeById(optionSetId);
 
             if (!optionSet) {
                 continue;
@@ -118,14 +51,19 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
 
             var changes = record.w2ui.changes;
             var labels;
-            ValidateDisplayTextBaseLanguageChange(record, optionSet, changes);
+            Helper.ValidateBaseLanguageNotEmpty(record, changes, {
+                app: app,
+                getRowPath: function (changedRecord) {
+                    return GetDisplayTextRowPath(changedRecord, optionSet);
+                }
+            });
 
             if (parts.length === 1) {
                 if (!isDescription) {
                     continue;
                 }
 
-                labels = GetChangedLabels(changes, true);
+                labels = Helper.GetChangedLabels(changes, true);
                 if (labels.length < 1) {
                     continue;
                 }
@@ -139,7 +77,7 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
                 continue;
             }
 
-            labels = GetChangedLabels(changes, isDescription || isDisplayText);
+            labels = Helper.GetChangedLabels(changes, isDescription || isDisplayText);
             if (labels.length < 1) {
                 continue;
             }
@@ -159,17 +97,23 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
     }
 
     function FillTable() {
-        var grid = XrmTranslator.GetGrid();
+        var app = Helper.GetTranslator();
+        var grid = app.GetGrid();
         grid.clear();
         var records = [];
-        var isDescription = XrmTranslator.IsDescriptionComponent();
-        var isDisplayText = XrmTranslator.IsDisplayTextComponent();
-        var componentName = isDisplayText ? "Label" : XrmTranslator.GetComponent();
-        var editablePlaceholder = isDescription ? "Add description" : isDisplayText ? "Add display text" : null;
-        var baseEditablePlaceholder = isDisplayText ? "Add display text (*)" : null;
+        var isDescription = app.IsDescriptionComponent();
+        var isDisplayText = app.IsDisplayTextComponent();
+        var component = GetComponent(app);
+        var editablePlaceholder = isDescription
+            ? Helper.GetPlaceholderDescription()
+            : isDisplayText
+              ? Helper.GetPlaceholderDisplayText()
+              : null;
+        var baseEditablePlaceholder = isDisplayText ? Helper.GetPlaceholderDisplayTextBase() : null;
+        var metadata = app.GetMetadata();
 
-        for (var i = 0; i < XrmTranslator.metadata.length; i++) {
-            var optionSet = XrmTranslator.metadata[i];
+        for (var i = 0; i < metadata.length; i++) {
+            var optionSet = metadata[i];
 
             var parent = {
                 recid: optionSet.MetadataId,
@@ -178,26 +122,28 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
             };
 
             if (isDescription) {
-                ApplyEmptyEditablePlaceholder(parent, editablePlaceholder, baseEditablePlaceholder);
+                Helper.ApplyPlaceholder(parent, editablePlaceholder, baseEditablePlaceholder, app);
                 if (optionSet.Description) {
-                    AddLocalizedLabelsToRecord(parent, optionSet.Description.LocalizedLabels);
+                    Helper.AddLocalizedLabelsToRecord(
+                        parent,
+                        Helper.GetComponentLocalizedLabels(optionSet, Helper.ComponentTypes.Description)
+                    );
                 }
             } else if (!isDescription) {
-                parent._emptyReadonlyPlaceholder = "-";
+                parent._emptyReadonlyPlaceholder = Helper.GetPlaceholderReadonly();
             }
 
             if (!!optionSet.TrueOption) {
                 var options = [optionSet.TrueOption, optionSet.FalseOption];
                 for (var j = 0; j < options.length; j++) {
                     var option = options[j];
-                    var component = option[componentName] || {};
-                    var labels = component.LocalizedLabels || [];
+                    var labels = Helper.GetComponentLocalizedLabels(option, component);
                     var child = {
                         recid: optionSet.MetadataId + idSeparator + option.Value,
                         schemaName: option.Value.toString()
                     };
-                    ApplyEmptyEditablePlaceholder(child, editablePlaceholder, baseEditablePlaceholder);
-                    AddLocalizedLabelsToRecord(child, labels);
+                    Helper.ApplyPlaceholder(child, editablePlaceholder, baseEditablePlaceholder, app);
+                    Helper.AddLocalizedLabelsToRecord(child, labels);
                     parent.w2ui.children.push(child);
                 }
             } else {
@@ -209,14 +155,13 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
                 }
                 for (var j = 0; options && j < options.length; j++) {
                     var option = options[j];
-                    var component = option[componentName] || {};
-                    var labels = component.LocalizedLabels || [];
+                    var labels = Helper.GetComponentLocalizedLabels(option, component);
                     var child = {
                         recid: optionSet.MetadataId + idSeparator + option.Value,
                         schemaName: option.Value.toString()
                     };
-                    ApplyEmptyEditablePlaceholder(child, editablePlaceholder, baseEditablePlaceholder);
-                    AddLocalizedLabelsToRecord(child, labels);
+                    Helper.ApplyPlaceholder(child, editablePlaceholder, baseEditablePlaceholder, app);
+                    Helper.AddLocalizedLabelsToRecord(child, labels);
                     parent.w2ui.children.push(child);
                 }
             }
@@ -224,18 +169,22 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
             records.push(parent);
         }
 
-        XrmTranslator.AddSummary(records);
-        grid.add(records);
-        grid.unlock();
-        XrmTranslator.EnableLoadAndSave();
+        Helper.FinalizeGrid(records, app);
     }
 
     GlobalOptionSetHandler.Load = function () {
-        return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Loading, {
-            solutionId: XrmTranslator.GetSolution()
-        })
-            .then(function (result) {
-                var output = Helper.GetCustomActionObject(result);
+        var app = Helper.GetTranslator();
+        app.LockGrid(Helper.GetOperationLoading());
+
+        return Helper.RunServerLoad({
+            app: app,
+            actionName: actionName,
+            getPayload: function () {
+                return {
+                    solutionId: app.GetSolution()
+                };
+            },
+            onLoaded: function (output) {
                 var optionSets = output.optionSets || [];
                 optionSets = optionSets.filter(function (os) {
                     return os && os.IsCustomizable && os.IsCustomizable.Value && os.IsGlobal;
@@ -245,70 +194,43 @@ window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler);
                     return (a.Name || "").localeCompare(b.Name || "");
                 });
 
-                XrmTranslator.metadata = optionSets;
+                app.SetMetadata(optionSets);
                 FillTable();
-                return result;
-            })
-            .catch(function (error) {
-                XrmTranslator.UnlockGrid();
-                XrmTranslator.errorHandler(error);
-            });
+            }
+        });
     };
 
     function GetOptionSetNames(result) {
         return result && result.optionSetNames ? result.optionSetNames : [];
     }
 
+    function GetOptionSetNamePayload(output) {
+        var optionSetNames = GetOptionSetNames(output);
+        return optionSetNames.length > 0 ? { optionSetNames: optionSetNames } : null;
+    }
+
     GlobalOptionSetHandler.Save = function () {
-        var updates = GetUpdates();
-        var optionValueUpdates = updates.optionValueUpdates;
-        var optionSetDescriptionUpdates = updates.optionSetDescriptionUpdates;
-        var component = XrmTranslator.IsDisplayTextComponent() ? "Label" : XrmTranslator.GetComponent();
+        var app = Helper.GetTranslator();
 
-        XrmTranslator.LockGrid("Saving ...");
-
-        return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Saving, {
-            component: component,
-            optionValueUpdates: optionValueUpdates,
-            optionSetDescriptionUpdates: optionSetDescriptionUpdates
-        })
-            .then(function (result) {
-                var output = Helper.GetCustomActionObject(result);
-                var optionSetNames = GetOptionSetNames(output);
-
-                if (optionSetNames.length === 0) {
-                    XrmTranslator.UnlockGrid();
-                    XrmTranslator.EnableLoadAndSave();
-                    return result;
-                }
-
-                XrmTranslator.LockGrid("Publishing ...");
-                return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Publishing, {
-                    optionSetNames: optionSetNames
-                }).then(function (publishingResult) {
-                    var publishingOutput = Helper.GetCustomActionObject(publishingResult);
-                    XrmTranslator.LockGrid("Published");
-                    return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Published, {
-                        optionSetNames: GetOptionSetNames(publishingOutput)
-                    });
-                });
-            })
-            .then(function (result) {
-                var output = Helper.GetCustomActionObject(result);
-                if (GetOptionSetNames(output).length === 0) {
-                    return result;
-                }
-
-                XrmTranslator.LockGrid("Re-Loading ...");
-                return GlobalOptionSetHandler.Load().then(function () {
-                    XrmTranslator.EnableLoadAndSave();
-                    return result;
-                });
-            })
-            .catch(function (error) {
-                XrmTranslator.UnlockGrid();
-                XrmTranslator.EnableLoadAndSave();
-                throw error;
-            });
+        return Helper.RunServerSaveFlow({
+            app: app,
+            actionName: actionName,
+            getSavePayload: function () {
+                var updates = GetUpdates();
+                return {
+                    component: GetComponent(app),
+                    optionValueUpdates: updates.optionValueUpdates,
+                    optionSetDescriptionUpdates: updates.optionSetDescriptionUpdates
+                };
+            },
+            getPublishPayload: GetOptionSetNamePayload,
+            getPublishedPayload: GetOptionSetNamePayload,
+            shouldReload: function (output) {
+                return GetOptionSetNames(output).length > 0;
+            },
+            reloadAction: function () {
+                return GlobalOptionSetHandler.Load();
+            }
+        });
     };
-})(window.GlobalOptionSetHandler);
+})((window.GlobalOptionSetHandler = window.GlobalOptionSetHandler || {}));

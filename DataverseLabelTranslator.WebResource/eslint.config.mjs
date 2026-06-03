@@ -14,6 +14,7 @@ const appGlobals = {
   DashboardHandler: "readonly",
   DataverseDataWebResourceService: "readonly",
   DialogHelper: "readonly",
+  EasyTranslator: "readonly",
   EntityHandler: "readonly",
   EntityMessageHandler: "readonly",
   FormHandler: "readonly",

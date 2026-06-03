@@ -21,12 +21,100 @@
         Other: "Other"
     };
 
+    Helper.ComponentTypes = {
+        DisplayText: "DisplayText",
+        Description: "Description"
+    };
+
+    Helper.UiText = {
+        Placeholders: {
+            DisplayText: "Add-display-text",
+            DisplayTextBase: "Add-display-text(*)",
+            Description: "Add-description",
+            Readonly: "-"
+        },
+        Operations: {
+            Loading: "Loading ...",
+            Saving: "Saving ...",
+            Publishing: "Publishing ...",
+            Published: "Published",
+            ReLoading: "Re-Loading ..."
+        }
+    };
+
     Helper.IsEmptyLabelValue = function (value) {
         return value == null || String(value).trim().length === 0;
     };
 
+    Helper.GetPlaceholderDisplayText = function () {
+        return Helper.UiText.Placeholders.DisplayText;
+    };
+
+    Helper.GetPlaceholderDisplayTextBase = function () {
+        return Helper.UiText.Placeholders.DisplayTextBase;
+    };
+
+    Helper.GetPlaceholderDescription = function () {
+        return Helper.UiText.Placeholders.Description;
+    };
+
+    Helper.GetPlaceholderReadonly = function () {
+        return Helper.UiText.Placeholders.Readonly;
+    };
+
+    Helper.GetOperationLoading = function () {
+        return Helper.UiText.Operations.Loading;
+    };
+
+    Helper.GetOperationSaving = function () {
+        return Helper.UiText.Operations.Saving;
+    };
+
+    Helper.GetOperationPublishing = function () {
+        return Helper.UiText.Operations.Publishing;
+    };
+
+    Helper.GetOperationPublished = function () {
+        return Helper.UiText.Operations.Published;
+    };
+
+    Helper.GetOperationReLoading = function () {
+        return Helper.UiText.Operations.ReLoading;
+    };
+
+    Helper.GetTranslator = function () {
+        if (window.EasyTranslator) {
+            return window.EasyTranslator;
+        }
+
+        if (window.XrmTranslator) {
+            return window.XrmTranslator;
+        }
+
+        throw new Error("Translator is not available.");
+    };
+
+    function GetBaseLanguage(app) {
+        app = app || Helper.GetTranslator();
+
+        if (app && app.baseLanguage) {
+            return app.baseLanguage;
+        }
+
+        if (window.XrmTranslator && window.XrmTranslator.baseLanguage) {
+            return window.XrmTranslator.baseLanguage;
+        }
+
+        if (typeof app.GetBaseLanguage === "function") {
+            var baseLanguage = app.GetBaseLanguage();
+            return baseLanguage && typeof baseLanguage.then !== "function" ? baseLanguage : null;
+        }
+
+        return null;
+    }
+
     Helper.GetLanguageColumnText = function (languageCode, grid) {
-        grid = grid || XrmTranslator.GetGrid();
+        grid = grid || Helper.GetTranslator().GetGrid();
         var columns = grid.columns || [];
         var field = String(languageCode);
 
@@ -37,6 +125,109 @@
         }
 
         return field;
+    };
+
+    Helper.ApplyPlaceholder = function (record, editablePlaceholder, basePlaceholder, app) {
+        if (!editablePlaceholder) {
+            return;
+        }
+
+        record._emptyEditablePlaceholder = editablePlaceholder;
+
+        var baseLanguage = GetBaseLanguage(app);
+        if (basePlaceholder && baseLanguage) {
+            record._emptyEditablePlaceholders = record._emptyEditablePlaceholders || {};
+            record._emptyEditablePlaceholders[String(baseLanguage)] = basePlaceholder;
+        }
+    };
+
+    Helper.AddLocalizedLabelsToRecord = function (record, localizedLabels) {
+        localizedLabels = localizedLabels || [];
+
+        for (var i = 0; i < localizedLabels.length; i++) {
+            record[localizedLabels[i].LanguageCode.toString()] = localizedLabels[i].Label;
+        }
+    };
+
+    Helper.GetComponentLocalizedLabels = function (metadata, component) {
+        var metadataProperty = component === Helper.ComponentTypes.Description ? "Description" : "Label";
+        var localizedLabelContainer = metadata && metadata[metadataProperty] ? metadata[metadataProperty] : {};
+
+        return localizedLabelContainer.LocalizedLabels || [];
+    };
+
+    Helper.GetChangedLabels = function (changes, allowEmpty) {
+        var labels = [];
+
+        for (var change in changes) {
+            if (!Object.prototype.hasOwnProperty.call(changes, change)) {
+                continue;
+            }
+
+            var label = changes[change];
+            if (label == null) {
+                if (!allowEmpty) {
+                    continue;
+                }
+                label = "";
+            }
+
+            if (!allowEmpty && !label) {
+                continue;
+            }
+
+            labels.push({ LanguageCode: change, Label: label });
+        }
+
+        return labels;
+    };
+
+    Helper.ValidateBaseLanguageNotEmpty = function (record, changes, options) {
+        options = options || {};
+        var app = options.app || Helper.GetTranslator();
+
+        if (!app.IsDisplayTextComponent || !app.IsDisplayTextComponent()) {
+            return;
+        }
+
+        var baseLanguage = GetBaseLanguage(app);
+        if (!baseLanguage) {
+            return;
+        }
+
+        baseLanguage = String(baseLanguage);
+        if (!Object.prototype.hasOwnProperty.call(changes, baseLanguage)) {
+            return;
+        }
+
+        if (!Helper.IsEmptyLabelValue(changes[baseLanguage])) {
+            return;
+        }
+
+        var rowPath =
+            typeof options.getRowPath === "function" ? options.getRowPath(record) : record && record.schemaName;
+
+        throw new Error(
+            "Display Text in the base language (" +
+                Helper.GetLanguageColumnText(baseLanguage) +
+                ") cannot be empty.\n" +
+                "Row: " +
+                (rowPath || "(unknown)")
+        );
+    };
+
+    Helper.FinalizeGrid = function (records, app) {
+        app = app || Helper.GetTranslator();
+        var grid = app.GetGrid();
+
+        app.AddSummary(records);
+        grid.add(records);
+
+        if (typeof app.UnlockGrid === "function") {
+            app.UnlockGrid();
+        } else {
+            grid.unlock();
+        }
     };
 
     Helper.GetCustomActionObject = function (result) {
@@ -96,5 +287,115 @@
 
             return result;
         });
+    };
+
+    Helper.RunServerLoad = function (options) {
+        options = options || {};
+        var app = options.app || Helper.GetTranslator();
+        var payload = typeof options.getPayload === "function" ? options.getPayload() : options.payload || {};
+
+        return Helper.ExecuteTypedCustomAction(options.actionName, Helper.CustomActionTypes.Loading, payload)
+            .then(function (result) {
+                var output = Helper.GetCustomActionObject(result);
+
+                if (typeof options.onLoaded === "function") {
+                    options.onLoaded(output, result);
+                }
+
+                return result;
+            })
+            .catch(function (error) {
+                if (typeof app.UnlockGrid === "function") {
+                    app.UnlockGrid();
+                }
+
+                if (options.handleError !== false && typeof app.errorHandler === "function") {
+                    app.errorHandler(error);
+                    return null;
+                }
+
+                throw error;
+            });
+    };
+
+    Helper.RunServerSaveFlow = function (options) {
+        options = options || {};
+        var app = options.app || Helper.GetTranslator();
+        var savePayload =
+            typeof options.getSavePayload === "function" ? options.getSavePayload() : options.payload || {};
+        var savingMessage = options.savingMessage || Helper.GetOperationSaving();
+        var publishingMessage = options.publishingMessage || Helper.GetOperationPublishing();
+        var publishedMessage = options.publishedMessage || Helper.GetOperationPublished();
+        var reloadingMessage = options.reloadingMessage || Helper.GetOperationReLoading();
+
+        app.LockGrid(savingMessage);
+
+        return Helper.ExecuteTypedCustomAction(options.actionName, Helper.CustomActionTypes.Saving, savePayload)
+            .then(function (saveResult) {
+                var saveOutput = Helper.GetCustomActionObject(saveResult);
+                var publishPayload =
+                    typeof options.getPublishPayload === "function"
+                        ? options.getPublishPayload(saveOutput, saveResult)
+                        : null;
+
+                if (!publishPayload) {
+                    app.UnlockGrid();
+                    return saveResult;
+                }
+
+                app.LockGrid(publishingMessage);
+                return Helper.ExecuteTypedCustomAction(
+                    options.actionName,
+                    Helper.CustomActionTypes.Publishing,
+                    publishPayload
+                ).then(function (publishingResult) {
+                    var publishingOutput = Helper.GetCustomActionObject(publishingResult);
+                    var publishedPayload =
+                        typeof options.getPublishedPayload === "function"
+                            ? options.getPublishedPayload(publishingOutput, publishingResult, saveOutput)
+                            : publishPayload;
+
+                    if (!publishedPayload) {
+                        app.UnlockGrid();
+                        return publishingResult;
+                    }
+
+                    app.LockGrid(publishedMessage);
+                    return Helper.ExecuteTypedCustomAction(
+                        options.actionName,
+                        Helper.CustomActionTypes.Published,
+                        publishedPayload
+                    );
+                });
+            })
+            .then(function (result) {
+                var output = Helper.GetCustomActionObject(result);
+                var shouldReload =
+                    typeof options.shouldReload === "function" ? options.shouldReload(output, result) : false;
+
+                if (!shouldReload) {
+                    app.UnlockGrid();
+                    return result;
+                }
+
+                app.LockGrid(reloadingMessage);
+
+                if (typeof options.reloadAction !== "function") {
+                    app.UnlockGrid();
+                    return result;
+                }
+
+                return options.reloadAction(result, output).then(function () {
+                    app.UnlockGrid();
+                    return result;
+                });
+            })
+            .catch(function (error) {
+                if (typeof app.UnlockGrid === "function") {
+                    app.UnlockGrid();
+                }
+
+                throw error;
+            });
     };
 })((window.Helper = window.Helper || {}));

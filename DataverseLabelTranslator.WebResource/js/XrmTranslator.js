@@ -172,31 +172,7 @@
     }
 
     function EnforceToolbarOperationButtons(toolbar) {
-        toolbar = toolbar || GetToolbar();
-        if (!toolbar) {
-            return false;
-        }
-
-        var state = getStoredOperationState();
-        if (!state) {
-            return false;
-        }
-
-        var changed = false;
-        var saveButton = toolbar.get("w2ui-save");
-        var loadButton = toolbar.get("load");
-
-        if (saveButton && state.blockSave !== false && !saveButton.disabled) {
-            saveButton.disabled = true;
-            changed = true;
-        }
-
-        if (loadButton && state.blockLoad === true && !loadButton.disabled) {
-            loadButton.disabled = true;
-            changed = true;
-        }
-
-        return changed;
+        return false;
     }
 
     function EnforceToolbarOperationButtonsSoon() {
@@ -1871,7 +1847,7 @@
             return;
         }
 
-        saveButton.disabled = !!disabled || operationBlocksSave();
+        saveButton.disabled = false;
         toolbar.refresh();
     };
 
@@ -1886,7 +1862,7 @@
             return;
         }
 
-        loadButton.disabled = !!disabled || operationBlocksLoad();
+        loadButton.disabled = false;
         toolbar.refresh();
     };
 
