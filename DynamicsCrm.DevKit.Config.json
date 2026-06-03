@@ -1,0 +1,15 @@
+﻿{
+    "WebResources": [
+        {
+            "File": "\\DataverseLabelTranslator.WebResource\\html\\App.html",
+            "WebResource": "pl_/html/App.html",
+            "WebResourceId": "53d26340-ee5e-f111-a826-7ced8db48acd",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/html/App.html",
+            "SolutionUniqueName": null
+        }
+    ],
+    "CustomTemplates": [
+        
+    ]
+}

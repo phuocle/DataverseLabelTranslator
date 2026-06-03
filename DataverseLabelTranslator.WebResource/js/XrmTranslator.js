@@ -70,7 +70,7 @@
         "type:commands",
         "type:entityMessages"
     ];
-    var GLOBAL_TYPE_ITEMS = ["type:sitemap", "type:dashboards", "type:webresources", "type:globalOptionSets"];
+    var GLOBAL_TYPE_ITEMS = ["type:sitemap", "type:dashboards", "type:webresources", "type:globalOptionSet"];
     var TYPE_STATE_LABELS = {
         allInOne: "0. All-In-One",
         attributes: "1. Attributes",
@@ -90,7 +90,7 @@
         sitemap: "15. Sitemap",
         dashboards: "16. Dashboards",
         webresources: "17. Web Resources",
-        globalOptionSets: "18. Global Option Sets"
+        globalOptionSet: "Global Option Set"
     };
     var ALLOWED_ROLE_NAMES = {
         "system administrator": true,
@@ -1052,7 +1052,7 @@
             }
 
             if (
-                ["content", "webresources", "dashboards", "sitemap", "globalOptionSets"].indexOf(
+                ["content", "webresources", "dashboards", "sitemap", "globalOptionSet"].indexOf(
                     GetToolbar().get("type").selected
                 ) !== -1
             ) {
@@ -1251,6 +1251,14 @@
         return GetToolbar().get("component").selected;
     };
 
+    XrmTranslator.IsDescriptionComponent = function () {
+        return XrmTranslator.GetComponent() === "Description";
+    };
+
+    XrmTranslator.IsDisplayTextComponent = function () {
+        return XrmTranslator.GetComponent() === "DisplayText";
+    };
+
     function SetHandler() {
         // Deactivate selectColumn on each change, only ContentSnippetHandler supports this right now
         w2ui.grid.show.selectColumn = false;
@@ -1296,7 +1304,7 @@
             currentHandler = ContentSnippetHandler;
         } else if (XrmTranslator.GetType() === "webresources") {
             currentHandler = WebResourceHandler;
-        } else if (XrmTranslator.GetType() === "globalOptionSets") {
+        } else if (XrmTranslator.GetType() === "globalOptionSet") {
             currentHandler = GlobalOptionSetHandler;
         }
 
@@ -3001,7 +3009,7 @@
         "views",
         "formMeta",
         "entityMeta",
-        "globalOptionSets",
+        "globalOptionSet",
         "sitemap"
     ];
 
@@ -3644,7 +3652,7 @@
             "<li><b>15. Sitemap</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Sitemap &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "<li><b>16. Dashboards</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Dashboards &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "<li><b>17. Web Resources</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Web Resources &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>18. Global Option Sets</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Global Option Sets &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Global Option Set</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Global Option Set &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "</ul>" +
             '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
             "<b>AI Translate:</b>" +
@@ -3704,6 +3712,27 @@
             promise = Promise.resolve(null);
         }
 
+        function loadSelectedHandler() {
+            XrmTranslator.columnRestoreNeeded = false;
+            XrmTranslator.entity = entity;
+            SetHandler();
+
+            XrmTranslator.LockGrid(
+                XrmTranslator.GetType() === "globalOptionSet"
+                    ? "Loading ..."
+                    : "Loading " + XrmTranslator.GetCurrentToolbarTypeText()
+            );
+
+            // Reset column sorting
+            XrmTranslator.GetGrid().sort();
+            return currentHandler.Load();
+        }
+
+        if (XrmTranslator.GetType() === "globalOptionSet") {
+            promise.then(loadSelectedHandler).catch(XrmTranslator.errorHandler);
+            return;
+        }
+
         promise
             .then(function () {
                 return XrmTranslator.RefreshPublishXmlJobState({
@@ -3730,15 +3759,7 @@
                     return;
                 }
 
-                XrmTranslator.columnRestoreNeeded = false;
-                XrmTranslator.entity = entity;
-                SetHandler();
-
-                XrmTranslator.LockGrid("Loading " + XrmTranslator.GetCurrentToolbarTypeText());
-
-                // Reset column sorting
-                XrmTranslator.GetGrid().sort();
-                currentHandler.Load();
+                return loadSelectedHandler();
             })
             .catch(XrmTranslator.errorHandler);
     }
@@ -3864,7 +3885,7 @@
                     { id: "sitemap", text: "15. Sitemap", icon: "icon-sitemap" },
                     { id: "dashboards", text: "16. Dashboards", icon: "icon-dashboard" },
                     { id: "webresources", text: "17. Web Resources", icon: "icon-file-code" },
-                    { id: "globalOptionSets", text: "18. Global Option Sets", icon: "icon-global-options" }
+                    { id: "globalOptionSet", text: "Global Option Set", icon: "icon-global-options" }
                 ])
             },
             {
@@ -4022,6 +4043,10 @@
                     .then(function (canContinue) {
                         if (!canContinue) {
                             return false;
+                        }
+
+                        if (XrmTranslator.GetType() === "globalOptionSet") {
+                            return true;
                         }
 
                         return XrmTranslator.CheckPendingPublishJobBeforeSave();

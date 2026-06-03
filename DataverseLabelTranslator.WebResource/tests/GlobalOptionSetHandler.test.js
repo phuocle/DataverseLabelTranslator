@@ -67,6 +67,7 @@ function createHarness(options) {
     metadataById: options.metadataById || {},
     records: options.records || [],
     changeSetRequests: [],
+    customActionCalls: [],
     capturedFlow: null
   };
 
@@ -152,18 +153,41 @@ function createHarness(options) {
     })
   };
 
+  var helper = {
+    ExecuteCustomAction: vi.fn(
+      options.executeCustomAction ||
+        function (functionName, input) {
+          var optionSetNames = [];
+          (input.optionValueUpdates || []).forEach(function (update) {
+            if (optionSetNames.indexOf(update.optionSetName) === -1) {
+              optionSetNames.push(update.optionSetName);
+            }
+          });
+          (input.optionSetDescriptionUpdates || []).forEach(function (update) {
+            if (optionSetNames.indexOf(update.optionSetName) === -1) {
+              optionSetNames.push(update.optionSetName);
+            }
+          });
+          state.customActionCalls.push({ functionName: functionName, input: input });
+          return Promise.resolve({ ok: true, optionSetNames: optionSetNames });
+        }
+    )
+  };
+
   globalThis.window = {};
   if (options.preexistingHandler !== false) {
     globalThis.window.GlobalOptionSetHandler = {};
   }
   globalThis.XrmTranslator = xrmTranslator;
   globalThis.WebApiClient = webApiClient;
+  globalThis.Helper = helper;
 
   return {
     grid: grid,
     state: state,
     XrmTranslator: xrmTranslator,
-    WebApiClient: webApiClient
+    WebApiClient: webApiClient,
+    Helper: helper
   };
 }
 
@@ -186,6 +210,7 @@ beforeEach(function () {
   delete globalThis.window;
   delete globalThis.XrmTranslator;
   delete globalThis.WebApiClient;
+  delete globalThis.Helper;
 });
 
 describe("GlobalOptionSetHandler.Load", function () {
@@ -517,7 +542,7 @@ describe("GlobalOptionSetHandler.Save", function () {
     var result = await context.handler.Save();
 
     expect(result).toEqual({ optionSetNames: [] });
-    expect(context.XrmTranslator.ExecuteChangeSetBatches).not.toHaveBeenCalled();
+    expect(context.Helper.ExecuteCustomAction).not.toHaveBeenCalled();
     expect(context.WebApiClient.Execute).not.toHaveBeenCalled();
   });
 
@@ -538,32 +563,29 @@ describe("GlobalOptionSetHandler.Save", function () {
 
     var result = await context.handler.Save();
 
-    expect(result).toEqual({ optionSetNames: ["pl_globalchoice"] });
-    expect(context.state.changeSetRequests).toHaveLength(1);
-    expect(context.state.changeSetRequests[0].batchOptions.batchNamePrefix).toBe("batch_updateglobaloptionvalue");
-    expect(context.state.changeSetRequests[0].updates).toEqual([
-      {
-        Value: 222220000,
-        Label: {
-          LocalizedLabels: [
+    expect(result).toEqual({ ok: true, optionSetNames: ["pl_globalchoice"] });
+    expect(context.Helper.ExecuteCustomAction).toHaveBeenCalledWith("GlobalOptionSets", {
+      type: 18,
+      component: "Label",
+      optionValueUpdates: [
+        {
+          optionSetName: "pl_globalchoice",
+          value: 222220000,
+          component: "Label",
+          labels: [
             { LanguageCode: "1033", Label: "A updated" },
             { LanguageCode: "1041", Label: "" },
             { LanguageCode: "1066", Label: "" }
           ]
         },
-        MergeLabels: true,
-        OptionSetName: "pl_globalchoice"
-      },
-      {
-        Value: 222220001,
-        Label: { LocalizedLabels: [{ LanguageCode: "1041", Label: "B updated" }] },
-        MergeLabels: true,
-        OptionSetName: "pl_globalchoice"
-      }
-    ]);
-    expect(context.state.changeSetRequests[0].requests[0]).toMatchObject({
-      method: "POST",
-      url: "https://example.crm/api/data/v9.2/UpdateOptionValue"
+        {
+          optionSetName: "pl_globalchoice",
+          value: 222220001,
+          component: "Label",
+          labels: [{ LanguageCode: "1041", Label: "B updated" }]
+        }
+      ],
+      optionSetDescriptionUpdates: []
     });
     expect(context.WebApiClient.Requests.PublishXmlRequest.with).toHaveBeenCalledWith({
       payload: {
@@ -586,7 +608,7 @@ describe("GlobalOptionSetHandler.Save", function () {
     await expect(context.handler.Save()).rejects.toThrow(
       "Display Text in the base language (English (en-us) (1033)) cannot be empty.\nRow: pl_globalchoice > 222220000"
     );
-    expect(context.XrmTranslator.ExecuteChangeSetBatches).not.toHaveBeenCalled();
+    expect(context.Helper.ExecuteCustomAction).not.toHaveBeenCalled();
   });
 
   it("reports fallback row context when display text base language is empty", async function () {
@@ -631,7 +653,7 @@ describe("GlobalOptionSetHandler.Save", function () {
 
     await context.handler.Save();
 
-    expect(context.state.changeSetRequests[0].updates[0].Label.LocalizedLabels).toEqual([
+    expect(context.state.customActionCalls[0].input.optionValueUpdates[0].labels).toEqual([
       { LanguageCode: "1033", Label: "" }
     ]);
   });
@@ -652,26 +674,26 @@ describe("GlobalOptionSetHandler.Save", function () {
 
     await context.handler.Save();
 
-    expect(context.state.changeSetRequests).toHaveLength(2);
-    var metadataBatch = context.state.changeSetRequests[0];
-    var valueBatch = context.state.changeSetRequests[1];
-    expect(metadataBatch.batchOptions.batchNamePrefix).toBe("batch_updateglobaloptionset");
-    expect(metadataBatch.updates[0].payload.Description.LocalizedLabels).toEqual([
-      { LanguageCode: "1033", Label: "" },
-      { LanguageCode: "1041", Label: "Parent JA" }
-    ]);
-    expect(metadataBatch.updates[0].payload["@odata.context"]).toBeUndefined();
-    expect(metadataBatch.updates[0].payload["@odata.etag"]).toBeUndefined();
-    expect(metadataBatch.requests[0]).toMatchObject({
-      method: "PUT",
-      url: "https://example.crm/api/data/v9.2/GlobalOptionSetDefinitions(os1)",
-      headers: [{ key: "MSCRM.MergeLabels", value: "true" }]
-    });
-    expect(valueBatch.updates[0]).toEqual({
-      Value: 222220000,
-      Description: { LocalizedLabels: [{ LanguageCode: "1041", Label: "" }] },
-      MergeLabels: true,
-      OptionSetName: "pl_globalchoice"
+    expect(context.Helper.ExecuteCustomAction).toHaveBeenCalledWith("GlobalOptionSets", {
+      type: 18,
+      component: "Description",
+      optionValueUpdates: [
+        {
+          optionSetName: "pl_globalchoice",
+          value: 222220000,
+          component: "Description",
+          labels: [{ LanguageCode: "1041", Label: "" }]
+        }
+      ],
+      optionSetDescriptionUpdates: [
+        {
+          optionSetName: "pl_globalchoice",
+          labels: [
+            { LanguageCode: "1033", Label: "" },
+            { LanguageCode: "1041", Label: "Parent JA" }
+          ]
+        }
+      ]
     });
     await context.state.capturedFlow.reloadAction();
     expect(context.grid.add).toHaveBeenCalledWith([]);
@@ -687,9 +709,13 @@ describe("GlobalOptionSetHandler.Save", function () {
 
     var result = await context.handler.Save();
 
-    expect(result).toEqual({ optionSetNames: ["pl_globalchoice"] });
-    expect(context.state.changeSetRequests).toHaveLength(1);
-    expect(context.state.changeSetRequests[0].batchOptions.batchNamePrefix).toBe("batch_updateglobaloptionset");
+    expect(result).toEqual({ ok: true, optionSetNames: ["pl_globalchoice"] });
+    expect(context.state.customActionCalls[0].input.optionSetDescriptionUpdates).toEqual([
+      {
+        optionSetName: "pl_globalchoice",
+        labels: [{ LanguageCode: "1041", Label: "Parent JA" }]
+      }
+    ]);
     expect(context.WebApiClient.Requests.PublishXmlRequest.with).toHaveBeenCalledWith({
       payload: {
         ParameterXml:
@@ -708,7 +734,7 @@ describe("GlobalOptionSetHandler.Save", function () {
 
     await context.handler.Save();
 
-    expect(context.state.changeSetRequests[0].updates[0].payload.Description.LocalizedLabels).toEqual([
+    expect(context.state.customActionCalls[0].input.optionSetDescriptionUpdates[0].labels).toEqual([
       { LanguageCode: "1041", Label: "Parent JA" }
     ]);
   });
@@ -742,7 +768,7 @@ describe("GlobalOptionSetHandler.Save", function () {
     var result = await context.handler.Save();
 
     expect(result).toEqual({ optionSetNames: [] });
-    expect(context.XrmTranslator.ExecuteChangeSetBatches).not.toHaveBeenCalled();
+    expect(context.Helper.ExecuteCustomAction).not.toHaveBeenCalled();
   });
 
   it("ignores empty labels for components that do not allow clears", async function () {
@@ -759,12 +785,12 @@ describe("GlobalOptionSetHandler.Save", function () {
 
     await context.handler.Save();
 
-    expect(context.state.changeSetRequests[0].updates).toEqual([
+    expect(context.state.customActionCalls[0].input.optionValueUpdates).toEqual([
       {
-        Value: 222220001,
-        Other: { LocalizedLabels: [{ LanguageCode: "1041", Label: "Other value" }] },
-        MergeLabels: true,
-        OptionSetName: "pl_globalchoice"
+        optionSetName: "pl_globalchoice",
+        value: 222220001,
+        component: "Other",
+        labels: [{ LanguageCode: "1041", Label: "Other value" }]
       }
     ]);
   });

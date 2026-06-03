@@ -20,6 +20,7 @@ const appGlobals = {
   FormMetaHandler: "readonly",
   GetGlobalContext: "readonly",
   GlobalOptionSetHandler: "readonly",
+  Helper: "readonly",
   JSZip: "readonly",
   ModernCommandHandler: "readonly",
   OptionSetHandler: "readonly",

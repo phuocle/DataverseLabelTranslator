@@ -49,7 +49,7 @@
 
     function GetUpdateIds(records) {
         var optionSets = [];
-        var globalOptionSets = [];
+        var globalOptionSetIds = [];
         var globalOptionSetNames = [];
 
         for (var i = 0; i < records.length; i++) {
@@ -60,8 +60,8 @@
                 var attribute = XrmTranslator.GetAttributeById(recordId);
 
                 if (attribute.GlobalOptionSet && attribute.GlobalOptionSet.IsGlobal) {
-                    if (globalOptionSets.indexOf(attribute.GlobalOptionSet.MetadataId) === -1) {
-                        globalOptionSets.push(attribute.GlobalOptionSet.MetadataId);
+                    if (globalOptionSetIds.indexOf(attribute.GlobalOptionSet.MetadataId) === -1) {
+                        globalOptionSetIds.push(attribute.GlobalOptionSet.MetadataId);
                         globalOptionSetNames.push(attribute.GlobalOptionSet.Name);
                     }
                 } else {
@@ -72,7 +72,7 @@
             }
         }
 
-        return [optionSets, globalOptionSets, globalOptionSetNames];
+        return [optionSets, globalOptionSetIds, globalOptionSetNames];
     }
 
     function GetUpdates(records) {

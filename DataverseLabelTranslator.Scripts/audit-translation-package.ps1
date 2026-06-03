@@ -183,7 +183,7 @@ function Get-Coverage {
         return [pscustomobject]@{ Status = "partial"; Handler = "17. Web Resources"; Notes = "RESX/JSON localized web resources are covered; arbitrary web resource metadata labels are not a first-class translation type." }
     }
     if ($combined -match "global option|option set|optionset|picklist|state|status|option") {
-        return [pscustomobject]@{ Status = "covered"; Handler = "2. Option Sets / 18. Global Option Sets"; Notes = "Choice labels are covered by local/global option set handlers." }
+        return [pscustomobject]@{ Status = "covered"; Handler = "2. Option Sets / Global Option Sets"; Notes = "Choice labels are covered by local/global option set handlers." }
     }
     if ($combined -match "attribute|column|field") {
         return [pscustomobject]@{ Status = "covered"; Handler = "1. Attributes"; Notes = "Column display names/descriptions are covered." }

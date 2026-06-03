@@ -31,7 +31,7 @@ Translate UI labels for Dataverse components using the same type menu shown in t
 | **15. Sitemap** | None | App navigation areas, groups, and subareas |
 | **16. Dashboards** | None | Dashboard form labels |
 | **17. Web Resources** | None | Text content within web resources |
-| **18. Global Option Sets** | None | Global option set values independent of an entity |
+| **Global Option Sets** | None | Global option set values independent of an entity |
 
 There is also a special **14. Content Snippets** type for legacy Dynamics 365 Portals / Power Pages content snippets. It appears only when the selected entity is `Adx_contentsnippet`.
 
@@ -125,7 +125,7 @@ Dictionary storage is Dataverse-backed, not browser-only:
 ### Workflow
 
 1. Select a **Solution** to scope the entity list and solution-level types.
-2. Select an **Entity**, or choose **None** for entity-independent types like **15. Sitemap**, **16. Dashboards**, **17. Web Resources**, and **18. Global Option Sets**.
+2. Select an **Entity**, or choose **None** for entity-independent types like **Sitemap**, **Dashboards**, **Web Resources**, and **Global Option Sets**.
 3. Select a **Type**.
 4. Click **Load** to populate the grid.
 5. Edit cells inline, use **Auto Translate**, or use **Apply Dictionary**.

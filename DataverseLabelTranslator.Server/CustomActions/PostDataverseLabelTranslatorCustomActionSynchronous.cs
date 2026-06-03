@@ -1,4 +1,5 @@
-﻿using DataverseLabelTranslator.Shared;
+using DataverseLabelTranslator.Server.CustomActions.Synchronous;
+using DataverseLabelTranslator.Shared;
 using Microsoft.Xrm.Sdk;
 using System;
 
@@ -50,8 +51,24 @@ namespace DataverseLabelTranslator.Server.CustomActions
         private ParameterCollection ExecuteCustomAction(IPluginExecutionContext context, IOrganizationServiceFactory serviceFactory, IOrganizationService serviceAdmin, IOrganizationService service, ITracingService tracing)
         {
             var outputs = new ParameterCollection();
-            //YOUR CUSTOM ACTION BEGIN HERE
+            var f = context.InputParameters.Contains("f") ? context.InputParameters["f"] as string : null;
+            var input = context.InputParameters.Contains("input") ? context.InputParameters["input"] as string : null;
+            if (string.IsNullOrWhiteSpace(f))
+            {
+                throw new InvalidPluginExecutionException("Missing required parameter: f");
+            }
 
+            object output;
+            switch (f)
+            {
+                case ActionNames.GlobalOptionSet:
+                    output = new GlobalOptionSet().Execute(context, serviceAdmin, service, tracing, input);
+                    break;
+                default:
+                    throw new InvalidPluginExecutionException($"Unsupported action: {f}");
+            }
+
+            outputs.Add("output", DevKitJson.Serialize(output));
             return outputs;
         }
     }

@@ -46,6 +46,7 @@ Every handler: `Load()` fetches metadata and fills the w2ui grid, `Save()` extra
 ## Toolbar Type Files
 
 Use this table first when mapping a numbered toolbar type to code and tests. Type selection and handler dispatch live in `DataverseLabelTranslator.WebResource/js/XrmTranslator.js`.
+These numbers are stable shorthand for humans and AI agents; do not reorder, renumber, or reuse them when editing the toolbar.
 
 | #   | Toolbar Type           | Handler JS                     | Test File                              |
 | --- | ---------------------- | ------------------------------ | -------------------------------------- |

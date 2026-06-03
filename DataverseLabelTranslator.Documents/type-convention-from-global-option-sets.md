@@ -1,6 +1,6 @@
 # Type Convention From Global Option Sets
 
-Use this document when the user asks to apply the convention proven on `18. Global Option Sets` to another toolbar type, for example: "read this file and apply the same convention to type 1".
+Use this document when the user asks to apply the convention proven on `Global Option Sets` to another toolbar type, for example: "read this file and apply the same convention to type 1".
 
 ## Scope Rule
 
