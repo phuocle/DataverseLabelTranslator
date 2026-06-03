@@ -26,6 +26,18 @@
         return app.IsDescriptionComponent() ? Helper.ComponentTypes.Description : Helper.ComponentTypes.DisplayText;
     }
 
+    function AddOptionChild(parent, optionSet, option, component, editablePlaceholder, baseEditablePlaceholder, app) {
+        var labels = Helper.GetComponentLocalizedLabels(option, component);
+        var child = {
+            recid: optionSet.MetadataId + idSeparator + option.Value,
+            schemaName: option.Value.toString()
+        };
+
+        Helper.ApplyPlaceholder(child, editablePlaceholder, baseEditablePlaceholder, app);
+        Helper.AddLocalizedLabelsToRecord(child, labels);
+        parent.w2ui.children.push(child);
+    }
+
     function GetUpdates() {
         var app = Helper.GetTranslator();
         var records = app.GetAllRecords();
@@ -33,7 +45,6 @@
         var optionSetDescriptionUpdates = [];
         var isDescription = app.IsDescriptionComponent();
         var isDisplayText = app.IsDisplayTextComponent();
-        var component = GetComponent(app);
 
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
@@ -85,7 +96,6 @@
             optionValueUpdates.push({
                 optionSetName: optionSet.Name,
                 value: optionValue,
-                component: component,
                 labels: labels
             });
         }
@@ -129,41 +139,32 @@
                         Helper.GetComponentLocalizedLabels(optionSet, Helper.ComponentTypes.Description)
                     );
                 }
-            } else if (!isDescription) {
+            } else {
                 parent._emptyReadonlyPlaceholder = Helper.GetPlaceholderReadonly();
             }
 
-            if (!!optionSet.TrueOption) {
-                var options = [optionSet.TrueOption, optionSet.FalseOption];
-                for (var j = 0; j < options.length; j++) {
-                    var option = options[j];
-                    var labels = Helper.GetComponentLocalizedLabels(option, component);
-                    var child = {
-                        recid: optionSet.MetadataId + idSeparator + option.Value,
-                        schemaName: option.Value.toString()
-                    };
-                    Helper.ApplyPlaceholder(child, editablePlaceholder, baseEditablePlaceholder, app);
-                    Helper.AddLocalizedLabelsToRecord(child, labels);
-                    parent.w2ui.children.push(child);
-                }
+            var options;
+            if (optionSet.TrueOption) {
+                options = [optionSet.TrueOption, optionSet.FalseOption];
             } else {
-                var options = optionSet.Options;
+                options = optionSet.Options;
                 if (!options || options.length === 0) {
                     if (!isDescription) {
                         continue;
                     }
                 }
-                for (var j = 0; options && j < options.length; j++) {
-                    var option = options[j];
-                    var labels = Helper.GetComponentLocalizedLabels(option, component);
-                    var child = {
-                        recid: optionSet.MetadataId + idSeparator + option.Value,
-                        schemaName: option.Value.toString()
-                    };
-                    Helper.ApplyPlaceholder(child, editablePlaceholder, baseEditablePlaceholder, app);
-                    Helper.AddLocalizedLabelsToRecord(child, labels);
-                    parent.w2ui.children.push(child);
-                }
+            }
+
+            for (var j = 0; options && j < options.length; j++) {
+                AddOptionChild(
+                    parent,
+                    optionSet,
+                    options[j],
+                    component,
+                    editablePlaceholder,
+                    baseEditablePlaceholder,
+                    app
+                );
             }
 
             records.push(parent);

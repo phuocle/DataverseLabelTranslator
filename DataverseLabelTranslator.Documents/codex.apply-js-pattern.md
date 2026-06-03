@@ -321,6 +321,7 @@ HandlerName.Save = function () {
         var app = Helper.GetTranslator();
         var records = app.GetAllRecords();
         var updates = [];
+        var component = GetComponent(app);
         var allowEmpty = app.IsDisplayTextComponent() || app.IsDescriptionComponent();
 
         for (var i = 0; i < records.length; i++) {
@@ -341,13 +342,12 @@ HandlerName.Save = function () {
 
             updates.push({
                 id: record.recid,
-                component: GetComponent(app),
                 labels: labels
             });
         }
 
         return {
-            component: GetComponent(app),
+            component: component,
             updates: updates
         };
     }
@@ -380,8 +380,10 @@ HandlerName.Save = function () {
     };
 
     HandlerName.Save = function () {
+        var app = Helper.GetTranslator();
+
         return Helper.RunServerSaveFlow({
-            app: Helper.GetTranslator(),
+            app: app,
             actionName: actionName,
             getSavePayload: GetUpdates,
             getPublishPayload: GetPublishPayload,
@@ -425,6 +427,7 @@ Current type 18 rules:
 - Dataverse physical `Label` mapping is hidden in `Helper.GetComponentLocalizedLabels(...)`.
 - Placeholder calls use named methods such as `Helper.GetPlaceholderDescription()`.
 - Operation text uses named methods such as `Helper.GetOperationLoading()`.
+- Save payload sends `component` at the top level. `optionValueUpdates` items do not repeat `component`.
 
 Display Text mode:
 
@@ -460,6 +463,7 @@ When rewriting type 17:
 - Trust custom action output for groups/resources/publish targets.
 - Use the shared placeholder and operation methods from `Helper.js`.
 - Use `Helper.ComponentTypes.DisplayText` / `Description`; do not introduce `"Label"` as handler vocabulary.
+- Put `component` once at the save payload top level unless the server contract explicitly requires per-item component values.
 
 ## Final Checks
 
@@ -478,5 +482,6 @@ Before finishing:
 11. Non-base Display Text and Description clears are preserved as empty strings.
 12. Handler uses named text helpers, not string-key text helpers.
 13. Handler does not use business literal `"Label"`.
-14. Run formatting for changed JS files.
-15. Run lint for JS changes if practical.
+14. Save payload does not duplicate `component` at both parent and item level.
+15. Run formatting for changed JS files.
+16. Run lint for JS changes if practical.

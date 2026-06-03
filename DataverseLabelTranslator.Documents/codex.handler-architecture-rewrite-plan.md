@@ -202,7 +202,7 @@ Handler.Save = function () { ... };
 
 ## Handler Contract
 
-Every handler should use `EasyTranslator` and shared `Helper` methods.
+Every handler should resolve the active app shell through `Helper.GetTranslator()` and use shared `Helper` methods.
 
 ```js
 (function (Handler, undefined) {
@@ -211,20 +211,22 @@ Every handler should use `EasyTranslator` and shared `Helper` methods.
     var actionName = "GlobalOptionSet";
     var idSeparator = "|";
 
-    function BuildLoadInput() {
+    function BuildLoadInput(app) {
         return {
-            solutionId: EasyTranslator.GetSolution()
+            solutionId: app.GetSolution()
         };
     }
 
-    function FillTable(output) {
+    function FillTable(output, app) {
+        app.GetGrid().clear();
+
         var records = [];
         // Build type-specific w2ui records from output.
-        Helper.FinalizeGrid(records);
+        Helper.FinalizeGrid(records, app);
     }
 
-    function GetUpdates() {
-        var records = EasyTranslator.GetAllRecords();
+    function GetUpdates(app) {
+        var records = app.GetAllRecords();
         var updates = [];
 
         for (var i = 0; i < records.length; i++) {
@@ -233,7 +235,12 @@ Every handler should use `EasyTranslator` and shared `Helper` methods.
                 continue;
             }
 
-            Helper.ValidateBaseLanguageNotEmpty(record.w2ui.changes, GetRowPath(record));
+            Helper.ValidateBaseLanguageNotEmpty(record, record.w2ui.changes, {
+                app: app,
+                getRowPath: function (changedRecord) {
+                    return GetRowPath(changedRecord);
+                }
+            });
 
             var labels = Helper.GetChangedLabels(record.w2ui.changes, true);
             if (labels.length < 1) {
@@ -250,25 +257,39 @@ Every handler should use `EasyTranslator` and shared `Helper` methods.
     }
 
     Handler.Load = function () {
+        var app = Helper.GetTranslator();
+        app.LockGrid(Helper.GetOperationLoading());
+
         return Helper.RunServerLoad({
+            app: app,
             actionName: actionName,
-            input: BuildLoadInput(),
-            onSuccess: function (output) {
-                EasyTranslator.SetMetadata(output.items || []);
-                FillTable(output);
+            getPayload: function () {
+                return BuildLoadInput(app);
+            },
+            onLoaded: function (output) {
+                app.SetMetadata(output.items || []);
+                FillTable(output, app);
             }
         });
     };
 
     Handler.Save = function () {
+        var app = Helper.GetTranslator();
+
         return Helper.RunServerSaveFlow({
+            app: app,
             actionName: actionName,
-            getSavePayload: GetUpdates,
+            getSavePayload: function () {
+                return GetUpdates(app);
+            },
             getPublishPayload: function (output) {
                 return { changedIds: output.changedIds || [] };
             },
-            hasPublishTargets: function (payload) {
-                return (payload.changedIds || []).length > 0;
+            getPublishedPayload: function (output) {
+                return { changedIds: output.changedIds || [] };
+            },
+            shouldReload: function (output) {
+                return (output.changedIds || []).length > 0;
             },
             reloadAction: function () {
                 return Handler.Load();
@@ -302,9 +323,9 @@ Any existing helper that reads app/grid state must use `Helper.GetTranslator()`.
 Shared helper behavior:
 
 ```js
-Helper.FinalizeGrid(records, includeSummaryChildren)
-Helper.ApplyPlaceholder(record, editablePlaceholder, basePlaceholder)
-Helper.ValidateBaseLanguageNotEmpty(changes, rowPath)
+Helper.FinalizeGrid(records, app)
+Helper.ApplyPlaceholder(record, editablePlaceholder, basePlaceholder, app)
+Helper.ValidateBaseLanguageNotEmpty(record, changes, options)
 Helper.AddLocalizedLabelsToRecord(record, localizedLabels)
 Helper.GetChangedLabels(changes, allowEmpty)
 Helper.RunServerLoad(options)
@@ -314,13 +335,18 @@ Helper.RunServerSaveFlow(options)
 Important: `Helper.FinalizeGrid` must not call `EnableLoadAndSave()`.
 
 ```js
-Helper.FinalizeGrid = function (records, includeSummaryChildren) {
-    var app = Helper.GetTranslator();
+Helper.FinalizeGrid = function (records, app) {
+    app = app || Helper.GetTranslator();
     var grid = app.GetGrid();
-    grid.clear();
-    app.AddSummary(records, includeSummaryChildren);
+
+    app.AddSummary(records);
     grid.add(records);
-    grid.unlock();
+
+    if (typeof app.UnlockGrid === "function") {
+        app.UnlockGrid();
+    } else {
+        grid.unlock();
+    }
 };
 ```
 
@@ -416,7 +442,7 @@ record._emptyReadonlyPlaceholder = "-";
 End every `FillTable()` with:
 
 ```js
-Helper.FinalizeGrid(records);
+Helper.FinalizeGrid(records, app);
 ```
 
 ## Save Rules
@@ -424,13 +450,14 @@ Helper.FinalizeGrid(records);
 Use:
 
 ```js
-var records = EasyTranslator.GetAllRecords();
+var app = Helper.GetTranslator();
+var records = app.GetAllRecords();
 ```
 
 Do not use:
 
 ```js
-EasyTranslator.GetGrid().records
+app.GetGrid().records
 ```
 
 Validation:
@@ -448,7 +475,7 @@ Type 18 requirements:
 
 - handler: `GlobalOptionSetHandler.js`
 - action name: `GlobalOptionSet`
-- loading input: `{ solutionId: EasyTranslator.GetSolution() }`
+- loading input: `{ solutionId: app.GetSolution() }`
 - loading output key: `optionSets`
 - save payload keys:
   - `component`
@@ -472,15 +499,15 @@ Type 18 requirements:
 
 ## Acceptance Criteria For A Handler
 
-1. Uses `EasyTranslator`, not direct `XrmTranslator`, except through the temporary facade.
+1. Uses `Helper.GetTranslator()`, not direct `XrmTranslator`.
 2. Exposes only `Load` and `Save`.
 3. Does not call `WebApiClient`.
 4. Does not call `RunTypeSaveFlow`.
 5. Does not call any publish helper.
 6. Does not call `EnableLoadAndSave`, `SetLoadButtonDisabled`, or `SetSaveButtonDisabled`.
 7. Uses `Helper.ExecuteTypedCustomAction` through shared load/save flow helpers.
-8. Uses `EasyTranslator.GetAllRecords()` for changed rows.
-9. Ends `FillTable()` with `Helper.FinalizeGrid(records)`.
+8. Uses `app.GetAllRecords()` for changed rows.
+9. Ends `FillTable()` with `Helper.FinalizeGrid(records, app)`.
 10. Blocks empty base-language Display Text.
 11. Preserves intentional clears for non-base Display Text and Description.
 
