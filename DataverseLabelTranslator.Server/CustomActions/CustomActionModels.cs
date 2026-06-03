@@ -1,6 +1,6 @@
 namespace DataverseLabelTranslator.Server.CustomActions
 {
-    internal class CustomActionOutput
+    public class CustomActionOutput
     {
         public bool ok { get; set; } = true;
         public string message { get; set; } = string.Empty;
@@ -8,13 +8,13 @@ namespace DataverseLabelTranslator.Server.CustomActions
         public object @object { get; set; }
     }
 
-    internal class CustomActionInput
+    public class CustomActionInput
     {
         public string type { get; set; }
         public string operation { get; set; }
     }
 
-    internal static class CustomActionTypes
+    public static class CustomActionTypes
     {
         public const string Loading = "Loading";
         public const string Saving = "Saving";

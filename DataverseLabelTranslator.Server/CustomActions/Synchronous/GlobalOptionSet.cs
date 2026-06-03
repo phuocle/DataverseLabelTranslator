@@ -10,11 +10,12 @@ using System.Threading;
 
 namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
 {
-    internal class GlobalOptionSet : ICustomAction
+    public class GlobalOptionSet : ICustomAction
     {
         private const int OptionSetComponentType = 9;
         private const int PublishingWaitMilliseconds = 10000;
         private const int PublishedWaitMilliseconds = 10000;
+        public static Action<int> WaitAction { get; set; } = Thread.Sleep;
 
         public object Loading(IPluginExecutionContext context, IOrganizationService serviceAdmin, IOrganizationService service, ITracingService tracing, string json)
         {
@@ -43,7 +44,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 optionSets.Add(BuildOptionSetOutput(optionSet));
             }
 
-            optionSets.Sort((a, b) => string.Compare(a.Name ?? string.Empty, b.Name ?? string.Empty, StringComparison.OrdinalIgnoreCase));
+            optionSets.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.Name, b.Name));
             return new LoadingGlobalOptionSetOutput { optionSets = optionSets };
         }
 
@@ -158,7 +159,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 MetadataId = optionSet.MetadataId.HasValue ? optionSet.MetadataId.Value.ToString("D") : string.Empty,
                 Name = optionSet.Name,
                 IsGlobal = optionSet.IsGlobal.GetValueOrDefault(),
-                IsCustomizable = BuildManagedPropertyOutput(optionSet.IsCustomizable),
+                IsCustomizable = BuildManagedPropertyOutput(optionSet.IsCustomizable.Value),
                 Description = BuildLabelOutput(optionSet.Description)
             };
 
@@ -181,9 +182,9 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             return output;
         }
 
-        private static ManagedPropertyOutput BuildManagedPropertyOutput(BooleanManagedProperty property)
+        private static ManagedPropertyOutput BuildManagedPropertyOutput(bool value)
         {
-            return new ManagedPropertyOutput { Value = property != null && property.Value };
+            return new ManagedPropertyOutput { Value = value };
         }
 
         private static OptionMetadataOutput BuildOptionOutput(OptionMetadata option)
@@ -324,15 +325,12 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 optionSetXml.Append("<optionset>").Append(optionSetName).Append("</optionset>");
             }
 
-            return "<importexportxml><optionsets>" + optionSetXml + "</optionsets></importexportxml>";
+            return string.Concat("<importexportxml><optionsets>", optionSetXml.ToString(), "</optionsets></importexportxml>");
         }
 
         private static void Wait(int milliseconds)
         {
-            if (milliseconds > 0)
-            {
-                Thread.Sleep(milliseconds);
-            }
+            WaitAction(milliseconds);
         }
 
         private static void AddOptionSetName(string optionSetName, List<string> optionSetNames, HashSet<string> optionSetNameSet)
@@ -378,60 +376,60 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         }
     }
 
-    internal class LoadingGlobalOptionSetInput : CustomActionInput
+    public class LoadingGlobalOptionSetInput : CustomActionInput
     {
         public string solutionId { get; set; }
     }
 
-    internal class SavingGlobalOptionSetInput : CustomActionInput
+    public class SavingGlobalOptionSetInput : CustomActionInput
     {
         public string component { get; set; }
         public List<OptionValueUpdate> optionValueUpdates { get; set; } = new List<OptionValueUpdate>();
         public List<OptionSetDescriptionUpdate> optionSetDescriptionUpdates { get; set; } = new List<OptionSetDescriptionUpdate>();
     }
 
-    internal class PublishingGlobalOptionSetInput : CustomActionInput
+    public class PublishingGlobalOptionSetInput : CustomActionInput
     {
         public List<string> optionSetNames { get; set; } = new List<string>();
     }
 
-    internal class PublishedGlobalOptionSetInput : CustomActionInput
+    public class PublishedGlobalOptionSetInput : CustomActionInput
     {
         public List<string> optionSetNames { get; set; } = new List<string>();
     }
 
-    internal class OtherGlobalOptionSetInput : CustomActionInput
+    public class OtherGlobalOptionSetInput : CustomActionInput
     {
     }
 
-    internal class LoadingGlobalOptionSetOutput
+    public class LoadingGlobalOptionSetOutput
     {
         public List<GlobalOptionSetMetadataOutput> optionSets { get; set; } = new List<GlobalOptionSetMetadataOutput>();
     }
 
-    internal class SavingGlobalOptionSetOutput
+    public class SavingGlobalOptionSetOutput
     {
         public List<string> optionSetNames { get; set; } = new List<string>();
         public int optionValueUpdateCount { get; set; }
         public int optionSetDescriptionUpdateCount { get; set; }
     }
 
-    internal class PublishingGlobalOptionSetOutput
+    public class PublishingGlobalOptionSetOutput
     {
         public List<string> optionSetNames { get; set; } = new List<string>();
     }
 
-    internal class PublishedGlobalOptionSetOutput
+    public class PublishedGlobalOptionSetOutput
     {
         public List<string> optionSetNames { get; set; } = new List<string>();
     }
 
-    internal class OtherGlobalOptionSetOutput
+    public class OtherGlobalOptionSetOutput
     {
         public string operation { get; set; }
     }
 
-    internal class GlobalOptionSetMetadataOutput
+    public class GlobalOptionSetMetadataOutput
     {
         public string MetadataId { get; set; }
         public string Name { get; set; }
@@ -443,30 +441,30 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         public OptionMetadataOutput FalseOption { get; set; }
     }
 
-    internal class ManagedPropertyOutput
+    public class ManagedPropertyOutput
     {
         public bool Value { get; set; }
     }
 
-    internal class OptionMetadataOutput
+    public class OptionMetadataOutput
     {
         public int? Value { get; set; }
         public LabelOutput Label { get; set; }
         public LabelOutput Description { get; set; }
     }
 
-    internal class LabelOutput
+    public class LabelOutput
     {
         public List<LocalizedLabelOutput> LocalizedLabels { get; set; } = new List<LocalizedLabelOutput>();
     }
 
-    internal class LocalizedLabelOutput
+    public class LocalizedLabelOutput
     {
         public int LanguageCode { get; set; }
         public string Label { get; set; }
     }
 
-    internal class OptionValueUpdate
+    public class OptionValueUpdate
     {
         public string optionSetName { get; set; }
         public int? value { get; set; }
@@ -474,13 +472,13 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         public List<LocalizedLabelInput> labels { get; set; } = new List<LocalizedLabelInput>();
     }
 
-    internal class OptionSetDescriptionUpdate
+    public class OptionSetDescriptionUpdate
     {
         public string optionSetName { get; set; }
         public List<LocalizedLabelInput> labels { get; set; } = new List<LocalizedLabelInput>();
     }
 
-    internal class LocalizedLabelInput
+    public class LocalizedLabelInput
     {
         public int? languageCode { get; set; }
         public string label { get; set; }

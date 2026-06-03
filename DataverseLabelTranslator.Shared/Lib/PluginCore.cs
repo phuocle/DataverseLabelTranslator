@@ -3,33 +3,33 @@ using System.Diagnostics;
 
 namespace DataverseLabelTranslator.Shared
 {
-    internal enum ImageType
+    public enum ImageType
     {
         Pre,
         Post
     }
 
-    internal enum ExecutionModeEnum
+    public enum ExecutionModeEnum
     {
         Synchronous = 0,
         Asynchronous = 1
     }
 
-    internal enum ImageTypeEnum
+    public enum ImageTypeEnum
     {
         PreImage = 0,
         PostImage = 1,
         Both = 2
     }
 
-    internal enum IsolationModeEnum
+    public enum IsolationModeEnum
     {
         None = 0,
         Sandbox = 1,
         External = 2,
     }
 
-    internal enum SourceTypeEnum
+    public enum SourceTypeEnum
     {
         Database = 0,
         Disk = 1,
@@ -38,20 +38,20 @@ namespace DataverseLabelTranslator.Shared
         FileStore = 4
     }
 
-    internal enum PluginStepOperationEnum
+    public enum PluginStepOperationEnum
     {
         Activate = 0,
         Deactivate = 1
     }
 
-    internal enum StageEnum
+    public enum StageEnum
     {
         PreValidation = 10,
         PreOperation = 20,
         PostOperation = 40
     }
 
-    internal enum PluginType
+    public enum PluginType
     {
         Plugin = 0,
         Workflow = 1,
@@ -62,7 +62,7 @@ namespace DataverseLabelTranslator.Shared
 
     [DebuggerNonUserCode()]
     [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
-    internal class CrmPluginRegistrationAttribute : Attribute
+    public class CrmPluginRegistrationAttribute : Attribute
     {
         public CrmPluginRegistrationAttribute(string message, string entityLogicalName, StageEnum stage, ExecutionModeEnum executionMode, string filteringAttributes, string stepName, int executionOrder, IsolationModeEnum isolationModel)
         {
@@ -133,7 +133,7 @@ namespace DataverseLabelTranslator.Shared
 
     [DebuggerNonUserCode()]
     [AttributeUsage(AttributeTargets.Assembly, Inherited = false, AllowMultiple = false)]
-    internal class DynamicsCrmDevKitPluginManagedIdentityAssemblyAttribute : Attribute
+    public class DynamicsCrmDevKitPluginManagedIdentityAssemblyAttribute : Attribute
     {
         public string TenantId { get; set; }
         public string CertificateFileName { get; set; }
@@ -143,7 +143,7 @@ namespace DataverseLabelTranslator.Shared
 
     [DebuggerNonUserCode()]
     [AttributeUsage(AttributeTargets.Assembly, Inherited = false, AllowMultiple = false)]
-    internal class DynamicsCrmDevKitPluginAssemblyAttribute : Attribute
+    public class DynamicsCrmDevKitPluginAssemblyAttribute : Attribute
     {
         public IsolationModeEnum IsolationMode { get; set; } = IsolationModeEnum.Sandbox;
         public SourceTypeEnum SourceType { get; set; } = SourceTypeEnum.Database;

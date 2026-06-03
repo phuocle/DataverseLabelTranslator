@@ -2,7 +2,7 @@ using Microsoft.Xrm.Sdk;
 
 namespace DataverseLabelTranslator.Server.CustomActions
 {
-    internal interface ICustomAction
+    public interface ICustomAction
     {
         object Loading(IPluginExecutionContext context, IOrganizationService serviceAdmin, IOrganizationService service, ITracingService tracing, string json);
         object Saving(IPluginExecutionContext context, IOrganizationService serviceAdmin, IOrganizationService service, ITracingService tracing, string json);
