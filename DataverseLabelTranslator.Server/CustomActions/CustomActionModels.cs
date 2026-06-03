@@ -11,6 +11,7 @@ namespace DataverseLabelTranslator.Server.CustomActions
     internal class CustomActionInput
     {
         public string type { get; set; }
+        public string operation { get; set; }
     }
 
     internal static class CustomActionTypes
@@ -19,5 +20,6 @@ namespace DataverseLabelTranslator.Server.CustomActions
         public const string Saving = "Saving";
         public const string Publishing = "Publishing";
         public const string Published = "Published";
+        public const string Other = "Other";
     }
 }

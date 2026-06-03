@@ -17,7 +17,8 @@
         Loading: "Loading",
         Saving: "Saving",
         Publishing: "Publishing",
-        Published: "Published"
+        Published: "Published",
+        Other: "Other"
     };
 
     Helper.IsEmptyLabelValue = function (value) {

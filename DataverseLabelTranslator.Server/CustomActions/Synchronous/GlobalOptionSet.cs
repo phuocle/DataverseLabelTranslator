@@ -90,6 +90,17 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             return new PublishedGlobalOptionSetOutput { optionSetNames = GetValidOptionSetNames(input.optionSetNames) };
         }
 
+        public object Other(IPluginExecutionContext context, IOrganizationService serviceAdmin, IOrganizationService service, ITracingService tracing, string json)
+        {
+            var input = Deserialize<OtherGlobalOptionSetInput>(json);
+            if (string.IsNullOrWhiteSpace(input.operation))
+            {
+                throw new InvalidPluginExecutionException("GlobalOptionSet Other operation is required.");
+            }
+
+            return new OtherGlobalOptionSetOutput { operation = input.operation };
+        }
+
         private static T Deserialize<T>(string json) where T : new()
         {
             var input = DevKitJson.Deserialize<T>(json);
@@ -367,30 +378,30 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         }
     }
 
-    internal class LoadingGlobalOptionSetInput
+    internal class LoadingGlobalOptionSetInput : CustomActionInput
     {
-        public string type { get; set; }
         public string solutionId { get; set; }
     }
 
-    internal class SavingGlobalOptionSetInput
+    internal class SavingGlobalOptionSetInput : CustomActionInput
     {
-        public string type { get; set; }
         public string component { get; set; }
         public List<OptionValueUpdate> optionValueUpdates { get; set; } = new List<OptionValueUpdate>();
         public List<OptionSetDescriptionUpdate> optionSetDescriptionUpdates { get; set; } = new List<OptionSetDescriptionUpdate>();
     }
 
-    internal class PublishingGlobalOptionSetInput
+    internal class PublishingGlobalOptionSetInput : CustomActionInput
     {
-        public string type { get; set; }
         public List<string> optionSetNames { get; set; } = new List<string>();
     }
 
-    internal class PublishedGlobalOptionSetInput
+    internal class PublishedGlobalOptionSetInput : CustomActionInput
     {
-        public string type { get; set; }
         public List<string> optionSetNames { get; set; } = new List<string>();
+    }
+
+    internal class OtherGlobalOptionSetInput : CustomActionInput
+    {
     }
 
     internal class LoadingGlobalOptionSetOutput
@@ -413,6 +424,11 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
     internal class PublishedGlobalOptionSetOutput
     {
         public List<string> optionSetNames { get; set; } = new List<string>();
+    }
+
+    internal class OtherGlobalOptionSetOutput
+    {
+        public string operation { get; set; }
     }
 
     internal class GlobalOptionSetMetadataOutput

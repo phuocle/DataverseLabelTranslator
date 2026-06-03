@@ -89,6 +89,9 @@ namespace DataverseLabelTranslator.Server.CustomActions
                 case CustomActionTypes.Published:
                     phaseOutput = action.Published(context, serviceAdmin, service, tracing, input);
                     break;
+                case CustomActionTypes.Other:
+                    phaseOutput = action.Other(context, serviceAdmin, service, tracing, input);
+                    break;
                 default:
                     throw new InvalidPluginExecutionException($"Unsupported custom action type: {inputType.type}");
             }
