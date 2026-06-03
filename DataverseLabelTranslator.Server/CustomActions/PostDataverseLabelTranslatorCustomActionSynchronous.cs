@@ -58,15 +58,47 @@ namespace DataverseLabelTranslator.Server.CustomActions
                 throw new InvalidPluginExecutionException("Missing required parameter: f");
             }
 
-            object output;
+            var action = default(ICustomAction);
             switch (f)
             {
                 case ActionNames.GlobalOptionSet:
-                    output = new GlobalOptionSet().Execute(context, serviceAdmin, service, tracing, input);
+                    action = new GlobalOptionSet();
                     break;
                 default:
                     throw new InvalidPluginExecutionException($"Unsupported action: {f}");
             }
+
+            var inputType = DevKitJson.Deserialize<CustomActionInput>(input);
+            if (inputType == null || string.IsNullOrWhiteSpace(inputType.type))
+            {
+                throw new InvalidPluginExecutionException("Missing required input type.");
+            }
+
+            object phaseOutput;
+            switch (inputType.type)
+            {
+                case CustomActionTypes.Loading:
+                    phaseOutput = action.Loading(context, serviceAdmin, service, tracing, input);
+                    break;
+                case CustomActionTypes.Saving:
+                    phaseOutput = action.Saving(context, serviceAdmin, service, tracing, input);
+                    break;
+                case CustomActionTypes.Publishing:
+                    phaseOutput = action.Publishing(context, serviceAdmin, service, tracing, input);
+                    break;
+                case CustomActionTypes.Published:
+                    phaseOutput = action.Published(context, serviceAdmin, service, tracing, input);
+                    break;
+                default:
+                    throw new InvalidPluginExecutionException($"Unsupported custom action type: {inputType.type}");
+            }
+
+            var output = new CustomActionOutput
+            {
+                ok = true,
+                type = inputType.type,
+                @object = phaseOutput
+            };
 
             outputs.Add("output", DevKitJson.Serialize(output));
             return outputs;
