@@ -64,6 +64,9 @@ namespace DataverseLabelTranslator.Server.CustomActions
                 case ActionNames.GlobalOptionSet:
                     action = new GlobalOptionSet();
                     break;
+                case ActionNames.WebResource:
+                    action = new WebResource();
+                    break;
                 default:
                     throw new InvalidPluginExecutionException($"Unsupported action: {f}");
             }

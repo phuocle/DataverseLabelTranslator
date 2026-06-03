@@ -2,12 +2,7 @@
     "use strict";
 
     var idSeparator = "|";
-    var localizedFileRegex = /([0-9]+)\.(js|resx)$/i;
-    var localizedNameRegex = /([0-9]+)$/i;
-    var webResourceType = {
-        script: 3,
-        resx: 12
-    };
+    var actionName = "WebResource";
 
     function GetGroupKey(id) {
         var separatorIndex = id.indexOf(idSeparator);
@@ -19,137 +14,13 @@
         return id.substring(0, separatorIndex);
     }
 
-    function GetCreatedIdFromResponse(response) {
-        if (!response || !response.headers) {
-            return null;
+    function ApplyDisplayTextPlaceholder(record) {
+        record._emptyEditablePlaceholder = "Add display text";
+
+        if (XrmTranslator.baseLanguage) {
+            record._emptyEditablePlaceholders = record._emptyEditablePlaceholders || {};
+            record._emptyEditablePlaceholders[String(XrmTranslator.baseLanguage)] = "Add display text (*)";
         }
-
-        var entityId =
-            response.headers["OData-EntityId"] ||
-            response.headers["OData-EntityID"] ||
-            response.headers["odata-entityid"];
-        var match = entityId && /\(([^)]+)\)/.exec(entityId);
-
-        return match ? match[1] : null;
-    }
-
-    function EscapeODataString(value) {
-        return String(value || "").replace(/'/g, "''");
-    }
-
-    function IsResxResource(resource) {
-        var type = resource ? resource.webresourcetype : null;
-
-        return (
-            type === webResourceType.resx ||
-            String(type || "")
-                .toLowerCase()
-                .indexOf("resx") !== -1
-        );
-    }
-
-    function MatchLocalizedResource(resource) {
-        var name = resource ? resource.name : "";
-        var displayName = resource ? resource.displayname : "";
-        var candidates = [name, displayName];
-        var i;
-        var matches;
-
-        for (i = 0; i < candidates.length; i++) {
-            matches = candidates[i] ? candidates[i].match(localizedFileRegex) : null;
-
-            if (matches && matches.length > 2) {
-                return {
-                    lcid: matches[1],
-                    format: matches[2].toLowerCase()
-                };
-            }
-        }
-
-        if (!IsResxResource(resource)) {
-            return null;
-        }
-
-        for (i = 0; i < candidates.length; i++) {
-            matches = candidates[i] ? candidates[i].match(localizedNameRegex) : null;
-
-            if (matches && matches.length > 1) {
-                return {
-                    lcid: matches[1],
-                    format: "resx"
-                };
-            }
-        }
-
-        return null;
-    }
-
-    function GetResourceLcid(resource) {
-        var match = MatchLocalizedResource(resource);
-
-        return match ? match.lcid : undefined;
-    }
-
-    function GetResourceFormat(resource) {
-        var match = MatchLocalizedResource(resource);
-
-        return match ? match.format : undefined;
-    }
-
-    function IsLocalizableResource(resource, baseLanguage) {
-        var match = MatchLocalizedResource(resource);
-
-        return !!match && match.lcid == baseLanguage && (match.format === "js" || match.format === "resx");
-    }
-
-    function GetResourceType(format) {
-        return format === "resx" ? webResourceType.resx : webResourceType.script;
-    }
-
-    function GetResourceGroupingKey(resource, lcid) {
-        var name = resource.name || "";
-        var index = name.indexOf(lcid);
-
-        if (index !== -1) {
-            return name.substr(0, index);
-        }
-
-        var displayName = resource.displayname || "";
-        index = displayName.indexOf(lcid);
-
-        return index !== -1 ? displayName.substr(0, index) : name || displayName;
-    }
-
-    function GetResourceDisplayName(resource, fallback) {
-        return resource.name || resource.displayname || fallback;
-    }
-
-    function IsEmptyLabelValue(value) {
-        return value == null || String(value).trim().length === 0;
-    }
-
-    function GetLanguageColumnText(languageCode) {
-        var columns = XrmTranslator.GetGrid().columns || [];
-        var field = String(languageCode);
-
-        for (var i = 0; i < columns.length; i++) {
-            if (String(columns[i].field) === field) {
-                return columns[i].text || columns[i].caption || columns[i].label || field;
-            }
-        }
-
-        return field;
-    }
-
-    function GetDisplayTextRowPath(record, group) {
-        var groupName = group && group.__displayName ? group.__displayName : GetGroupKey(record.recid);
-        var rowName = record && record.schemaName != null ? String(record.schemaName) : "";
-
-        if (groupName && rowName && groupName !== rowName) {
-            return groupName + " > " + rowName;
-        }
-
-        return rowName || groupName || "(unknown)";
     }
 
     function ValidateDisplayTextBaseLanguageChange(record, group, changes) {
@@ -162,251 +33,101 @@
             return;
         }
 
-        if (!IsEmptyLabelValue(changes[baseLanguage])) {
+        if (!Helper.IsEmptyLabelValue(changes[baseLanguage])) {
             return;
         }
 
+        var groupName = group && group.__displayName ? group.__displayName : GetGroupKey(record.recid);
+        var rowName = record && record.schemaName != null ? String(record.schemaName) : "";
+        var path =
+            groupName && rowName && groupName !== rowName
+                ? groupName + " > " + rowName
+                : rowName || groupName || "(unknown)";
+
         throw new Error(
             "Display Text in the base language (" +
-                GetLanguageColumnText(baseLanguage) +
+                Helper.GetLanguageColumnText(baseLanguage) +
                 ") cannot be empty.\n" +
                 "Row: " +
-                GetDisplayTextRowPath(record, group)
+                path
         );
     }
 
-    function ApplyDisplayTextPlaceholder(record) {
-        record._emptyEditablePlaceholder = "Add display text";
-
-        if (XrmTranslator.baseLanguage) {
-            record._emptyEditablePlaceholders = record._emptyEditablePlaceholders || {};
-            record._emptyEditablePlaceholders[String(XrmTranslator.baseLanguage)] = "Add display text (*)";
-        }
-    }
-
-    function ReplaceResourceLcid(value, currentLcid, nextLcid) {
-        return value ? value.replace(currentLcid, nextLcid) : value;
-    }
-
-    function ParseResxContent(xml) {
-        var doc = new DOMParser().parseFromString(xml, "application/xml");
-
-        if (doc.getElementsByTagName("parsererror").length > 0) {
-            throw new Error("Invalid RESX XML.");
-        }
-
-        var content = {};
-        var dataNodes = doc.getElementsByTagName("data");
-
-        for (var i = 0; i < dataNodes.length; i++) {
-            var dataNode = dataNodes[i];
-            var name = dataNode.getAttribute("name");
-            var valueNodes = dataNode.getElementsByTagName("value");
-
-            if (!name || valueNodes.length === 0) {
-                continue;
-            }
-
-            content[name] = valueNodes[0].textContent || "";
-        }
-
-        return content;
-    }
-
-    function SerializeResxContent(xml, content) {
-        var doc = new DOMParser().parseFromString(xml, "application/xml");
-        var dataNodes = doc.getElementsByTagName("data");
-        var existingNames = {};
-
-        for (var i = 0; i < dataNodes.length; i++) {
-            var dataNode = dataNodes[i];
-            var name = dataNode.getAttribute("name");
-            var valueNodes = dataNode.getElementsByTagName("value");
-
-            if (!name || valueNodes.length === 0) {
-                continue;
-            }
-
-            existingNames[name] = true;
-
-            if (Object.prototype.hasOwnProperty.call(content, name)) {
-                valueNodes[0].textContent = content[name] || "";
-            }
-        }
-
-        var root = doc.documentElement;
-        for (var key in content) {
-            if (!Object.prototype.hasOwnProperty.call(content, key) || existingNames[key]) {
-                continue;
-            }
-
-            var newData = doc.createElement("data");
-            newData.setAttribute("name", key);
-            newData.setAttribute("xml:space", "preserve");
-
-            var newValue = doc.createElement("value");
-            newValue.textContent = content[key] || "";
-            newData.appendChild(newValue);
-            root.appendChild(newData);
-        }
-
-        return new XMLSerializer().serializeToString(doc);
-    }
-
-    function ParseWebResource(resource) {
-        var format = GetResourceFormat(resource);
-        var rawContent = b64DecodeUnicode(resource.content || "");
-        var parsedContent;
-
-        if (format === "resx") {
-            parsedContent = ParseResxContent(rawContent);
-        } else {
-            parsedContent = JSON.parse(rawContent);
-        }
-
-        return Object.assign(resource, {
-            content: parsedContent,
-            __format: format === "resx" ? "resx" : "json",
-            __rawContent: rawContent,
-            __lcid: GetResourceLcid(resource)
-        });
-    }
-
-    function EncodeWebResourceContent(webresource) {
-        if (webresource.__format === "resx") {
-            return b64EncodeUnicode(SerializeResxContent(webresource.__rawContent, webresource.content));
-        }
-
-        return b64EncodeUnicode(JSON.stringify(webresource.content));
-    }
-
-    function GetSelectedSolutionWebResourceIds() {
-        var solutionId = XrmTranslator.GetSolution();
-
-        if (!solutionId || solutionId === "all") {
-            return Promise.resolve(null);
-        }
-
-        return WebApiClient.Retrieve({
-            entityName: "solutioncomponent",
-            queryParams:
-                "?$select=objectid&$filter=_solutionid_value eq " +
-                solutionId +
-                " and componenttype eq " +
-                XrmTranslator.ComponentType.WebResource
-        }).then(function (response) {
-            return response.value.map(function (component) {
-                return component.objectid;
-            });
-        });
-    }
-
-    function RetrieveWebResource(id) {
-        return WebApiClient.Retrieve({
-            overriddenSetName: "webresourceset",
-            entityId: id,
-            queryParams: "?$select=webresourceid,name,displayname,content,webresourcetype"
-        });
-    }
-
-    function RetrieveBaseLanguageResources(baseLanguage) {
-        return GetSelectedSolutionWebResourceIds().then(function (ids) {
-            if (ids) {
-                return WebApiClient.Promise.all(ids.map(RetrieveWebResource)).then(function (resources) {
-                    return resources.filter(function (resource) {
-                        return IsLocalizableResource(resource, baseLanguage);
-                    });
-                });
-            }
-
-            return WebApiClient.Retrieve({
-                overriddenSetName: "webresourceset",
-                queryParams:
-                    "?$select=webresourceid,name,displayname,content,webresourcetype&$filter=contains(name, '" +
-                    EscapeODataString(baseLanguage) +
-                    "') or contains(displayname, '" +
-                    EscapeODataString(baseLanguage) +
-                    "')"
-            }).then(function (response) {
-                return response.value.filter(function (resource) {
-                    return IsLocalizableResource(resource, baseLanguage);
-                });
-            });
-        });
-    }
-
     function GetUpdates(records) {
-        var updates = [];
+        var resourceChangesMap = {};
 
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
             var groupKey = GetGroupKey(record.recid);
 
-            if (record.w2ui && record.w2ui.changes) {
-                var group = XrmTranslator.metadata[groupKey];
-                var property = record.schemaName;
+            if (!record.w2ui || !record.w2ui.changes) {
+                continue;
+            }
 
-                var changes = record.w2ui.changes;
-                ValidateDisplayTextBaseLanguageChange(record, group, changes);
+            var group = XrmTranslator.metadata[groupKey];
+            var changes = record.w2ui.changes;
+            ValidateDisplayTextBaseLanguageChange(record, group, changes);
 
-                for (var change in changes) {
-                    if (!changes.hasOwnProperty(change)) {
-                        continue;
-                    }
+            for (var lcid in changes) {
+                if (!changes.hasOwnProperty(lcid)) {
+                    continue;
+                }
 
-                    var updateRecord =
-                        group.find(function (w) {
-                            return w.__lcid === change;
-                        }) ||
-                        updates.find(function (w) {
-                            return w.__lcid === change;
-                        });
-
-                    // In this case, we need to create a new web resource
-                    if (!updateRecord) {
-                        var baseLanguageRecord = group.find(function (w) {
-                            return w.__lcid == XrmTranslator.baseLanguage;
-                        });
-                        var newName = baseLanguageRecord
-                            ? ReplaceResourceLcid(baseLanguageRecord.name, baseLanguageRecord.__lcid, change)
-                            : groupKey + change + ".js";
-
-                        updateRecord = {
-                            __lcid: change,
-                            webresourceid: undefined,
-                            name: newName,
-                            displayname: baseLanguageRecord
-                                ? ReplaceResourceLcid(
-                                      baseLanguageRecord.displayname || baseLanguageRecord.name,
-                                      baseLanguageRecord.__lcid,
-                                      change
-                                  )
-                                : newName,
-                            content: baseLanguageRecord
-                                ? Object.keys(baseLanguageRecord.content).reduce(function (all, cur) {
-                                      all[cur] = null;
-                                      return all;
-                                  }, {})
-                                : {},
-                            __format: baseLanguageRecord ? baseLanguageRecord.__format : "json",
-                            __rawContent: baseLanguageRecord ? baseLanguageRecord.__rawContent : "{}",
-                            webresourcetype: baseLanguageRecord
-                                ? GetResourceType(baseLanguageRecord.__format)
-                                : webResourceType.script
-                        };
-                    }
-
-                    var value = changes[change];
-                    updateRecord.content[property] = w2utils.decodeTags(value);
-
-                    if (updates.indexOf(updateRecord) === -1) {
-                        updates.push(updateRecord);
+                var existingResource = null;
+                if (group) {
+                    for (var j = 0; j < group.length; j++) {
+                        if (String(group[j].__lcid) === String(lcid)) {
+                            existingResource = group[j];
+                            break;
+                        }
                     }
                 }
+
+                var changeKey;
+                if (existingResource && existingResource.webresourceid) {
+                    changeKey = existingResource.webresourceid;
+                    if (!resourceChangesMap[changeKey]) {
+                        resourceChangesMap[changeKey] = {
+                            webresourceid: existingResource.webresourceid,
+                            contentChanges: []
+                        };
+                    }
+                } else {
+                    changeKey = "__new__" + groupKey + "__" + lcid;
+                    if (!resourceChangesMap[changeKey]) {
+                        var baseResource = null;
+                        if (group) {
+                            for (var k = 0; k < group.length; k++) {
+                                if (String(group[k].__lcid) == String(XrmTranslator.baseLanguage)) {
+                                    baseResource = group[k];
+                                    break;
+                                }
+                            }
+                        }
+                        resourceChangesMap[changeKey] = {
+                            webresourceid: null,
+                            lcid: String(lcid),
+                            baseWebresourceid: baseResource ? baseResource.webresourceid : null,
+                            contentChanges: []
+                        };
+                    }
+                }
+
+                resourceChangesMap[changeKey].contentChanges.push({
+                    key: record.schemaName,
+                    value: w2utils.decodeTags(changes[lcid])
+                });
             }
         }
 
-        return updates;
+        var result = [];
+        for (var key in resourceChangesMap) {
+            if (resourceChangesMap.hasOwnProperty(key)) {
+                result.push(resourceChangesMap[key]);
+            }
+        }
+
+        return result;
     }
 
     function FillKey(record, property, group) {
@@ -430,6 +151,25 @@
 
         ApplyDisplayTextPlaceholder(keyRecord);
         record.w2ui.children.push(keyRecord);
+    }
+
+    function BuildMetadata(output) {
+        var metadata = {};
+        var groups = output.groups || [];
+
+        for (var i = 0; i < groups.length; i++) {
+            var groupData = groups[i];
+            var resources = groupData.resources || [];
+
+            for (var j = 0; j < resources.length; j++) {
+                resources[j].__lcid = resources[j].lcid;
+            }
+
+            resources.__displayName = groupData.displayName;
+            metadata[groupData.key] = resources;
+        }
+
+        return metadata;
     }
 
     function FillTable() {
@@ -481,188 +221,79 @@
         XrmTranslator.EnableLoadAndSave();
     }
 
-    function b64EncodeUnicode(str) {
-        // first we use encodeURIComponent to get percent-encoded UTF-8,
-        // then we convert the percent encodings into raw bytes which
-        // can be fed into btoa.
-        return btoa(
-            encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function toSolidBytes(match, p1) {
-                return String.fromCharCode("0x" + p1);
-            })
-        );
-    }
-
-    function b64DecodeUnicode(str) {
-        // Going backwards: from bytestream, to percent-encoding, to original string.
-        return decodeURIComponent(
-            atob(str)
-                .split("")
-                .map(function (c) {
-                    return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-                })
-                .join("")
-        );
-    }
-
     WebResourceHandler.Load = function () {
-        return XrmTranslator.GetBaseLanguage()
-            .then(function (baseLanguage) {
-                return WebApiClient.Promise.all([baseLanguage, RetrieveBaseLanguageResources(baseLanguage)]);
-            })
-            .then(function (r) {
-                var baseLanguage = r[0];
-                var records = r[1];
+        XrmTranslator.metadata = {};
 
-                return WebApiClient.Promise.all(
-                    records.map(function (rec) {
-                        var groupingKey = GetResourceGroupingKey(rec, baseLanguage);
-                        var escapedGroupingKey = EscapeODataString(groupingKey);
+        return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Loading, {
+            solutionId: XrmTranslator.GetSolution()
+        })
+            .then(function (result) {
+                var output = Helper.GetCustomActionObject(result);
 
-                        return WebApiClient.Retrieve({
-                            overriddenSetName: "webresourceset",
-                            queryParams:
-                                "?$select=webresourceid,name,displayname,content,webresourcetype&$filter=contains(name, '" +
-                                escapedGroupingKey +
-                                "') or contains(displayname, '" +
-                                escapedGroupingKey +
-                                "')"
-                        }).then(function (g) {
-                            return {
-                                key: groupingKey,
-                                displayName: GetResourceDisplayName(rec, groupingKey),
-                                value: g.value
-                                    .filter(function (w) {
-                                        return MatchLocalizedResource(w);
-                                    })
-                                    .map(function (w) {
-                                        try {
-                                            return ParseWebResource(w);
-                                        } catch {
-                                            return {};
-                                        }
-                                    })
-                            };
-                        });
-                    })
-                );
-            })
-            .then(function (responses) {
-                var groupedResponses = responses.reduce(function (all, cur) {
-                    // Filter out resources that could not be parsed
-                    var resources = cur.value.filter(function (g) {
-                        return g.content && typeof g.content === "object";
-                    });
+                if (output.baseLanguage) {
+                    XrmTranslator.baseLanguage = output.baseLanguage;
+                }
 
-                    if (resources.length > 0) {
-                        resources.__displayName = cur.displayName;
-                        all[cur.key] = resources;
-                    }
-
-                    return all;
-                }, {});
-
-                XrmTranslator.metadata = groupedResponses;
-
+                XrmTranslator.metadata = BuildMetadata(output);
                 FillTable();
+                return result;
             })
-            .catch(XrmTranslator.errorHandler);
+            .catch(function (error) {
+                XrmTranslator.UnlockGrid();
+                XrmTranslator.errorHandler(error);
+            });
     };
 
+    function GetWebResourceIds(result) {
+        return result && result.webresourceIds ? result.webresourceIds : [];
+    }
+
     WebResourceHandler.Save = function () {
-        return XrmTranslator.RunTypeSaveFlow({
-            saveAction: function () {
-                var records = XrmTranslator.GetAllRecords();
-                var updates = GetUpdates(records);
-                var createdContentIds = {};
-                var existingIds = updates
-                    .filter(function (webresource) {
-                        return !!webresource.webresourceid;
-                    })
-                    .map(function (webresource) {
-                        return webresource.webresourceid;
+        var records = XrmTranslator.GetAllRecords();
+        var resourceChanges = GetUpdates(records);
+
+        XrmTranslator.LockGrid("Saving ...");
+
+        return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Saving, {
+            resourceChanges: resourceChanges
+        })
+            .then(function (result) {
+                var output = Helper.GetCustomActionObject(result);
+                var webresourceIds = GetWebResourceIds(output);
+
+                if (webresourceIds.length === 0) {
+                    XrmTranslator.UnlockGrid();
+                    XrmTranslator.EnableLoadAndSave();
+                    return result;
+                }
+
+                XrmTranslator.LockGrid("Publishing ...");
+                return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Publishing, {
+                    webresourceIds: webresourceIds
+                }).then(function (publishingResult) {
+                    var publishingOutput = Helper.GetCustomActionObject(publishingResult);
+                    XrmTranslator.LockGrid("Published");
+                    return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Published, {
+                        webresourceIds: GetWebResourceIds(publishingOutput)
                     });
-
-                if (!updates || updates.length === 0) {
-                    return {
-                        hasChanges: false,
-                        ids: []
-                    };
-                }
-
-                return XrmTranslator.ExecuteChangeSetBatches(updates, {
-                    progressLabel: "Saving " + XrmTranslator.GetCurrentToolbarTypeText(),
-                    batchNamePrefix: "batch_savewebresources",
-                    changeSetNamePrefix: "changeset_savewebresources",
-                    buildRequest: function (webresource, context) {
-                        var content = EncodeWebResourceContent(webresource);
-
-                        if (webresource.webresourceid) {
-                            return WebApiClient.Update({
-                                overriddenSetName: "webresourceset",
-                                entityId: webresource.webresourceid,
-                                entity: {
-                                    content: content
-                                },
-                                asBatch: true
-                            });
-                        }
-
-                        createdContentIds[String(context.contentId)] = true;
-
-                        return WebApiClient.Create({
-                            overriddenSetName: "webresourceset",
-                            entity: {
-                                name: webresource.name,
-                                displayname: webresource.displayname || webresource.name,
-                                content: content,
-                                webresourcetype: GetResourceType(webresource.__format)
-                            },
-                            asBatch: true
-                        });
-                    }
-                }).then(function (responses) {
-                    var createdIds = [];
-
-                    for (var i = 0; i < responses.length; i++) {
-                        var response = responses[i];
-
-                        if (!createdContentIds[String(response.contentId)]) {
-                            continue;
-                        }
-
-                        var id = GetCreatedIdFromResponse(response);
-                        if (id) {
-                            createdIds.push(id);
-                        }
-                    }
-
-                    var ids = existingIds.concat(createdIds);
-                    if (ids.length < updates.length) {
-                        throw new Error(
-                            "Saved web resources, but could not resolve every web resource id for publish."
-                        );
-                    }
-
-                    return {
-                        hasChanges: true,
-                        ids: ids
-                    };
                 });
-            },
-            shouldPublish: function (result) {
-                return !!(result && result.hasChanges);
-            },
-            publishAction: function (result) {
-                var ids = result && result.ids ? result.ids : [];
-                if (!ids || ids.length === 0) {
-                    return Promise.resolve();
+            })
+            .then(function (result) {
+                var output = Helper.GetCustomActionObject(result);
+                if (GetWebResourceIds(output).length === 0) {
+                    return result;
                 }
 
-                return XrmTranslator.PublishWebResources(ids);
-            },
-            reloadAction: function () {
-                return WebResourceHandler.Load();
-            }
-        });
+                XrmTranslator.LockGrid("Re-Loading ...");
+                return WebResourceHandler.Load().then(function () {
+                    XrmTranslator.EnableLoadAndSave();
+                    return result;
+                });
+            })
+            .catch(function (error) {
+                XrmTranslator.UnlockGrid();
+                XrmTranslator.EnableLoadAndSave();
+                throw error;
+            });
     };
 })((window.WebResourceHandler = window.WebResourceHandler || {}));
