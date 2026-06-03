@@ -30,8 +30,11 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="coverage\**" />
     <Compile Remove="node_modules\**" />
+    <EmbeddedResource Remove="coverage\**" />
     <EmbeddedResource Remove="node_modules\**" />
+    <None Remove="coverage\**" />
     <None Remove="node_modules\**" />
   </ItemGroup>
   <ItemGroup>

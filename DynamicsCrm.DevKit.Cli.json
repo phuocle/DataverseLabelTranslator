@@ -1,0 +1,157 @@
+﻿{
+  "servers": [
+    {
+      "profile": "DEBUG",
+      "solution": "DataverseLabelTranslator",
+      "folder": "bin\\Debug",
+      "includefiles": [
+        "DataverseLabelTranslator.Server.dll"
+      ],
+      "excludefiles": [
+        "DataverseLabelTranslator.*.Test.dll"
+      ]
+    }
+  ],
+  "webresources": [
+    {
+      "profile": "DEBUG",
+      "solution": "DataverseLabelTranslator",
+      "rootfolder": "",
+      "includefiles": [
+        "css\\**.css",
+        "html\\**.html",
+        "img\\**.svg",
+        "js\\**.js"
+      ],
+      "excludefiles": [
+        "test\\**.js"
+      ],
+      "dependencies": [
+        {
+          "webresources": [
+            "???_/entities/[entity].js"
+          ],
+          "dependencies": [
+            "???_/entities/[entity].form.js",
+            "???_/entities/[entity].webapi.js"
+          ]
+        },
+        {
+          "webresources": [
+            "???_/entities/[entity].form.js"
+          ],
+          "dependencies": [
+            "???_/lib/devkit.js"
+          ]
+        }
+      ]
+    },
+    {
+      "profile": "DEBUGTS",
+      "solution": "???",
+      "rootfolder": "",
+      "includefiles": [
+        "css\\**.css",
+        "html\\**.html",
+        "images\\**.png",
+        "resources\\*.resx"
+      ],
+      "excludefiles": [],
+      "dependencies": []
+    }
+  ],
+  "datasources": [
+    {
+      "profile": "DEBUG",
+      "solution": "???",
+      "displayname": "???",
+      "pluralname": "???",
+      "name": "???"
+    }
+  ],
+  "generators": [
+    {
+      "profile": "LATEBOUND",
+      "type": "CSharp",
+      "rootnamespace": "???",
+      "namespace": "",
+      "rootfolder": "???",
+      "entities": "folder"
+    },
+    {
+      "profile": "JS-FORM",
+      "type": "JsForm",
+      "rootnamespace": "???",
+      "rootfolder": "???",
+      "entities": "folder"
+    },
+    {
+      "profile": "JS-WEBAPI",
+      "type": "JsWebApi",
+      "rootnamespace": "???",
+      "rootfolder": "???",
+      "entities": "folder"
+    },
+    {
+      "profile": "TS-FORM",
+      "type": "TsForm",
+      "rootfolder": "???",
+      "entities": "folder"
+    },
+    {
+      "profile": "TS-WEBAPI",
+      "type": "TsWebApi",
+      "rootfolder": "???",
+      "entities": "folder"
+    }
+  ],
+  "downloadwebresources": [
+    {
+      "profile": "DEBUG",
+      "solution": "DataverseLabelTranslator"
+    }
+  ],
+  "downloadreports": [
+    {
+      "profile": "DEBUG",
+      "solution": "???"
+    }
+  ],
+  "solutionpackagers": [
+    {
+      "profile": "Extract-Both",
+      "solution": "???",
+      "rootfolder": "",
+      "solutiontype": "Both",
+      "folder": "???",
+      "type": "Extract",
+      "mapfile": ""
+    },
+    {
+      "profile": "Pack-Both",
+      "solution": "???",
+      "rootfolder": "",
+      "solutiontype": "Both",
+      "folder": "???",
+      "type": "Pack",
+      "mapfile": ""
+    }
+  ],
+  "modelbuilders": [
+    {
+      "profile": "ALL",
+      "namespace": "???.ProxyTypes",
+      "output": "GeneratedCode.cs",
+      "entities": "*"
+    }
+  ],
+  "uploadreports": [
+    {
+      "profile": "DEBUG",
+      "solution": "???",
+      "languages": [
+        "???"
+      ]
+    }
+  ]
+}

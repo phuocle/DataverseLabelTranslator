@@ -21,7 +21,6 @@ DataverseLabelTranslator.Scripts/__pycache__/
 *.local.*
 
 DynamicsCrm.DevKit.json
-DynamicsCrm.DevKit.Cli.json
 
 # Track assistant folders, but never track local credentials/secrets
 .codex/config.toml

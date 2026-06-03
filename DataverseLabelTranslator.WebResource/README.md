@@ -12,7 +12,7 @@ img/   Image web resources
 tests/ Vitest unit tests
 ```
 
-There is no JavaScript build step. Files under `html`, `js`, `css`, and `img` deploy directly to `pl_/DataverseLabelTranslator/`.
+There is no JavaScript build step. Files under `html`, `js`, `css`, and `img` deploy directly to `pl_/`.
 
 ## Commands
 
@@ -23,4 +23,4 @@ npm test
 npm run test:coverage
 ```
 
-`deploy.debug.bat` is commit-safe. Its first line loads DevKit connection settings from the repository root `.env` file through `DataverseLabelTranslator.Scripts\load-devkit-env.ps1`; its second line runs `devkit`. Values in `.env` override inherited `DEVKIT_*` environment variables for that batch run.
+`deploy.debug.bat` is commit-safe. Its first line loads DevKit connection settings from the repository root `.env` file with native `cmd` parsing; its second line runs `devkit`. Values in `.env` override inherited `DEVKIT_*` environment variables for that batch run.

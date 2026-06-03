@@ -23,10 +23,10 @@ This repository is the active codebase for **Dataverse Label Translator**:
 - **w2ui** 2.0
 - **WebApiClient** 4.1.6
 - Publisher prefix `pl_`, solution `DataverseLabelTranslator`
-- Web resources under `pl_/DataverseLabelTranslator/`
+- Deployable dashboard web resources under `pl_/`
 - Web resource source lives in `DataverseLabelTranslator.WebResource`, a DynamicsCrm.DevKit WebResource `.csproj` used for fast local web resource deployment.
 - DevKit `.bat` files are commit-safe and must read connection values from root `.env` / `DEVKIT_*` environment variables. Commit `.env.example`, never commit `.env`.
-- Translation dashboard only; PropertyEditor resources are intentionally excluded from this solution.
+- Translation dashboard only.
 
 The HTML dashboard loads JavaScript through `<script>` tags. There is no build step; JavaScript files deploy directly as Dataverse web resources. MCP server connects to the dev Dataverse environment.
 
@@ -78,8 +78,8 @@ DataverseLabelTranslator.WebResource/js/    Dashboard and library JavaScript web
 DataverseLabelTranslator.WebResource/css/   CSS web resources
 DataverseLabelTranslator.WebResource/img/   Image web resources
 DataverseLabelTranslator.WebResource/tests/ Vitest unit tests
-DataverseLabelTranslator.Scripts/      Release, packaging, and AI config scripts
-DataverseLabelTranslator.Documents/    Repository docs
+DataverseLabelTranslator.Scripts/           Release, packaging, and AI config scripts
+DataverseLabelTranslator.Documents/         Repository docs
 ```
 
 ## Skills And Commands
@@ -125,21 +125,9 @@ Run Vitest unit tests and optional coverage for Dataverse Label Translator. Use 
 
 Full local git workflow: stage all -> commit -> verify clean. Do not push unless the user explicitly asks.
 
-### /pl-deploy-web-resource `<local-path>`
+### /pl-deploy-web-resource
 
-Deploy a file to Dataverse using MCP `manage_webresource`:
-
-When a file listed in `.codex/mapping.xml` is changed and the user needs to test the app in Dataverse, deploy that changed file again with `/pl-deploy-web-resource <local-path>`. Do not leave mapped web resource changes only on disk when the next expected step is app testing.
-
-1. Look up `<local-path>` in `.codex/mapping.xml` to get CRM `UniqueName`.
-2. If not in mapping, auto-derive from `DataverseLabelTranslator.WebResource/<type>/<basename>` to `pl_/DataverseLabelTranslator/<type>/<basename>` where type = `js|css|html|img`.
-3. Try `manage_webresource` with `action=detail`, `web_resource_id=<UniqueName>` to check existence.
-4. If exists -> `action=update`, `web_resource_id=<UniqueName>`, `file_path=<local-path>`.
-5. If not -> `action=create`, `name=<UniqueName>`, `file_path=<local-path>`, `type=<js|css|html|svg|png>`, `solution_name=DataverseLabelTranslator`.
-
-Do not deploy PropertyEditor resources into this solution.
-
-Do NOT use `devkit` CLI. Use MCP `manage_webresource` directly.
+When files are edited or created under `DataverseLabelTranslator.WebResource/html`, `css`, `js`, or `img`, run `DataverseLabelTranslator.WebResource\deploy.debug.bat` from the repo root and report only the DevKit summary or error.
 
 ### /pl-export-solution
 

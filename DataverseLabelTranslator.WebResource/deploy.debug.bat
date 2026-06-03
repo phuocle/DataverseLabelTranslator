@@ -1,2 +1,2 @@
-@for /f "usebackq delims=" %%L in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\DataverseLabelTranslator.Scripts\load-devkit-env.ps1" "%~dp0..\.env"`) do @%%L
+@if exist "%~dp0..\.env" for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%~dp0..\.env") do @if not "%%~A"=="" set "%%~A=%%~B"
 @cd /d "%~dp0" && devkit webresource --json "%~dp0..\DynamicsCrm.DevKit.Cli.json" --profile "DEBUG"

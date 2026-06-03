@@ -112,7 +112,7 @@ Dictionary storage is Dataverse-backed, not browser-only:
 
 1. Import the solution into a Dynamics 365 / Dataverse environment.
 2. Open the **Dataverse Label Translator** model-driven app.
-3. Open the main app page hosted by `pl_/DataverseLabelTranslator/html/App.html`.
+3. Open the main app page hosted by `pl_/html/App.html`.
 4. Configure AI provider settings only if AI translation is required.
 
 ### System Requirements
@@ -147,7 +147,7 @@ If translating an attribute does not update its form label, the form likely has 
 
 The active web resource codebase lives under `DataverseLabelTranslator.WebResource`. It is a DynamicsCrm.DevKit WebResource `.csproj` for fast local web resource deployment, and it also contains the npm lint/test tooling for the plain JavaScript dashboard.
 
-The Dataverse app hosts one main web resource: `pl_/DataverseLabelTranslator/html/App.html`.
+The Dataverse app hosts one main web resource: `pl_/html/App.html`.
 
 Every handler implements:
 
