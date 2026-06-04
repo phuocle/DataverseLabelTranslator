@@ -406,7 +406,7 @@ Adjust only type-specific names, record IDs, output keys, row tree shape, and sa
 For toolbar type 18:
 
 ```text
-Handler file: DataverseLabelTranslator.WebResource/js/GlobalOptionSetHandler.js
+Handler file: DataverseLabelTranslator.WebResource/js/Handler/GlobalOptionSetHandler.js
 Handler object: GlobalOptionSetHandler
 Action name: GlobalOptionSet
 Input: { solutionId }
@@ -450,7 +450,7 @@ Description mode:
 For toolbar type 17:
 
 ```text
-Handler file: DataverseLabelTranslator.WebResource/js/WebResourceHandler.js
+Handler file: DataverseLabelTranslator.WebResource/js/Handler/WebResourceHandler.js
 Handler object: WebResourceHandler
 Action name: WebResource
 ```

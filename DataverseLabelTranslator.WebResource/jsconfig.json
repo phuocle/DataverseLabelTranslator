@@ -11,5 +11,5 @@
     "typeRoots": ["./node_modules/@types"]
   },
   "include": ["entities/**/*", "lib/**/*", "test/**/*", "js/**/*", "tests/**/*"],
-  "exclude": ["node_modules", "bin", "obj", "coverage", "js/WebApiClient.js", "js/w2ui.js", "js/lib/**/*"]
+  "exclude": ["node_modules", "bin", "obj", "coverage", "js/lib/**/*"]
 }

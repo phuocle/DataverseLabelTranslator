@@ -189,7 +189,7 @@ function createHarness(options) {
 }
 
 async function loadHandler() {
-  await import("../js/GlobalOptionSetHandler.js?test=" + ++importCounter);
+  await import("../js/Handler/GlobalOptionSetHandler.js?test=" + ++importCounter);
   return globalThis.window.GlobalOptionSetHandler;
 }
 

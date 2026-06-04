@@ -50,26 +50,26 @@ These numbers are stable shorthand for humans and AI agents; do not reorder, ren
 
 | #   | Toolbar Type           | Handler JS                     | Test File                              |
 | --- | ---------------------- | ------------------------------ | -------------------------------------- |
-| 1   | Attributes             | `DataverseLabelTranslator.WebResource/js/AttributeHandler.js`       | None yet                                                           |
-| 2   | Option Sets            | `DataverseLabelTranslator.WebResource/js/OptionSetHandler.js`       | None yet                                                           |
-| 3   | Forms                  | `DataverseLabelTranslator.WebResource/js/FormHandler.js`            | None yet                                                           |
-| 4   | Views                  | `DataverseLabelTranslator.WebResource/js/ViewHandler.js`            | None yet                                                           |
-| 5   | Form Metadata          | `DataverseLabelTranslator.WebResource/js/FormMetaHandler.js`        | None yet                                                           |
-| 6   | Entity Metadata        | `DataverseLabelTranslator.WebResource/js/EntityHandler.js`          | None yet                                                           |
-| 7   | Relationships          | `DataverseLabelTranslator.WebResource/js/RelationshipHandler.js`    | None yet                                                           |
-| 8   | Charts                 | `DataverseLabelTranslator.WebResource/js/ChartHandler.js`           | None yet                                                           |
-| 9   | Business Process Flows | `DataverseLabelTranslator.WebResource/js/BpfHandler.js`             | None yet                                                           |
-| 10  | Business Rules         | `DataverseLabelTranslator.WebResource/js/BusinessRuleHandler.js`    | None yet                                                           |
-| 11  | Ribbons                | `DataverseLabelTranslator.WebResource/js/RibbonHandler.js`          | None yet                                                           |
-| 12  | Commands               | `DataverseLabelTranslator.WebResource/js/ModernCommandHandler.js`   | None yet                                                           |
-| 13  | Entity Messages        | `DataverseLabelTranslator.WebResource/js/EntityMessageHandler.js`   | None yet                                                           |
-| 14  | Content Snippets       | `DataverseLabelTranslator.WebResource/js/ContentSnippetHandler.js`  | None yet                                                           |
-| 15  | Sitemap                | `DataverseLabelTranslator.WebResource/js/SiteMapHandler.js`         | None yet                                                           |
-| 16  | Dashboards             | `DataverseLabelTranslator.WebResource/js/DashboardHandler.js`       | None yet                                                           |
-| 17  | Web Resources          | `DataverseLabelTranslator.WebResource/js/WebResourceHandler.js`     | `DataverseLabelTranslator.WebResource/tests/WebResourceHandler.test.js` |
-| 18  | Global Option Sets     | `DataverseLabelTranslator.WebResource/js/GlobalOptionSetHandler.js` | `DataverseLabelTranslator.WebResource/tests/GlobalOptionSetHandler.test.js` |
+| 1   | Attributes             | `DataverseLabelTranslator.WebResource/js/Handler/AttributeHandler.js`       | None yet                                                           |
+| 2   | Option Sets            | `DataverseLabelTranslator.WebResource/js/Handler/OptionSetHandler.js`       | None yet                                                           |
+| 3   | Forms                  | `DataverseLabelTranslator.WebResource/js/Handler/FormHandler.js`            | None yet                                                           |
+| 4   | Views                  | `DataverseLabelTranslator.WebResource/js/Handler/ViewHandler.js`            | None yet                                                           |
+| 5   | Form Metadata          | `DataverseLabelTranslator.WebResource/js/Handler/FormMetaHandler.js`        | None yet                                                           |
+| 6   | Entity Metadata        | `DataverseLabelTranslator.WebResource/js/Handler/EntityHandler.js`          | None yet                                                           |
+| 7   | Relationships          | `DataverseLabelTranslator.WebResource/js/Handler/RelationshipHandler.js`    | None yet                                                           |
+| 8   | Charts                 | `DataverseLabelTranslator.WebResource/js/Handler/ChartHandler.js`           | None yet                                                           |
+| 9   | Business Process Flows | `DataverseLabelTranslator.WebResource/js/Handler/BpfHandler.js`             | None yet                                                           |
+| 10  | Business Rules         | `DataverseLabelTranslator.WebResource/js/Handler/BusinessRuleHandler.js`    | None yet                                                           |
+| 11  | Ribbons                | `DataverseLabelTranslator.WebResource/js/Handler/RibbonHandler.js`          | None yet                                                           |
+| 12  | Commands               | `DataverseLabelTranslator.WebResource/js/Handler/ModernCommandHandler.js`   | None yet                                                           |
+| 13  | Entity Messages        | `DataverseLabelTranslator.WebResource/js/Handler/EntityMessageHandler.js`   | None yet                                                           |
+| 14  | Content Snippets       | `DataverseLabelTranslator.WebResource/js/Handler/ContentSnippetHandler.js`  | None yet                                                           |
+| 15  | Sitemap                | `DataverseLabelTranslator.WebResource/js/Handler/SiteMapHandler.js`         | None yet                                                           |
+| 16  | Dashboards             | `DataverseLabelTranslator.WebResource/js/Handler/DashboardHandler.js`       | None yet                                                           |
+| 17  | Web Resources          | `DataverseLabelTranslator.WebResource/js/Handler/WebResourceHandler.js`     | `DataverseLabelTranslator.WebResource/tests/WebResourceHandler.test.js` |
+| 18  | Global Option Sets     | `DataverseLabelTranslator.WebResource/js/Handler/GlobalOptionSetHandler.js` | `DataverseLabelTranslator.WebResource/tests/GlobalOptionSetHandler.test.js` |
 
-Dashboards use `DataverseLabelTranslator.WebResource/js/DashboardHandler.js`. Dashboard grids intentionally show only the dashboard parent rows; do not load dashboard tabs, sections, or cells into type 16. Parent dashboard rows are editable directly across language columns. `DataverseLabelTranslator.WebResource/js/FormHandler.js` is only for type 3 Forms.
+Dashboards use `DataverseLabelTranslator.WebResource/js/Handler/DashboardHandler.js`. Dashboard grids intentionally show only the dashboard parent rows; do not load dashboard tabs, sections, or cells into type 16. Parent dashboard rows are editable directly across language columns. `DataverseLabelTranslator.WebResource/js/Handler/FormHandler.js` is only for type 3 Forms.
 
 ## Layout
 

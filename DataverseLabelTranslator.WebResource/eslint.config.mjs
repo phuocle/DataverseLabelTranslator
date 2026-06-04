@@ -60,8 +60,8 @@ export default [
       ".agents/mcp_config.json",
       ".claude/skills/**",
       ".github/prompts/**",
-      "js/WebApiClient.js",
-      "js/w2ui.js",
+      "js/lib/WebApiClient.js",
+      "js/lib/w2ui.js",
       "js/lib/**"
     ]
   },

@@ -264,7 +264,7 @@ function createHarness(options) {
 
 async function setup(options) {
   var harness = createHarness(options);
-  await import("../js/WebResourceHandler.js?test=" + ++importCounter);
+  await import("../js/Handler/WebResourceHandler.js?test=" + ++importCounter);
   return Object.assign({ handler: globalThis.window.WebResourceHandler }, harness);
 }
 
