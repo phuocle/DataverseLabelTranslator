@@ -140,9 +140,9 @@
   "modelbuilders": [
     {
       "profile": "ALL",
-      "namespace": "???.ProxyTypes",
+      "namespace": "DataverseLabelTranslator.ProxyTypes",
       "output": "GeneratedCode.cs",
-      "entities": "*"
+      "entities": "account"
     }
   ],
   "uploadreports": [
