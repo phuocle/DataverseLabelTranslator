@@ -4033,7 +4033,19 @@
                             return;
                         }
 
+                        if (!currentHandler || typeof currentHandler.Save !== "function") {
+                            throw new Error("No save handler is available for the selected type.");
+                        }
+
                         if (!XrmTranslator.HasPendingChanges()) {
+                            if (XrmTranslator.GetType() === "globalOptionSet") {
+                                grid.refresh();
+                                return currentHandler.Save().then(function (result) {
+                                    XrmTranslator.EnableLoadAndSave();
+                                    return result;
+                                });
+                            }
+
                             grid.refresh();
                             XrmTranslator.ShowStatusBanner({
                                 tone: "success",
@@ -4044,10 +4056,6 @@
                             XrmTranslator.SetLoadButtonDisabled(false);
                             XrmTranslator.SetSaveButtonDisabled(false);
                             return;
-                        }
-
-                        if (!currentHandler || typeof currentHandler.Save !== "function") {
-                            throw new Error("No save handler is available for the selected type.");
                         }
 
                         return currentHandler.Save();

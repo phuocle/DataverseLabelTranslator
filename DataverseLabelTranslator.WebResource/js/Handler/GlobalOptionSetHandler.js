@@ -173,9 +173,10 @@
         Helper.FinalizeGrid(records, app);
     }
 
-    GlobalOptionSetHandler.Load = function () {
+    GlobalOptionSetHandler.Load = function (lockText) {
         var app = Helper.GetTranslator();
-        app.LockGrid(Helper.GetOperationLoading());
+
+        app.LockGrid(lockText || Helper.GetOperationLoading());
 
         return Helper.RunServerLoad({
             app: app,
@@ -212,12 +213,18 @@
 
     GlobalOptionSetHandler.Save = function () {
         var app = Helper.GetTranslator();
+        var updates = GetUpdates();
+
+        if (updates.optionValueUpdates.length === 0 && updates.optionSetDescriptionUpdates.length === 0) {
+            return DialogHelper.alert("There are no global option set changes to save.", {
+                title: "Global Option Sets"
+            });
+        }
 
         return Helper.RunServerSaveFlow({
             app: app,
             actionName: actionName,
             getSavePayload: function () {
-                var updates = GetUpdates();
                 return {
                     component: GetComponent(app),
                     optionValueUpdates: updates.optionValueUpdates,
@@ -230,7 +237,7 @@
                 return GetOptionSetNames(output).length > 0;
             },
             reloadAction: function () {
-                return GlobalOptionSetHandler.Load();
+                return GlobalOptionSetHandler.Load(Helper.GetOperationReLoading());
             }
         });
     };

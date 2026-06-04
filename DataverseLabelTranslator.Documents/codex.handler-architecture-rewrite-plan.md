@@ -1,370 +1,149 @@
 # Codex Handler Architecture Rewrite Plan
 
-> Date: 2026-06-03
 > Repository: `D:\github\DataverseLabelTranslator`
-> Scope: client-side app and handler JavaScript only.
-> Server assumption: CRUD, metadata mutation, publish, XML/XAML/package work, and custom action dispatch are already solved elsewhere. JS only calls the custom action and consumes returned data.
-> Test assumption: do not design around current unit tests yet. Tests will be rebuilt after the app shape is correct.
+> Scope: requested toolbar type end to end.
+> Server rule: if custom action phases do not exist for the requested type, create them.
+> Test assumption: do not design around current unit tests.
 
-## Executive Decision
+Use this file together with `codex.apply-js-pattern.md`.
 
-Rewrite the client architecture around a smaller `EasyTranslator` app shell.
+Example prompt:
 
-Keep `XrmTranslator` temporarily so the app still loads while the rewrite is happening. New/reworked handler code should call `EasyTranslator`; during transition, `EasyTranslator` may delegate to existing `XrmTranslator` functions until those functions are moved.
+```text
+Read DataverseLabelTranslator.Documents/codex.apply-js-pattern.md and
+DataverseLabelTranslator.Documents/codex.handler-architecture-rewrite-plan.md,
+then rewrite the requested handler using type 18 as the reference pattern.
+```
 
-The final client model:
+## Non-Negotiable Handler Contract
+
+Every rewritten handler must have:
+
+1. Private `GetUpdates()`.
+2. Private `FillTable()`.
+3. Public `Load(lockText)`.
+4. Public `Save()`.
+
+`Load(lockText)`:
+
+- resolves the app with `Helper.GetTranslator()`
+- locks the grid first with `lockText || Helper.GetOperationLoading()`
+- calls custom action phase `Loading`
+- stores returned data with `app.SetMetadata(...)` when useful
+- fills the grid through private `FillTable()`
+
+`Save()`:
+
+- calls private `GetUpdates()` first
+- checks no-save-changes before calling the server
+- shows `DialogHelper.alert(...)` for no-save-changes
+- does not show the no-change status banner
+- calls custom action phases `Saving`, `Publishing`, `Published`
+- reloads with `Handler.Load(Helper.GetOperationReLoading())`
+
+Handlers must not call:
+
+- `EnableLoadAndSave`
+- `SetLoadButtonDisabled`
+- `SetSaveButtonDisabled`
+- `WebApiClient`
+- `XrmTranslator.RunTypeSaveFlow`
+- `XrmTranslator.ExecuteChangeSetBatches`
+- direct publish helpers
+- `XrmTranslator.RunAsBaseLanguage`
+
+If a button state or generic banner behavior must change, fix core app code such as `XrmTranslator.js`, not the handler.
+
+## Non-Negotiable Server Contract
+
+When the prompt says `type x`, first resolve that number through the toolbar map in `AGENTS.md`. Then verify whether that type already has Server custom action support.
+
+Read the current Server implementation before writing new code. Type 17 and type 18 are the reference implementations:
+
+- `DataverseLabelTranslator.Server/CustomActions/Synchronous/WebResource.cs`
+- `DataverseLabelTranslator.Server/CustomActions/Synchronous/GlobalOptionSet.cs`
+- `DataverseLabelTranslator.Server/CustomActions/ActionNames.cs`
+- `DataverseLabelTranslator.Server/CustomActions/PostDataverseLabelTranslatorCustomActionSynchronous.cs`
+
+If the requested type does not have Server code yet, creating the Server side is required, not optional.
+
+For each new Server-backed toolbar type:
+
+1. Add an `ActionNames` constant whose value matches the handler `actionName`.
+2. Wire the constant in `PostDataverseLabelTranslatorCustomActionSynchronous`.
+3. Create `DataverseLabelTranslator.Server/CustomActions/Synchronous/<TypeName>.cs`.
+4. Implement `ICustomAction` phases:
+   - `Loading`
+   - `Saving`
+   - `Publishing`
+   - `Published`
+   - `Other`
+5. Keep Dataverse retrieval, metadata mutation, label merge, and publish logic on the Server.
+6. Keep the handler payload and Server DTO names/properties aligned exactly.
+
+Do not leave a rewritten handler calling a custom action that does not exist in `DataverseLabelTranslator.Server`.
+
+## Architecture Decision
+
+Rewrite handlers as thin adapters around a smaller `EasyTranslator` app shell.
+
+Current transition model:
 
 ```text
 EasyTranslator.js
-  Small app shell:
-  toolbar state, solution/entity/type/component state, language columns,
-  grid setup, record flattening, custom action UX messages, and handler dispatch.
+  New app facade/shell. It may delegate to XrmTranslator while migration is incomplete.
+
+Helper.js
+  Shared labels, placeholders, validation, load/save flow helpers, and translator resolution.
 
 Handler JS
-  Thin view adapter:
-  Load -> call custom action Loading -> FillTable
-  Save -> collect changed cells -> validate visible rules
-       -> call Saving/Publishing/Published -> reload
+  Type-specific grid shape and payload mapping only.
 
 XrmTranslator.js
-  Legacy shell kept temporarily only so existing app still loads.
-  Move behavior out gradually after type 18 works on EasyTranslator.
+  Legacy shell and temporary dispatch/core fallback glue.
 ```
 
-## Current Unit Test Compatibility Check
-
-Static check only; no tests were run.
-
-`codex.apply-js-pattern.md` is not fully compatible with the two existing unit test files as they stand today.
-
-| Test file | Static compatibility issue |
-| --- | --- |
-| `GlobalOptionSetHandler.test.js` | The harness mocks `XrmTranslator`, not `EasyTranslator`. It also mocks only old helper methods, not `Helper.RunServerLoad`, `Helper.RunServerSaveFlow`, `Helper.FinalizeGrid`, `Helper.ApplyPlaceholder`, `Helper.GetChangedLabels`, or `Helper.ValidateBaseLanguageNotEmpty`. It expects `EnableLoadAndSave()` calls, but the new design keeps Load/Save buttons always enabled. |
-| `WebResourceHandler.test.js` | The harness still expects the old client-side Web API flow: `WebApiClient.Retrieve`, `ExecuteChangeSetBatches`, `RunTypeSaveFlow`, and `PublishWebResources`. That test file does not match the custom-action handler pattern. |
-
-Conclusion: do not bend the new docs to keep these tests green. When the UI shape is correct, rewrite tests around `EasyTranslator` and the custom action contract.
-
-## Hard Changes
-
-### Remove All-In-One Completely
-
-Type 0 All-In-One should be removed from the app.
-
-Remove or stop using:
-
-- `AllInOneHandler.js`
-- `allInOne` toolbar type item
-- `XrmTranslator.showAllInOneType`
-- `TYPE_STATE_LABELS.allInOne`
-- `SetHandler()` branch for `allInOne`
-- help text and README feature text that describes All-In-One
-- any app code that swaps `grid.records` into child handlers
-
-There is no reason to preserve `SaveOnly()`.
-
-### Keep Load And Save Buttons Enabled
-
-New code should not disable Load or Save buttons.
-
-Remove from the new pattern:
-
-- `EnableLoadAndSave()`
-- `SetLoadButtonDisabled(...)`
-- `SetSaveButtonDisabled(...)`
-- operation guards whose only purpose is disabling Load/Save
-
-It is still acceptable to show progress text through a grid lock/overlay while a request is running, but button enabled/disabled state is no longer part of the handler contract.
-
-### Ignore Server Implementation
-
-Do not design server services here.
-
-Assume each custom action phase exists and returns the shape the handler expects.
-
-### Defer Unit Tests
-
-Do not make architecture decisions to satisfy the current unit tests. They target old assumptions and should be rewritten later.
-
-## EasyTranslator Transition Plan
-
-Create `DataverseLabelTranslator.WebResource/js/EasyTranslator.js` as the new app shell/facade.
-
-Phase 1: facade mode for type 18.
+Handler code should resolve app state through:
 
 ```js
-(function (EasyTranslator, undefined) {
-    "use strict";
-
-    function Legacy() {
-        return window.XrmTranslator;
-    }
-
-    EasyTranslator.GetGrid = function () {
-        return Legacy().GetGrid();
-    };
-
-    EasyTranslator.GetSolution = function () {
-        return Legacy().GetSolution();
-    };
-
-    EasyTranslator.GetEntity = function () {
-        return Legacy().GetEntity();
-    };
-
-    EasyTranslator.GetEntityId = function () {
-        return Legacy().GetEntityId();
-    };
-
-    EasyTranslator.GetComponent = function () {
-        return Legacy().GetComponent();
-    };
-
-    EasyTranslator.IsDisplayTextComponent = function () {
-        return EasyTranslator.GetComponent() === "DisplayText";
-    };
-
-    EasyTranslator.IsDescriptionComponent = function () {
-        return EasyTranslator.GetComponent() === "Description";
-    };
-
-    EasyTranslator.GetAllRecords = function () {
-        return Legacy().GetAllRecords();
-    };
-
-    EasyTranslator.AddSummary = function (records, includeSummaryChildren) {
-        return Legacy().AddSummary(records, includeSummaryChildren);
-    };
-
-    EasyTranslator.LockGrid = function (message) {
-        return Legacy().LockGrid(message);
-    };
-
-    EasyTranslator.UnlockGrid = function () {
-        return Legacy().UnlockGrid();
-    };
-
-    EasyTranslator.errorHandler = function (error) {
-        return Legacy().errorHandler(error);
-    };
-
-    EasyTranslator.GetBaseLanguage = function () {
-        return EasyTranslator.baseLanguage || (Legacy() && Legacy().baseLanguage);
-    };
-
-    EasyTranslator.SetBaseLanguage = function (languageCode) {
-        EasyTranslator.baseLanguage = languageCode;
-        if (Legacy()) {
-            Legacy().baseLanguage = languageCode;
-        }
-    };
-
-    EasyTranslator.SetMetadata = function (metadata) {
-        EasyTranslator.metadata = metadata;
-        if (Legacy()) {
-            Legacy().metadata = metadata;
-        }
-    };
-
-    EasyTranslator.GetMetadata = function () {
-        return EasyTranslator.metadata || (Legacy() && Legacy().metadata) || [];
-    };
-})((window.EasyTranslator = window.EasyTranslator || {}));
+var app = Helper.GetTranslator();
 ```
 
-Phase 2: make type 18 use `EasyTranslator` only.
+`Helper.GetTranslator()` should prefer `EasyTranslator` and fall back to `XrmTranslator` during transition.
 
-Phase 3: move shell features from `XrmTranslator` to `EasyTranslator` gradually.
+## Handler Rewrite Scope
 
-Phase 4: delete old `XrmTranslator` pieces after all toolbar types use `EasyTranslator`.
+When asked to rewrite one toolbar type:
 
-## What Must Be Removed From Handler JS
+- rewrite only that type's handler unless shared helper/core glue is required
+- do not rewrite unrelated handlers
+- implement Server code when that type does not already have a matching Server custom action
+- do not implement or run unit tests
+- do not preserve old client-side Dataverse CRUD behavior in handlers
 
-Remove these patterns from toolbar handlers:
+Allowed files:
 
-- direct `WebApiClient.Retrieve`, `Create`, `Update`, `Execute`, `SendBatch`
-- `RetrieveLocLabels` and `SetLocLabels`
-- metadata PUT/PATCH with `MSCRM.MergeLabels`
-- `UpdateOptionValue`
-- `PublishXmlRequest`, `PublishAllXmlRequest`, `PublishDashboard`, `PublishWebResources`
-- client-side `RunAsBaseLanguage`
-- client-side XML/XAML mutation
-- translation package export/import from handler code
-- `SaveOnly()`
-- `XrmTranslator.RunTypeSaveFlow()`
-- handler-local copies of generic helper logic
-
-Every rewritten toolbar handler exposes only:
-
-```js
-Handler.Load = function () { ... };
-Handler.Save = function () { ... };
-```
-
-## Handler Contract
-
-Every handler should resolve the active app shell through `Helper.GetTranslator()` and use shared `Helper` methods.
-
-```js
-(function (Handler, undefined) {
-    "use strict";
-
-    var actionName = "GlobalOptionSet";
-    var idSeparator = "|";
-
-    function BuildLoadInput(app) {
-        return {
-            solutionId: app.GetSolution()
-        };
-    }
-
-    function FillTable(output, app) {
-        app.GetGrid().clear();
-
-        var records = [];
-        // Build type-specific w2ui records from output.
-        Helper.FinalizeGrid(records, app);
-    }
-
-    function GetUpdates(app) {
-        var records = app.GetAllRecords();
-        var updates = [];
-
-        for (var i = 0; i < records.length; i++) {
-            var record = records[i];
-            if (!record.w2ui || !record.w2ui.changes) {
-                continue;
-            }
-
-            Helper.ValidateBaseLanguageNotEmpty(record, record.w2ui.changes, {
-                app: app,
-                getRowPath: function (changedRecord) {
-                    return GetRowPath(changedRecord);
-                }
-            });
-
-            var labels = Helper.GetChangedLabels(record.w2ui.changes, true);
-            if (labels.length < 1) {
-                continue;
-            }
-
-            updates.push({
-                id: record.recid,
-                labels: labels
-            });
-        }
-
-        return { updates: updates };
-    }
-
-    Handler.Load = function () {
-        var app = Helper.GetTranslator();
-        app.LockGrid(Helper.GetOperationLoading());
-
-        return Helper.RunServerLoad({
-            app: app,
-            actionName: actionName,
-            getPayload: function () {
-                return BuildLoadInput(app);
-            },
-            onLoaded: function (output) {
-                app.SetMetadata(output.items || []);
-                FillTable(output, app);
-            }
-        });
-    };
-
-    Handler.Save = function () {
-        var app = Helper.GetTranslator();
-
-        return Helper.RunServerSaveFlow({
-            app: app,
-            actionName: actionName,
-            getSavePayload: function () {
-                return GetUpdates(app);
-            },
-            getPublishPayload: function (output) {
-                return { changedIds: output.changedIds || [] };
-            },
-            getPublishedPayload: function (output) {
-                return { changedIds: output.changedIds || [] };
-            },
-            shouldReload: function (output) {
-                return (output.changedIds || []).length > 0;
-            },
-            reloadAction: function () {
-                return Handler.Load();
-            }
-        });
-    };
-})((window.SomeHandler = window.SomeHandler || {}));
-```
-
-Rules:
-
-- Standard IIFE only.
-- No `window.X = Object(window.X);`
-- `"use strict";` first inside IIFE.
-- Expose only `Load` and `Save`.
-- No Dataverse CRUD in handler JS.
-- No button enable/disable calls.
-
-## Helper Contract
-
-`Helper.js` should resolve the active app shell through `EasyTranslator`, with `XrmTranslator` fallback only during transition.
-
-```js
-Helper.GetTranslator = function () {
-    return window.EasyTranslator || window.XrmTranslator;
-};
-```
-
-Any existing helper that reads app/grid state must use `Helper.GetTranslator()`. In particular, `Helper.GetLanguageColumnText` should resolve the grid through `EasyTranslator` instead of calling `XrmTranslator.GetGrid()` directly.
-
-Shared helper behavior:
-
-```js
-Helper.FinalizeGrid(records, app)
-Helper.ApplyPlaceholder(record, editablePlaceholder, basePlaceholder, app)
-Helper.ValidateBaseLanguageNotEmpty(record, changes, options)
-Helper.AddLocalizedLabelsToRecord(record, localizedLabels)
-Helper.GetChangedLabels(changes, allowEmpty)
-Helper.RunServerLoad(options)
-Helper.RunServerSaveFlow(options)
-```
-
-Important: `Helper.FinalizeGrid` must not call `EnableLoadAndSave()`.
-
-```js
-Helper.FinalizeGrid = function (records, app) {
-    app = app || Helper.GetTranslator();
-    var grid = app.GetGrid();
-
-    app.AddSummary(records);
-    grid.add(records);
-
-    if (typeof app.UnlockGrid === "function") {
-        app.UnlockGrid();
-    } else {
-        grid.unlock();
-    }
-};
-```
-
-Important: `Helper.RunServerSaveFlow` may lock/unlock the grid for progress text, but it must not disable or enable Load/Save buttons.
+- target handler under `DataverseLabelTranslator.WebResource/js/Handler/`
+- `DataverseLabelTranslator.WebResource/js/Helper.js`
+- `DataverseLabelTranslator.WebResource/js/EasyTranslator.js`
+- `DataverseLabelTranslator.WebResource/js/XrmTranslator.js` for dispatch/core fallback glue
+- `DataverseLabelTranslator.WebResource/html/App.html` for script load order only
+- `DataverseLabelTranslator.Server/CustomActions/ActionNames.cs` for missing Server actions
+- `DataverseLabelTranslator.Server/CustomActions/PostDataverseLabelTranslatorCustomActionSynchronous.cs` for missing dispatcher cases
+- `DataverseLabelTranslator.Server/CustomActions/Synchronous/<TypeName>.cs` for the requested type's Server implementation
 
 ## Custom Action Contract
 
-JS calls:
+Handlers call these phases through shared helper flow methods:
 
 ```js
-Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Loading, input)
-Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Saving, input)
-Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Publishing, input)
-Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Published, input)
-Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Other, input)
+Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Loading, input);
+Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Saving, input);
+Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Publishing, input);
+Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Published, input);
 ```
 
-Expected envelope:
+Expected response envelope:
 
 ```json
 {
@@ -375,36 +154,33 @@ Expected envelope:
 }
 ```
 
-The `object` shape is type-specific.
+The `object` payload is type-specific.
 
-## Type Map
+## Shared Helper Requirements
 
-All-In-One is intentionally removed.
+Use shared helpers instead of handler-local generic logic:
 
-| # | Toolbar Type | Handler JS | Action name |
-| --- | --- | --- | --- |
-| 1 | Attributes | `AttributeHandler.js` | `Attribute` |
-| 2 | Option Sets | `OptionSetHandler.js` | `OptionSet` |
-| 3 | Forms | `FormHandler.js` | `Form` |
-| 4 | Views | `ViewHandler.js` | `View` |
-| 5 | Form Metadata | `FormMetaHandler.js` | `FormMetadata` |
-| 6 | Entity Metadata | `EntityHandler.js` | `EntityMetadata` |
-| 7 | Relationships | `RelationshipHandler.js` | `Relationship` |
-| 8 | Charts | `ChartHandler.js` | `Chart` |
-| 9 | Business Process Flows | `BpfHandler.js` | `BusinessProcessFlow` |
-| 10 | Business Rules | `BusinessRuleHandler.js` | `BusinessRule` |
-| 11 | Ribbons | `RibbonHandler.js` | `Ribbon` |
-| 12 | Commands | `ModernCommandHandler.js` | `ModernCommand` |
-| 13 | Entity Messages | `EntityMessageHandler.js` | `EntityMessage` |
-| 14 | Content Snippets | `ContentSnippetHandler.js` | `ContentSnippet` |
-| 15 | Sitemap | `SiteMapHandler.js` | `SiteMap` |
-| 16 | Dashboards | `DashboardHandler.js` | `Dashboard` |
-| 17 | Web Resources | `WebResourceHandler.js` | `WebResource` |
-| 18 | Global Option Sets | `GlobalOptionSetHandler.js` | `GlobalOptionSet` |
+```js
+Helper.GetTranslator();
+Helper.ApplyPlaceholder(record, editablePlaceholder, basePlaceholder, app);
+Helper.AddLocalizedLabelsToRecord(record, localizedLabels);
+Helper.GetComponentLocalizedLabels(metadata, component);
+Helper.GetChangedLabels(changes, allowEmpty);
+Helper.ValidateBaseLanguageNotEmpty(record, changes, options);
+Helper.FinalizeGrid(records, app);
+Helper.RunServerLoad(options);
+Helper.RunServerSaveFlow(options);
+```
 
-## Grid Rules
+Important:
 
-Every record has:
+- `Helper.FinalizeGrid(records, app)` must not enable/disable buttons.
+- `Helper.RunServerSaveFlow(...)` may lock/unlock the grid for progress text.
+- Shared helper code may be improved when multiple handlers need the same behavior.
+
+## Grid And Save Rules
+
+Every grid record has:
 
 ```js
 {
@@ -426,102 +202,81 @@ Tree records use:
 }
 ```
 
-Editable placeholders:
+Save extraction:
 
-| Component | Placeholder | Base-language placeholder |
-| --- | --- | --- |
-| Display Text | `Add display text` | `Add display text (*)` |
-| Description | `Add description` | none |
+- use `app.GetAllRecords()`
+- never use `app.GetGrid().records`
+- validate base-language Display Text cannot be empty
+- preserve non-base Display Text clears as empty strings
+- preserve Description clears as empty strings
+- never send placeholders
 
-Readonly empty cells:
+## Type 18 Reference
 
-```js
-record._emptyReadonlyPlaceholder = "-";
+Type 18 is the reference implementation.
+
+```text
+Handler: DataverseLabelTranslator.WebResource/js/Handler/GlobalOptionSetHandler.js
+Object: GlobalOptionSetHandler
+Action: GlobalOptionSet
+Load input: { solutionId }
+Load output key: optionSets
+Save payload keys:
+  component
+  optionValueUpdates
+  optionSetDescriptionUpdates
+Publish key: optionSetNames
 ```
 
-End every `FillTable()` with:
+Important type 18 behavior to preserve in other handlers where applicable:
 
-```js
-Helper.FinalizeGrid(records, app);
-```
+- no-change Save is handled before the server call
+- no-change Save uses `DialogHelper.alert(...)`
+- save reload calls `Load(Helper.GetOperationReLoading())`
+- handler has no button enable/disable calls
+- handler has no direct `WebApiClient`
 
-## Save Rules
+## Implementation Order For A Type
 
-Use:
+1. Read type 18 handler for the current pattern.
+2. Identify target handler load payload and custom action output key.
+3. Create or normalize private `FillTable()`.
+4. Create or normalize private `GetUpdates()`.
+5. Make public `Load(lockText)` lock the grid first and call `Helper.RunServerLoad(...)`.
+6. Make public `Save()` check no-save-changes first.
+7. Make save flow call `Helper.RunServerSaveFlow(...)`.
+8. Make reload call `Load(Helper.GetOperationReLoading())`.
+9. Remove direct Dataverse CRUD/publish/client mutation from the handler.
+10. Format changed JS and run lint if practical.
 
-```js
-var app = Helper.GetTranslator();
-var records = app.GetAllRecords();
-```
+## Acceptance Criteria
 
-Do not use:
+For the target handler:
 
-```js
-app.GetGrid().records
-```
-
-Validation:
-
-- base-language Display Text cannot be empty
-- non-base Display Text can be cleared and must be sent as empty string
-- Description can be cleared and must be sent as empty string
-- placeholders are UI only and must never be sent
-
-## Type 18 First
-
-Do type 18 first so `EasyTranslator` is proven on the smallest real custom-action-backed handler.
-
-Type 18 requirements:
-
-- handler: `GlobalOptionSetHandler.js`
-- action name: `GlobalOptionSet`
-- loading input: `{ solutionId: app.GetSolution() }`
-- loading output key: `optionSets`
-- save payload keys:
-  - `component`
-  - `optionValueUpdates`
-  - `optionSetDescriptionUpdates`
-- publish target key: `optionSetNames`
-- parent rows readonly in Display Text mode
-- parent rows editable only in Description mode
-- child rows editable for Display Text and Description
-
-## Implementation Order
-
-1. Remove All-In-One from UI and dispatch.
-2. Create `EasyTranslator.js` facade over `XrmTranslator`.
-3. Update `App.html` load order so `EasyTranslator.js` is available before rewritten handlers run.
-4. Update `Helper.js` to use `Helper.GetTranslator()`.
-5. Rewrite type 18 to use `EasyTranslator`.
-6. Move required app-shell functions from `XrmTranslator` into `EasyTranslator`.
-7. Rewrite remaining handler JS files one by one.
-8. Delete unused old APIs from `XrmTranslator.js` after no rewritten code depends on them.
-
-## Acceptance Criteria For A Handler
-
-1. Uses `Helper.GetTranslator()`, not direct `XrmTranslator`.
-2. Exposes only `Load` and `Save`.
-3. Does not call `WebApiClient`.
-4. Does not call `RunTypeSaveFlow`.
-5. Does not call any publish helper.
-6. Does not call `EnableLoadAndSave`, `SetLoadButtonDisabled`, or `SetSaveButtonDisabled`.
-7. Uses `Helper.ExecuteTypedCustomAction` through shared load/save flow helpers.
-8. Uses `app.GetAllRecords()` for changed rows.
-9. Ends `FillTable()` with `Helper.FinalizeGrid(records, app)`.
-10. Blocks empty base-language Display Text.
-11. Preserves intentional clears for non-base Display Text and Description.
+- Private `GetUpdates()` exists.
+- Private `FillTable()` exists.
+- Public `Load(lockText)` exists.
+- Public `Save()` exists.
+- `Save()` checks no-save-changes before server calls.
+- `Load()` locks the grid first.
+- Save reload passes `Helper.GetOperationReLoading()` into `Load(...)`.
+- Handler exposes only `Load` and `Save`.
+- Handler has no `SaveOnly`.
+- Handler has no `WebApiClient`.
+- Handler has no `RunTypeSaveFlow`.
+- Handler has no direct publish call.
+- Handler has no Load/Save button enable-disable calls.
+- Handler uses `Helper.GetTranslator()`.
+- Handler uses `app.GetAllRecords()`.
+- `FillTable()` ends with `Helper.FinalizeGrid(records, app)`.
+- Empty base-language Display Text is blocked.
+- Intentional clears are preserved as empty strings.
 
 ## Bottom Line
 
-The rewrite is client-side only:
+Handlers are not mini apps. They are thin type-specific adapters:
 
-- remove All-In-One
-- ignore server implementation details
-- do not design around current unit tests
-- keep Load and Save buttons always enabled
-- introduce `EasyTranslator` as the new small shell
-- make type 18 work first on `EasyTranslator`
-- move remaining behavior from `XrmTranslator` to `EasyTranslator` gradually
-- delete `SaveOnly`
-- delete `RunTypeSaveFlow`
-- remove direct Dataverse CRUD from handler JavaScript
+```text
+Load -> custom action Loading -> FillTable
+Save -> GetUpdates -> no-change dialog or Saving/Publishing/Published -> Load(Re-Loading)
+```
