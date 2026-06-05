@@ -113,6 +113,8 @@ Before or while rewriting the handler:
 3. Inspect `DataverseLabelTranslator.Server/CustomActions/`.
 4. If the Server custom action for that type is missing, create it correctly.
 
+Treat a legacy handler that still works through client-side `WebApiClient`, `XrmTranslator.RunTypeSaveFlow`, or direct publish helpers as missing Server support unless its `actionName` already exists in `ActionNames.cs`, is wired in `PostDataverseLabelTranslatorCustomActionSynchronous`, and has a matching `Synchronous/<TypeName>.cs` implementation. Do not stop at "the old handler works"; the rewrite contract moves Dataverse retrieval, mutation, and publish behavior to Server phases.
+
 Use the completed Server patterns for type 17 and type 18 as the reference:
 
 - `DataverseLabelTranslator.Server/CustomActions/ActionNames.cs`
@@ -397,3 +399,5 @@ Before finishing a handler:
 - User-facing strings are declared at the top of the handler `.js` file, not inline in UI calls.
 - Run formatting for changed JS files.
 - Run lint for JS changes if practical.
+- Deploy changed web resources with `DataverseLabelTranslator.WebResource\deploy.debug.bat` so aP can test the dashboard in Dataverse.
+- If Server code was added or changed, deploy Server components with `DataverseLabelTranslator.Server\deploy.debug.bat` so custom action phases are available for aP to test.

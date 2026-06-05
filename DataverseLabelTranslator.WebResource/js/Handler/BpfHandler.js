@@ -405,7 +405,7 @@
         var saveIndex = 0;
 
         return WebApiClient.Promise.resolve(workflowIds).each(function (workflowId) {
-            XrmTranslator.LockGridProgress("Saving 9. Business Process Flows", ++saveIndex, workflowIds.length);
+            XrmTranslator.LockGridProgress("Saving Business Process Flows", ++saveIndex, workflowIds.length);
             var stageUpdates = updatedWorkflows[workflowId];
             var originalXaml = null;
 

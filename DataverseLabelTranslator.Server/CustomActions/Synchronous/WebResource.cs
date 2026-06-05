@@ -307,7 +307,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         {
             var name = resource.GetAttributeValue<string>("name") ?? string.Empty;
             var displayName = resource.GetAttributeValue<string>("displayname") ?? string.Empty;
-            var webresourcetype = resource.GetAttributeValue<int>("webresourcetype");
+            var webresourcetype = GetOptionValue(resource, "webresourcetype");
             var candidates = new[] { name, displayName };
 
             foreach (var candidate in candidates)
@@ -360,6 +360,27 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             return match?.lcid;
         }
 
+        private static int GetOptionValue(Entity entity, string attributeName)
+        {
+            if (entity == null || !entity.Contains(attributeName) || entity[attributeName] == null)
+            {
+                return 0;
+            }
+
+            var option = entity[attributeName] as OptionSetValue;
+            if (option != null)
+            {
+                return option.Value;
+            }
+
+            if (entity[attributeName] is int)
+            {
+                return (int)entity[attributeName];
+            }
+
+            throw new InvalidPluginExecutionException($"WebResource {attributeName} has unsupported value type.");
+        }
+
         private static string GetResourceGroupingKey(string name, string displayName, string lcid)
         {
             var index = name.IndexOf(lcid, StringComparison.Ordinal);
@@ -389,7 +410,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             var id = resource.Id.ToString("D");
             var name = resource.GetAttributeValue<string>("name") ?? string.Empty;
             var displayName = resource.GetAttributeValue<string>("displayname") ?? string.Empty;
-            var webresourcetype = resource.GetAttributeValue<int>("webresourcetype");
+            var webresourcetype = GetOptionValue(resource, "webresourcetype");
             var rawBase64 = resource.GetAttributeValue<string>("content") ?? string.Empty;
             var rawText = string.IsNullOrEmpty(rawBase64) ? string.Empty : Encoding.UTF8.GetString(Convert.FromBase64String(rawBase64));
 
@@ -513,7 +534,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             }
 
             var current = serviceAdmin.Retrieve("webresource", id, new ColumnSet("content", "webresourcetype", "name"));
-            var webresourcetype = current.GetAttributeValue<int>("webresourcetype");
+            var webresourcetype = GetOptionValue(current, "webresourcetype");
             var rawBase64 = current.GetAttributeValue<string>("content") ?? string.Empty;
             var rawText = string.IsNullOrEmpty(rawBase64) ? string.Empty : Encoding.UTF8.GetString(Convert.FromBase64String(rawBase64));
             var format = webresourcetype == WebResourceTypeResx ? "resx" : "json";
@@ -561,7 +582,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             if (!string.IsNullOrWhiteSpace(change.baseWebresourceid) && Guid.TryParse(change.baseWebresourceid, out var baseId))
             {
                 var baseEntity = serviceAdmin.Retrieve("webresource", baseId, new ColumnSet("content", "webresourcetype", "name", "displayname"));
-                var baseWebresourcetype = baseEntity.GetAttributeValue<int>("webresourcetype");
+                var baseWebresourcetype = GetOptionValue(baseEntity, "webresourcetype");
                 format = baseWebresourcetype == WebResourceTypeResx ? "resx" : "json";
                 webresourcetype = baseWebresourcetype;
 

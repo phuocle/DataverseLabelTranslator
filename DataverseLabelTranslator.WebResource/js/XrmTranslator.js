@@ -72,24 +72,24 @@
     ];
     var GLOBAL_TYPE_ITEMS = ["type:sitemap", "type:dashboards", "type:webresources", "type:globalOptionSet"];
     var TYPE_STATE_LABELS = {
-        allInOne: "0. All-In-One",
-        attributes: "1. Attributes",
-        options: "2. Option Sets",
-        forms: "3. Forms",
-        views: "4. Views",
-        formMeta: "5. Form Metadata",
-        entityMeta: "6. Entity Metadata",
-        relationships: "7. Relationships",
-        charts: "8. Charts",
-        bpf: "9. Business Process Flows",
-        businessRules: "10. Business Rules",
-        ribbons: "11. Ribbons",
-        commands: "12. Commands",
-        entityMessages: "13. Entity Messages",
-        content: "14. Content Snippets",
-        sitemap: "15. Sitemap",
-        dashboards: "16. Dashboards",
-        webresources: "17. Web Resources",
+        allInOne: "All-In-One",
+        attributes: "Attributes",
+        options: "Option Sets",
+        forms: "Forms",
+        views: "Views",
+        formMeta: "Form Metadata",
+        entityMeta: "Entity Metadata",
+        relationships: "Relationships",
+        charts: "Charts",
+        bpf: "Business Process Flows",
+        businessRules: "Business Rules",
+        ribbons: "Ribbons",
+        commands: "Commands",
+        entityMessages: "Entity Messages",
+        content: "Content Snippets",
+        sitemap: "Sitemap",
+        dashboards: "Dashboards",
+        webresources: "Web Resources",
         globalOptionSet: "Global Option Set"
     };
     var ALLOWED_ROLE_NAMES = {
@@ -553,7 +553,7 @@
             return Promise.resolve(null);
         }
 
-        var toolbarType = getOperationToolbarType(state) || "11. Ribbons";
+        var toolbarType = getOperationToolbarType(state) || "Ribbons";
         XrmTranslator.UpdateOperationStatus({
             phase: "startingPublish",
             tone: "success",
@@ -2671,7 +2671,7 @@
             return false;
         }
 
-        // Skip top-level All-In-One buckets such as "3. Forms"; keep actual form names.
+        // Skip top-level All-In-One buckets such as "Forms"; keep actual form names.
         return !record._isGroupNode || !/^\d+\.\s/.test(label);
     }
 
@@ -3607,27 +3607,27 @@
             '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
             "<b>Entity-based types</b> (select an Entity first):" +
             '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>0. All-In-One</b> — Loads the current bulk-supported entity types into one grid for translation, including Business Rules.</li>" +
-            "<li><b>1. Attributes</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Attributes &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>2. Options</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Options &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>3. Forms</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Forms &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>4. Views</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Views &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>5. Form Metadata</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Form Metadata &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>6. Entity Metadata</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Entity Metadata &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>7. Relationships</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Relationships &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>8. Charts</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Charts &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>9. Business Process Flows</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Process Flows &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>10. Business Rules</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Rules &rarr; Load &rarr; Translate &rarr; Save. Save temporarily deactivates each changed rule, patches workflow XAML, then reactivates it.</li>" +
-            "<li><b>11. Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load &rarr; Translate &rarr; Save. Save downloads a backup first, then starts Publish XML asynchronously.</li>" +
-            "<li><b>12. Commands</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Commands &rarr; Load &rarr; Translate &rarr; Save. Loads modern command designer appaction labels and publishes the selected entity.</li>" +
-            "<li><b>13. Entity Messages</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Entity Messages &rarr; Load &rarr; Translate &rarr; Save. Loads table messages/display strings from the selected solution translation package, imports changed translations, then publishes the selected entity.</li>" +
-            "<li><b>14. Content Snippets</b> — Solution &rarr; Entity &rarr; Adx_contentsnippet &rarr; Type &rarr; 14. Content Snippets &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>All-In-One</b> — Loads the current bulk-supported entity types into one grid for translation, including Business Rules.</li>" +
+            "<li><b>Attributes</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Attributes &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Options</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Options &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Forms</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Forms &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Views</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Views &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Form Metadata</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Form Metadata &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Entity Metadata</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Entity Metadata &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Relationships</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Relationships &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Charts</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Charts &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Business Process Flows</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Process Flows &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Business Rules</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Rules &rarr; Load &rarr; Translate &rarr; Save. Save temporarily deactivates each changed rule, patches workflow XAML, then reactivates it.</li>" +
+            "<li><b>Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load &rarr; Translate &rarr; Save. Save downloads a backup first, then starts Publish XML asynchronously.</li>" +
+            "<li><b>Commands</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Commands &rarr; Load &rarr; Translate &rarr; Save. Loads modern command designer appaction labels and publishes the selected entity.</li>" +
+            "<li><b>Entity Messages</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Entity Messages &rarr; Load &rarr; Translate &rarr; Save. Loads table messages/display strings from the selected solution translation package, imports changed translations, then publishes the selected entity.</li>" +
+            "<li><b>Content Snippets</b> — Solution &rarr; Entity &rarr; Adx_contentsnippet &rarr; Type &rarr; Content Snippets &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "</ul>" +
             "<b>Entity-independent types</b> (set Entity to None):" +
             '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>15. Sitemap</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Sitemap &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>16. Dashboards</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Dashboards &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>17. Web Resources</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Web Resources &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Sitemap</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Sitemap &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Dashboards</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Dashboards &rarr; Load &rarr; Translate &rarr; Save</li>" +
+            "<li><b>Web Resources</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Web Resources &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "<li><b>Global Option Set</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Global Option Set &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "</ul>" +
             '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
@@ -3839,28 +3839,28 @@
                 selected: "sitemap",
                 items: (XrmTranslator.showAllInOneType
                     ? [
-                          { id: "allInOne", text: "0. All-In-One", icon: "icon-grid" },
+                          { id: "allInOne", text: "All-In-One", icon: "icon-grid" },
                           { id: "entitySeparator", text: "--" }
                       ]
                     : []
                 ).concat([
-                    { id: "attributes", text: "1. Attributes", icon: "icon-attribute" },
-                    { id: "options", text: "2. Option Sets", icon: "icon-options" },
-                    { id: "forms", text: "3. Forms", icon: "icon-form" },
-                    { id: "views", text: "4. Views", icon: "icon-view" },
-                    { id: "formMeta", text: "5. Form Metadata", icon: "icon-layout" },
-                    { id: "entityMeta", text: "6. Entity Metadata", icon: "icon-entity" },
-                    { id: "relationships", text: "7. Relationships", icon: "icon-link" },
-                    { id: "charts", text: "8. Charts", icon: "icon-chart" },
-                    { id: "bpf", text: "9. Business Process Flows", icon: "icon-flow" },
-                    { id: "businessRules", text: "10. Business Rules", icon: "icon-flow" },
-                    { id: "ribbons", text: "11. Ribbons", icon: "icon-grid" },
-                    { id: "commands", text: "12. Commands", icon: "icon-component" },
-                    { id: "entityMessages", text: "13. Entity Messages", icon: "icon-description" },
-                    { id: "content", text: "14. Content Snippets", icon: "icon-code" },
-                    { id: "sitemap", text: "15. Sitemap", icon: "icon-sitemap" },
-                    { id: "dashboards", text: "16. Dashboards", icon: "icon-dashboard" },
-                    { id: "webresources", text: "17. Web Resources", icon: "icon-file-code" },
+                    { id: "attributes", text: "Attributes", icon: "icon-attribute" },
+                    { id: "options", text: "Option Sets", icon: "icon-options" },
+                    { id: "forms", text: "Forms", icon: "icon-form" },
+                    { id: "views", text: "Views", icon: "icon-view" },
+                    { id: "formMeta", text: "Form Metadata", icon: "icon-layout" },
+                    { id: "entityMeta", text: "Entity Metadata", icon: "icon-entity" },
+                    { id: "relationships", text: "Relationships", icon: "icon-link" },
+                    { id: "charts", text: "Charts", icon: "icon-chart" },
+                    { id: "bpf", text: "Business Process Flows", icon: "icon-flow" },
+                    { id: "businessRules", text: "Business Rules", icon: "icon-flow" },
+                    { id: "ribbons", text: "Ribbons", icon: "icon-grid" },
+                    { id: "commands", text: "Commands", icon: "icon-component" },
+                    { id: "entityMessages", text: "Entity Messages", icon: "icon-description" },
+                    { id: "content", text: "Content Snippets", icon: "icon-code" },
+                    { id: "sitemap", text: "Sitemap", icon: "icon-sitemap" },
+                    { id: "dashboards", text: "Dashboards", icon: "icon-dashboard" },
+                    { id: "webresources", text: "Web Resources", icon: "icon-file-code" },
                     { id: "globalOptionSet", text: "Global Option Set", icon: "icon-global-options" }
                 ])
             },

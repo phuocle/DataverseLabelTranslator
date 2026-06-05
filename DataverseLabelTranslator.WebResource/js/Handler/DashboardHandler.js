@@ -1,79 +1,52 @@
-window.DashboardHandler = Object(window.DashboardHandler);
-
 (function (DashboardHandler, undefined) {
     "use strict";
 
-    DashboardHandler.dashboards = null;
+    var userText = {
+        noChangesToSave: "There are no dashboard changes to save.",
+        title: "Dashboards",
+        unknownRow: "(unknown)"
+    };
+    var actionName = "Dashboard";
 
-    function IsEmptyLabelValue(value) {
-        return value == null || String(value).trim().length === 0;
-    }
-
-    function GetLanguageColumnText(languageCode) {
-        var columns = XrmTranslator.GetGrid().columns || [];
-        var field = String(languageCode);
-
-        for (var i = 0; i < columns.length; i++) {
-            if (String(columns[i].field) === field) {
-                return columns[i].text || columns[i].caption || columns[i].label || field;
-            }
+    function GetMetadata(app) {
+        if (typeof app.GetMetadata === "function") {
+            return app.GetMetadata();
         }
 
-        return field;
+        return app.metadata || [];
     }
 
-    function GetSelectedSolutionDashboardIds() {
-        var solutionId = XrmTranslator.GetSolution();
-
-        if (!solutionId || solutionId === "all") {
-            return WebApiClient.Promise.resolve(null);
+    function GetBaseLanguage(app) {
+        if (app.baseLanguage) {
+            return app.baseLanguage;
         }
 
-        return WebApiClient.Retrieve({
-            entityName: "solutioncomponent",
-            queryParams:
-                "?$select=objectid&$filter=_solutionid_value eq " +
-                solutionId +
-                " and componenttype eq " +
-                XrmTranslator.ComponentType.SystemForm
-        }).then(function (response) {
-            return (response.value || []).map(function (component) {
-                return component.objectid;
-            });
-        });
+        if (typeof app.GetBaseLanguage === "function") {
+            return app.GetBaseLanguage();
+        }
+
+        return null;
     }
 
-    function GetDashboardQueryForLoad() {
-        return GetSelectedSolutionDashboardIds().then(function (dashboardIds) {
-            var query =
-                "?$select=formid,name,type,objecttypecode&$filter=formactivationstate eq 1 and iscustomizable/Value eq true and (type eq 0 or type eq 10)";
+    function SetBaseLanguage(app, baseLanguage) {
+        if (!baseLanguage) {
+            return;
+        }
 
-            if (dashboardIds === null) {
-                return query;
-            }
+        if (typeof app.SetBaseLanguage === "function") {
+            app.SetBaseLanguage(baseLanguage);
+            return;
+        }
 
-            if (dashboardIds.length === 0) {
-                return null;
-            }
-
-            var idFilter = dashboardIds
-                .map(function (id) {
-                    return "formid eq " + id;
-                })
-                .join(" or ");
-
-            return query + " and (" + idFilter + ")";
-        });
+        app.baseLanguage = baseLanguage;
     }
 
-    function GetLocalizedLabels(dashboard) {
-        return dashboard && dashboard.labels && dashboard.labels.Label && dashboard.labels.Label.LocalizedLabels
-            ? dashboard.labels.Label.LocalizedLabels
-            : [];
+    function GetDashboardLocalizedLabels(dashboard) {
+        return Helper.GetComponentLocalizedLabels(dashboard, Helper.ComponentTypes.DisplayText);
     }
 
     function GetDashboardLabel(dashboard, languageCode) {
-        var labels = GetLocalizedLabels(dashboard);
+        var labels = GetDashboardLocalizedLabels(dashboard);
         var stringLanguageCode = String(languageCode || "");
 
         for (var i = 0; i < labels.length; i++) {
@@ -85,297 +58,136 @@ window.DashboardHandler = Object(window.DashboardHandler);
         return "";
     }
 
-    function GetDashboardBaseLabel(dashboard) {
-        return GetDashboardLabel(dashboard, XrmTranslator.baseLanguage) || dashboard.name || dashboard.formid;
+    function GetDashboardBaseLabel(dashboard, app) {
+        return (
+            GetDashboardLabel(dashboard, GetBaseLanguage(app)) ||
+            dashboard.name ||
+            dashboard.formid ||
+            userText.unknownRow
+        );
     }
 
-    function AddDashboardLanguageValues(record, dashboard) {
-        var labels = GetLocalizedLabels(dashboard);
+    function GetRowPath(record) {
+        return (record && (record.schemaName || record.recid)) || userText.unknownRow;
+    }
 
-        for (var i = 0; i < labels.length; i++) {
-            record[String(labels[i].LanguageCode)] = labels[i].Label || "";
+    function HasNoChanges(updates) {
+        return !updates || !updates.dashboardUpdates || updates.dashboardUpdates.length === 0;
+    }
+
+    function GetDashboardIds(result) {
+        return result && result.dashboardIds ? result.dashboardIds : [];
+    }
+
+    function GetDashboardIdPayload(output) {
+        var dashboardIds = GetDashboardIds(output);
+        return dashboardIds.length > 0 ? { dashboardIds: dashboardIds } : null;
+    }
+
+    function GetUpdates() {
+        var app = Helper.GetTranslator();
+        var records = app.GetAllRecords();
+        var dashboardUpdates = [];
+
+        for (var i = 0; i < records.length; i++) {
+            var record = records[i];
+            if (!record.w2ui || !record.w2ui.changes || record.w2ui.summary) {
+                continue;
+            }
+
+            var changes = record.w2ui.changes;
+            Helper.ValidateBaseLanguageNotEmpty(record, changes, {
+                app: app,
+                getRowPath: GetRowPath
+            });
+
+            var labels = Helper.GetChangedLabels(changes, true);
+            if (labels.length < 1) {
+                continue;
+            }
+
+            dashboardUpdates.push({
+                dashboardId: record.recid,
+                labels: labels
+            });
         }
+
+        return { dashboardUpdates: dashboardUpdates };
     }
 
     function FillTable() {
-        var grid = XrmTranslator.GetGrid();
+        var app = Helper.GetTranslator();
+        var grid = app.GetGrid();
         var records = [];
-        var dashboards = DashboardHandler.dashboards || [];
+        var dashboards = GetMetadata(app).slice();
+        var editablePlaceholder = Helper.GetPlaceholderDisplayText();
+        var baseEditablePlaceholder = Helper.GetPlaceholderDisplayTextBase();
 
         grid.clear();
 
         dashboards.sort(function (a, b) {
-            return GetDashboardBaseLabel(a).localeCompare(GetDashboardBaseLabel(b));
+            return GetDashboardBaseLabel(a, app).localeCompare(GetDashboardBaseLabel(b, app));
         });
 
         for (var i = 0; i < dashboards.length; i++) {
             var dashboard = dashboards[i];
             var record = {
                 recid: dashboard.formid,
-                schemaName: GetDashboardBaseLabel(dashboard),
-                _emptyEditablePlaceholder: "Add display text"
+                schemaName: GetDashboardBaseLabel(dashboard, app)
             };
 
-            if (XrmTranslator.baseLanguage) {
-                record._emptyEditablePlaceholders = {};
-                record._emptyEditablePlaceholders[String(XrmTranslator.baseLanguage)] = "Add display text (*)";
-            }
-
-            AddDashboardLanguageValues(record, dashboard);
+            Helper.ApplyPlaceholder(record, editablePlaceholder, baseEditablePlaceholder, app);
+            Helper.AddLocalizedLabelsToRecord(record, GetDashboardLocalizedLabels(dashboard));
             records.push(record);
         }
 
-        XrmTranslator.metadata = dashboards;
-        XrmTranslator.AddSummary(records);
-        grid.add(records);
-        grid.unlock();
-        XrmTranslator.EnableLoadAndSave();
+        Helper.FinalizeGrid(records, app);
     }
 
-    function ValidateBaseLanguageChange(record, changes) {
-        if (!XrmTranslator.baseLanguage) {
-            return;
-        }
+    DashboardHandler.Load = function (lockText) {
+        var app = Helper.GetTranslator();
 
-        var baseLanguage = String(XrmTranslator.baseLanguage);
-        if (!Object.prototype.hasOwnProperty.call(changes, baseLanguage)) {
-            return;
-        }
+        app.LockGrid(lockText || Helper.GetOperationLoading());
 
-        if (!IsEmptyLabelValue(changes[baseLanguage])) {
-            return;
-        }
-
-        throw new Error(
-            "Dashboard display text in the base language (" +
-                GetLanguageColumnText(baseLanguage) +
-                ") cannot be empty.\n" +
-                "Row: " +
-                (record.schemaName || record.recid || "(unknown)")
-        );
-    }
-
-    function GetUpdates() {
-        var records = XrmTranslator.GetAllRecords();
-        var updates = [];
-
-        for (var i = 0; i < records.length; i++) {
-            var record = records[i];
-
-            if (!record.w2ui || !record.w2ui.changes || record.w2ui.summary) {
-                continue;
-            }
-
-            var changes = record.w2ui.changes;
-            ValidateBaseLanguageChange(record, changes);
-
-            for (var languageCode in changes) {
-                if (!changes.hasOwnProperty(languageCode)) {
-                    continue;
-                }
-
-                var text = changes[languageCode];
-                if (text == null) {
-                    text = "";
-                }
-
-                updates.push({
-                    dashboardId: record.recid,
-                    languageCode: String(languageCode),
-                    text: text
-                });
-            }
-        }
-
-        return updates;
-    }
-
-    function GetDashboardById(dashboardId) {
-        var dashboards = DashboardHandler.dashboards || [];
-
-        for (var i = 0; i < dashboards.length; i++) {
-            if (dashboards[i].formid === dashboardId) {
-                return dashboards[i];
-            }
-        }
-
-        return null;
-    }
-
-    function CloneDashboardLabels(dashboard) {
-        return GetLocalizedLabels(dashboard).map(function (label) {
-            return {
-                Label: label.Label || "",
-                LanguageCode: parseInt(label.LanguageCode, 10),
-                IsManaged: label.IsManaged || null,
-                MetadataId: label.MetadataId || null,
-                HasChanged: label.HasChanged || null
-            };
-        });
-    }
-
-    function ApplyDashboardLabelChanges(labels, updates) {
-        for (var i = 0; i < updates.length; i++) {
-            var update = updates[i];
-            var languageCode = parseInt(update.languageCode, 10);
-            var text = update.text == null ? "" : update.text;
-            var found = false;
-
-            for (var j = 0; j < labels.length; j++) {
-                if (parseInt(labels[j].LanguageCode, 10) === languageCode) {
-                    labels[j].Label = text;
-                    labels[j].HasChanged = true;
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                labels.push({
-                    Label: text,
-                    LanguageCode: languageCode,
-                    HasChanged: true
-                });
-            }
-        }
-
-        return labels;
-    }
-
-    function GetDashboardUpdatesById(updates) {
-        var groups = {};
-        var result = [];
-
-        for (var i = 0; i < updates.length; i++) {
-            var update = updates[i];
-            var dashboardId = update.dashboardId;
-
-            if (!groups[dashboardId]) {
-                groups[dashboardId] = {
-                    dashboardId: dashboardId,
-                    updates: []
+        return Helper.RunServerLoad({
+            app: app,
+            actionName: actionName,
+            getPayload: function () {
+                return {
+                    solutionId: app.GetSolution()
                 };
-                result.push(groups[dashboardId]);
-            }
-
-            groups[dashboardId].updates.push(update);
-        }
-
-        return result;
-    }
-
-    function GetChangedDashboardIds(updates) {
-        var seen = {};
-        var dashboardIds = [];
-
-        for (var i = 0; i < updates.length; i++) {
-            var dashboardId = updates[i].dashboardId;
-
-            if (seen[dashboardId]) {
-                continue;
-            }
-
-            seen[dashboardId] = true;
-            dashboardIds.push({
-                recid: dashboardId
-            });
-        }
-
-        return dashboardIds;
-    }
-
-    function SaveDashboardGroup(group, index, total) {
-        var dashboard = GetDashboardById(group.dashboardId);
-
-        if (!dashboard) {
-            return Promise.resolve();
-        }
-
-        XrmTranslator.LockGridProgress("Saving " + XrmTranslator.GetCurrentToolbarTypeText(), index + 1, total);
-
-        return WebApiClient.SendRequest("POST", WebApiClient.GetApiUrl() + "SetLocLabels", {
-            Labels: ApplyDashboardLabelChanges(CloneDashboardLabels(dashboard), group.updates),
-            EntityMoniker: {
-                "@odata.type": "Microsoft.Dynamics.CRM.systemform",
-                formid: group.dashboardId
             },
-            AttributeName: "name"
-        });
-    }
-
-    function RetrieveDashboardLabels(dashboard) {
-        var retrieveLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest.with({
-            urlParams: {
-                EntityMoniker: "{'@odata.id':'systemforms(" + dashboard.formid + ")'}",
-                AttributeName: "'name'",
-                IncludeUnpublished: true
+            onLoaded: function (output) {
+                SetBaseLanguage(app, output.baseLanguage);
+                app.SetMetadata(output.dashboards || []);
+                FillTable();
             }
         });
-
-        return WebApiClient.Promise.props({
-            formid: dashboard.formid,
-            name: dashboard.name,
-            type: dashboard.type,
-            objecttypecode: dashboard.objecttypecode,
-            labels: WebApiClient.Execute(retrieveLabelsRequest)
-        });
-    }
-
-    DashboardHandler.Load = function () {
-        return GetDashboardQueryForLoad()
-            .then(function (query) {
-                if (!query) {
-                    return [];
-                }
-
-                return XrmTranslator.RunAsBaseLanguage(function () {
-                    return WebApiClient.Retrieve({
-                        entityName: "systemform",
-                        queryParams: query
-                    });
-                });
-            })
-            .then(function (response) {
-                var dashboards = response && response.value ? response.value : [];
-
-                return WebApiClient.Promise.all(dashboards.map(RetrieveDashboardLabels));
-            })
-            .then(function (dashboards) {
-                DashboardHandler.dashboards = dashboards || [];
-                FillTable();
-            })
-            .catch(XrmTranslator.errorHandler);
     };
 
     DashboardHandler.Save = function () {
-        return XrmTranslator.RunTypeSaveFlow({
-            saveAction: function () {
-                var updates = GetUpdates();
+        var updates = GetUpdates();
 
-                if (updates.length === 0) {
-                    return false;
-                }
+        if (HasNoChanges(updates)) {
+            return DialogHelper.alert(userText.noChangesToSave, {
+                title: userText.title
+            });
+        }
 
-                var groupedUpdates = GetDashboardUpdatesById(updates);
-                var dashboardIds = GetChangedDashboardIds(updates);
-
-                return WebApiClient.Promise.each(groupedUpdates, function (group, index) {
-                    return SaveDashboardGroup(group, index, groupedUpdates.length);
-                }).then(function () {
-                    return {
-                        dashboardIds: dashboardIds
-                    };
-                });
+        return Helper.RunServerSaveFlow({
+            app: Helper.GetTranslator(),
+            actionName: actionName,
+            getSavePayload: function () {
+                return updates;
             },
-            shouldPublish: function (result) {
-                return !!(result && result.dashboardIds && result.dashboardIds.length > 0);
-            },
-            publishAction: function (result) {
-                return XrmTranslator.PublishDashboard(result.dashboardIds);
+            getPublishPayload: GetDashboardIdPayload,
+            getPublishedPayload: GetDashboardIdPayload,
+            shouldReload: function (output) {
+                return GetDashboardIds(output).length > 0;
             },
             reloadAction: function () {
-                return DashboardHandler.Load();
+                return DashboardHandler.Load(Helper.GetOperationReLoading());
             }
         });
     };
-})(window.DashboardHandler);
+})((window.DashboardHandler = Object(window.DashboardHandler)));

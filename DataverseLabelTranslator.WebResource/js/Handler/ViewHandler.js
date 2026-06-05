@@ -187,7 +187,7 @@
     ViewHandler.SaveOnly = function () {
         var updates = GetUpdates();
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving 4. Views",
+            progressLabel: "Saving Views",
             batchNamePrefix: "batch_setviewlabels",
             changeSetNamePrefix: "changeset_setviewlabels",
             buildRequest: function (update) {

@@ -94,6 +94,8 @@ Read the current Server implementation before writing new code. Type 17 and type
 
 If the requested type does not have Server code yet, creating the Server side is required, not optional.
 
+Legacy client-side behavior is not Server support. If the current handler still loads, saves, or publishes through `WebApiClient`, `XrmTranslator.RunTypeSaveFlow`, `XrmTranslator.ExecuteChangeSetBatches`, or direct publish helpers, but the handler action is not present in `ActionNames.cs`, dispatcher wiring, and `Synchronous/<TypeName>.cs`, create the Server custom action before finishing the rewrite.
+
 For each new Server-backed toolbar type:
 
 1. Add an `ActionNames` constant whose value matches the handler `actionName`.
@@ -276,6 +278,8 @@ Important type 18 behavior to preserve in other handlers where applicable:
 9. Make reload call `Load(Helper.GetOperationReLoading())`.
 10. Remove direct Dataverse CRUD/publish/client mutation from the handler.
 11. Format changed JS and run lint if practical.
+12. Deploy changed web resources with `DataverseLabelTranslator.WebResource\deploy.debug.bat` so aP can test in Dataverse.
+13. If Server code was added or changed, deploy Server components with `DataverseLabelTranslator.Server\deploy.debug.bat` before telling aP the work is ready to test.
 
 ## Acceptance Criteria
 
@@ -300,6 +304,8 @@ For the target handler:
 - Empty base-language Display Text is blocked.
 - Intentional clears are preserved as empty strings.
 - User-facing strings are declared at the top of the handler `.js` file.
+- Changed web resources are deployed to Dataverse for aP testing.
+- Changed Server custom action/plugin code is deployed to Dataverse for aP testing.
 
 ## Bottom Line
 

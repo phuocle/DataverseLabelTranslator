@@ -122,7 +122,7 @@
 
     function SaveOptionValueUpdates(updates) {
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving 2. Option Sets",
+            progressLabel: "Saving Option Sets",
             batchNamePrefix: "batch_updateoptionvalue",
             changeSetNamePrefix: "changeset_updateoptionvalue",
             buildRequest: function (payload, context) {

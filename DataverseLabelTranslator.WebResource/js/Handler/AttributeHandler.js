@@ -193,7 +193,7 @@
         var entityUrl = WebApiClient.GetApiUrl() + "EntityDefinitions(" + XrmTranslator.GetEntityId() + ")/Attributes(";
 
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving 1. Attributes",
+            progressLabel: "Saving Attributes",
             batchNamePrefix: "batch_updateattributes",
             changeSetNamePrefix: "changeset_updateattributes",
             buildRequest: function (update) {

@@ -500,7 +500,7 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             entity["name"] = name;
             entity["displayname"] = displayName;
             entity["content"] = content;
-            entity["webresourcetype"] = webResourceType;
+            entity["webresourcetype"] = new OptionSetValue(webResourceType);
             return entity;
         }
 

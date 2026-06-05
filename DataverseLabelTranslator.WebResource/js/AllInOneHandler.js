@@ -330,7 +330,7 @@
                         var records = fd.records || [];
                         prefixRecords(records, formPrefix);
 
-                        // Each form is a sub-group under "3. Forms"
+                        // Each form is a sub-group under "Forms"
                         formChildren.push({
                             recid: formPrefix + "_group",
                             schemaName: getAllInOneFormGroupLabel(fd),
@@ -348,7 +348,7 @@
                         number: 3,
                         node: {
                             recid: "forms_group",
-                            schemaName: "3. Forms",
+                            schemaName: "Forms",
                             _isGroupNode: true,
                             w2ui: {
                                 children: formChildren,

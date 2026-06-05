@@ -1,4 +1,4 @@
-﻿(function (ChartHandler, undefined) {
+(function (ChartHandler, undefined) {
     "use strict";
 
     function ApplyChanges(changes, labels) {
@@ -141,7 +141,7 @@
     ChartHandler.SaveOnly = function () {
         var updates = GetUpdates();
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving 8. Charts",
+            progressLabel: "Saving Charts",
             batchNamePrefix: "batch_setchartlabels",
             changeSetNamePrefix: "changeset_setchartlabels",
             buildRequest: function (update) {

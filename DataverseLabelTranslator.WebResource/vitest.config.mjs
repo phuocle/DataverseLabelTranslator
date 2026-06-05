@@ -6,7 +6,11 @@ export default defineConfig({
     include: ["tests/**/*.test.js"],
     coverage: {
       provider: "v8",
-      include: ["js/Handler/GlobalOptionSetHandler.js", "js/Handler/WebResourceHandler.js"],
+      include: [
+        "js/Handler/DashboardHandler.js",
+        "js/Handler/GlobalOptionSetHandler.js",
+        "js/Handler/WebResourceHandler.js"
+      ],
       reporter: ["text", "json", "json-summary", "html"],
       thresholds: {
         lines: 100,

@@ -173,7 +173,7 @@
     FormMetaHandler.SaveOnly = function () {
         var updates = GetUpdates();
         return XrmTranslator.ExecuteChangeSetBatches(updates, {
-            progressLabel: "Saving 5. Form Metadata",
+            progressLabel: "Saving Form Metadata",
             batchNamePrefix: "batch_setformmetalabels",
             changeSetNamePrefix: "changeset_setformmetalabels",
             buildRequest: function (update) {

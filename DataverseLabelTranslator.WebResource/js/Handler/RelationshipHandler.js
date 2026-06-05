@@ -331,7 +331,7 @@
         }
 
         return XrmTranslator.ExecuteChangeSetBatches(requests, {
-            progressLabel: "Saving 7. Relationships",
+            progressLabel: "Saving Relationships",
             batchNamePrefix: "batch_updaterelationships",
             changeSetNamePrefix: "changeset_updaterelationships",
             buildRequest: function (request) {

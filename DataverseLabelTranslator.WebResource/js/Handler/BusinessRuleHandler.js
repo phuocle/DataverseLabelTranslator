@@ -575,7 +575,7 @@
 
         return WebApiClient.Promise.resolve(workflowIds).each(function (workflowId) {
             var workflowUpdate = updatedWorkflows[workflowId];
-            XrmTranslator.LockGridProgress("Saving 10. Business Rules", ++saveIndex, workflowIds.length);
+            XrmTranslator.LockGridProgress("Saving Business Rules", ++saveIndex, workflowIds.length);
 
             var originalXaml = null;
             var wasActive = false;
