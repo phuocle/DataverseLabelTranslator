@@ -425,6 +425,7 @@ function createHarness(options) {
 }
 
 async function loadHandler() {
+  vi.resetModules();
   await import("../js/Handler/GlobalOptionSetHandler.js?test=" + ++importCounter);
   return globalThis.window.GlobalOptionSetHandler;
 }

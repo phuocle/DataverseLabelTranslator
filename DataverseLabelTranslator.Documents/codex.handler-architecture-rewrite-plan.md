@@ -40,6 +40,7 @@ Every rewritten handler must have:
 - does not show the no-change status banner
 - calls custom action phases `Saving`, `Publishing`, `Published`
 - reloads with `Handler.Load(Helper.GetOperationReLoading())`
+- uses top-of-file declarations for user-facing dialog text and titles
 
 Handlers must not call:
 
@@ -53,6 +54,32 @@ Handlers must not call:
 - `XrmTranslator.RunAsBaseLanguage`
 
 If a button state or generic banner behavior must change, fix core app code such as `XrmTranslator.js`, not the handler.
+
+## User-Facing Strings
+
+Temporary rule until Dataverse Label Translator gets a base-language translation layer:
+
+- Every string displayed to the user must be declared near the top of the handler `.js` file.
+- Place these declarations directly after `"use strict";` and before helper functions.
+- Use a `var` object, individual `var` variables, or `const` declarations. Match the file's local JavaScript style.
+- No inline user-facing literals in dialogs, dialog titles, validation messages, status/lock text, button labels, or other UI output.
+- Do not add a translation framework or external resource file as part of handler rewrites yet.
+- Keep internal/protocol strings inline when appropriate: `actionName`, DTO property names, metadata keys, separators, component constants, and record IDs are not user-facing unless they are shown in UI.
+
+Example:
+
+```js
+(function (HandlerName, undefined) {
+    "use strict";
+
+    var userText = {
+        title: "Handler Title",
+        noChangesToSave: "There are no changes to save."
+    };
+
+    var idSeparator = "|";
+    var actionName = "ActionName";
+```
 
 ## Non-Negotiable Server Contract
 
@@ -244,10 +271,11 @@ Important type 18 behavior to preserve in other handlers where applicable:
 4. Create or normalize private `GetUpdates()`.
 5. Make public `Load(lockText)` lock the grid first and call `Helper.RunServerLoad(...)`.
 6. Make public `Save()` check no-save-changes first.
-7. Make save flow call `Helper.RunServerSaveFlow(...)`.
-8. Make reload call `Load(Helper.GetOperationReLoading())`.
-9. Remove direct Dataverse CRUD/publish/client mutation from the handler.
-10. Format changed JS and run lint if practical.
+7. Move all user-facing strings to top-of-file declarations.
+8. Make save flow call `Helper.RunServerSaveFlow(...)`.
+9. Make reload call `Load(Helper.GetOperationReLoading())`.
+10. Remove direct Dataverse CRUD/publish/client mutation from the handler.
+11. Format changed JS and run lint if practical.
 
 ## Acceptance Criteria
 
@@ -271,6 +299,7 @@ For the target handler:
 - `FillTable()` ends with `Helper.FinalizeGrid(records, app)`.
 - Empty base-language Display Text is blocked.
 - Intentional clears are preserved as empty strings.
+- User-facing strings are declared at the top of the handler `.js` file.
 
 ## Bottom Line
 

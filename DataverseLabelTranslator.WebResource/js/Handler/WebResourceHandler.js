@@ -1,12 +1,14 @@
 (function (WebResourceHandler, undefined) {
     "use strict";
 
-    var idSeparator = "|";
-    var actionName = "WebResource";
     var userText = {
         noChangesToSave: "There are no web resource changes to save.",
+        rowPathSeparator: " > ",
+        unknownRow: "(unknown)",
         title: "Web Resources"
     };
+    var idSeparator = "|";
+    var actionName = "WebResource";
 
     function GetMetadata(app) {
         return typeof app.GetMetadata === "function" ? app.GetMetadata() : app.metadata || {};
@@ -36,10 +38,10 @@
         var rowName = record && record.schemaName != null ? String(record.schemaName) : "";
 
         if (groupName && rowName && groupName !== rowName) {
-            return groupName + " > " + rowName;
+            return groupName + userText.rowPathSeparator + rowName;
         }
 
-        return rowName || groupName || "(unknown)";
+        return rowName || groupName || userText.unknownRow;
     }
 
     function HasNoChanges(updates) {
@@ -55,9 +57,9 @@
         return webresourceIds.length > 0 ? { webresourceIds: webresourceIds } : null;
     }
 
-    function GetUpdates(records) {
+    function GetUpdates() {
         var app = Helper.GetTranslator();
-        records = records || app.GetAllRecords();
+        var records = app.GetAllRecords();
         var metadata = GetMetadata(app);
         var resourceChangesMap = {};
 
@@ -208,7 +210,7 @@
                     children: []
                 }
             };
-            record._emptyReadonlyPlaceholder = "-";
+            record._emptyReadonlyPlaceholder = Helper.GetPlaceholderReadonly();
 
             var properties = Array.from(
                 new Set(

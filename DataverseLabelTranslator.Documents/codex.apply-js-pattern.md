@@ -47,8 +47,8 @@ HandlerName.Save = function () {
     var updates = GetUpdates();
 
     if (HasNoChanges(updates)) {
-        return DialogHelper.alert("There are no changes to save.", {
-            title: "Handler Title"
+        return DialogHelper.alert(userText.noChangesToSave, {
+            title: userText.title
         });
     }
 
@@ -75,6 +75,32 @@ Important:
 - Do not call `EnableLoadAndSave`, `SetLoadButtonDisabled`, or `SetSaveButtonDisabled` from handlers.
 - If button state must be restored after a handler dialog, fix core app code such as `XrmTranslator.js`, not the handler.
 - Do not show the default status banner for no-change Save when the handler owns no-change behavior; use `DialogHelper.alert(...)`.
+
+## User-Facing Strings
+
+Temporary rule until the app has a base-language translation layer:
+
+- Move every string shown to the user to declarations at the top of the handler `.js` file.
+- Put these declarations directly after `"use strict";` and before helper functions.
+- A `var` object, individual `var` variables, or `const` declarations are acceptable. Match the style already used in the file.
+- Do not leave inline user-facing literals inside `DialogHelper.alert(...)`, lock/status messages, validation text, dialog titles, button labels, or other UI output.
+- Do not introduce a new translation framework yet. These top-of-file declarations are only a temporary forcing pattern.
+- Do not move protocol/internal strings such as `actionName`, payload property names, component keys, IDs, separators, or Dataverse metadata keys unless they are also displayed to the user.
+
+Example:
+
+```js
+(function (HandlerName, undefined) {
+    "use strict";
+
+    var userText = {
+        title: "Handler Title",
+        noChangesToSave: "There are no changes to save."
+    };
+
+    var actionName = "ActionName";
+    var idSeparator = "|";
+```
 
 ## Required Server Check
 
@@ -192,6 +218,11 @@ Helper.GetOperationReLoading();
 (function (HandlerName, undefined) {
     "use strict";
 
+    var userText = {
+        title: "Handler Title",
+        noChangesToSave: "There are no changes to save."
+    };
+
     var actionName = "ActionName";
     var idSeparator = "|";
 
@@ -288,8 +319,8 @@ Helper.GetOperationReLoading();
         var updates = GetUpdates();
 
         if (HasNoChanges(updates)) {
-            return DialogHelper.alert("There are no changes to save.", {
-                title: "Handler Title"
+            return DialogHelper.alert(userText.noChangesToSave, {
+                title: userText.title
             });
         }
 
@@ -363,5 +394,6 @@ Before finishing a handler:
 - Empty base-language Display Text is blocked.
 - Non-base Display Text and Description clears are preserved as empty strings.
 - Handler uses named helper methods for operation text and placeholders.
+- User-facing strings are declared at the top of the handler `.js` file, not inline in UI calls.
 - Run formatting for changed JS files.
 - Run lint for JS changes if practical.

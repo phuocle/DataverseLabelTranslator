@@ -1,6 +1,12 @@
 (function (GlobalOptionSetHandler, undefined) {
     "use strict";
 
+    var userText = {
+        noChangesToSave: "There are no global option set changes to save.",
+        rowPathSeparator: " > ",
+        unknownRow: "(unknown)",
+        title: "Global Option Sets"
+    };
     var idSeparator = "|";
     var actionName = "GlobalOptionSet";
 
@@ -9,10 +15,10 @@
         var rowName = record && record.schemaName != null ? String(record.schemaName) : "";
 
         if (optionSetName && rowName && optionSetName !== rowName) {
-            return optionSetName + " > " + rowName;
+            return optionSetName + userText.rowPathSeparator + rowName;
         }
 
-        return rowName || optionSetName || "(unknown)";
+        return rowName || optionSetName || userText.unknownRow;
     }
 
     function BuildOptionSetDescriptionUpdate(optionSet, labels) {
@@ -216,8 +222,8 @@
         var updates = GetUpdates();
 
         if (updates.optionValueUpdates.length === 0 && updates.optionSetDescriptionUpdates.length === 0) {
-            return DialogHelper.alert("There are no global option set changes to save.", {
-                title: "Global Option Sets"
+            return DialogHelper.alert(userText.noChangesToSave, {
+                title: userText.title
             });
         }
 
@@ -241,4 +247,4 @@
             }
         });
     };
-})((window.GlobalOptionSetHandler = window.GlobalOptionSetHandler || {}));
+})((window.GlobalOptionSetHandler = Object(window.GlobalOptionSetHandler)));
