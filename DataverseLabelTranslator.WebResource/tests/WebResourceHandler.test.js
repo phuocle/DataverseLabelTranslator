@@ -60,8 +60,13 @@ function createHarness(options) {
     GetSolution: vi.fn(function () {
       return state.solution;
     }),
+    SetMetadata: vi.fn(function (metadata) {
+      xrmTranslator.metadata = metadata;
+    }),
+    GetMetadata: vi.fn(function () {
+      return xrmTranslator.metadata;
+    }),
     AddSummary: vi.fn(),
-    EnableLoadAndSave: vi.fn(),
     LockGrid: vi.fn(),
     UnlockGrid: vi.fn(),
     errorHandler: vi.fn(),
@@ -80,6 +85,95 @@ function createHarness(options) {
     IsEmptyLabelValue: vi.fn(function (value) {
       return value == null || String(value).trim().length === 0;
     }),
+    GetTranslator: vi.fn(function () {
+      return xrmTranslator;
+    }),
+    GetPlaceholderDisplayText: vi.fn(function () {
+      return "Add display text";
+    }),
+    GetPlaceholderDisplayTextBase: vi.fn(function () {
+      return "Add display text (*)";
+    }),
+    GetPlaceholderReadonly: vi.fn(function () {
+      return "-";
+    }),
+    GetOperationLoading: vi.fn(function () {
+      return "Loading ...";
+    }),
+    GetOperationSaving: vi.fn(function () {
+      return "Saving ...";
+    }),
+    GetOperationPublishing: vi.fn(function () {
+      return "Publishing ...";
+    }),
+    GetOperationPublished: vi.fn(function () {
+      return "Published";
+    }),
+    GetOperationReLoading: vi.fn(function () {
+      return "Re-Loading ...";
+    }),
+    ApplyPlaceholder: vi.fn(function (record, editablePlaceholder, basePlaceholder, app) {
+      if (!editablePlaceholder) {
+        return;
+      }
+
+      record._emptyEditablePlaceholder = editablePlaceholder;
+      if (basePlaceholder && app.baseLanguage) {
+        record._emptyEditablePlaceholders = record._emptyEditablePlaceholders || {};
+        record._emptyEditablePlaceholders[String(app.baseLanguage)] = basePlaceholder;
+      }
+    }),
+    GetChangedLabels: vi.fn(function (changes, allowEmpty) {
+      var labels = [];
+
+      for (var change in changes) {
+        if (!Object.prototype.hasOwnProperty.call(changes, change)) {
+          continue;
+        }
+
+        var label = changes[change];
+        if (label == null) {
+          if (!allowEmpty) {
+            continue;
+          }
+          label = "";
+        }
+
+        if (!allowEmpty && !label) {
+          continue;
+        }
+
+        labels.push({ LanguageCode: change, Label: label });
+      }
+
+      return labels;
+    }),
+    ValidateBaseLanguageNotEmpty: vi.fn(function (record, changes, validateOptions) {
+      validateOptions = validateOptions || {};
+      var app = validateOptions.app || xrmTranslator;
+
+      if (!app.baseLanguage) {
+        return;
+      }
+
+      var baseLanguage = String(app.baseLanguage);
+      if (!Object.prototype.hasOwnProperty.call(changes, baseLanguage)) {
+        return;
+      }
+
+      if (!helper.IsEmptyLabelValue(changes[baseLanguage])) {
+        return;
+      }
+
+      var rowPath =
+        typeof validateOptions.getRowPath === "function" ? validateOptions.getRowPath(record) : record.schemaName;
+      throw new Error(
+        "Display Text in the base language (" +
+          helper.GetLanguageColumnText(baseLanguage) +
+          ") cannot be empty.\nRow: " +
+          (rowPath || "(unknown)")
+      );
+    }),
     GetLanguageColumnText: vi.fn(function (languageCode) {
       var field = String(languageCode);
 
@@ -93,6 +187,16 @@ function createHarness(options) {
     }),
     GetCustomActionObject: vi.fn(function (result) {
       return result && result.object ? result.object : {};
+    }),
+    FinalizeGrid: vi.fn(function (records, app) {
+      app.AddSummary(records);
+      app.GetGrid().add(records);
+
+      if (typeof app.UnlockGrid === "function") {
+        app.UnlockGrid();
+      } else {
+        app.GetGrid().unlock();
+      }
     }),
     ExecuteTypedCustomAction: vi.fn(
       options.executeTypedCustomAction ||
@@ -154,12 +258,113 @@ function createHarness(options) {
 
           return Promise.resolve(actionResult(type, {}));
         }
-    )
+    ),
+    RunServerLoad: vi.fn(function (runOptions) {
+      var app = runOptions.app || xrmTranslator;
+      var payload = typeof runOptions.getPayload === "function" ? runOptions.getPayload() : runOptions.payload || {};
+
+      return helper
+        .ExecuteTypedCustomAction(runOptions.actionName, helper.CustomActionTypes.Loading, payload)
+        .then(function (result) {
+          var output = helper.GetCustomActionObject(result);
+
+          if (typeof runOptions.onLoaded === "function") {
+            runOptions.onLoaded(output, result);
+          }
+
+          return result;
+        })
+        .catch(function (error) {
+          if (typeof app.UnlockGrid === "function") {
+            app.UnlockGrid();
+          }
+
+          if (runOptions.handleError !== false && typeof app.errorHandler === "function") {
+            app.errorHandler(error);
+            return null;
+          }
+
+          throw error;
+        });
+    }),
+    RunServerSaveFlow: vi.fn(function (runOptions) {
+      var app = runOptions.app || xrmTranslator;
+      var savePayload =
+        typeof runOptions.getSavePayload === "function" ? runOptions.getSavePayload() : runOptions.payload || {};
+
+      app.LockGrid(helper.GetOperationSaving());
+
+      return helper
+        .ExecuteTypedCustomAction(runOptions.actionName, helper.CustomActionTypes.Saving, savePayload)
+        .then(function (saveResult) {
+          var saveOutput = helper.GetCustomActionObject(saveResult);
+          var publishPayload =
+            typeof runOptions.getPublishPayload === "function"
+              ? runOptions.getPublishPayload(saveOutput, saveResult)
+              : null;
+
+          if (!publishPayload) {
+            app.UnlockGrid();
+            return saveResult;
+          }
+
+          app.LockGrid(helper.GetOperationPublishing());
+          return helper
+            .ExecuteTypedCustomAction(runOptions.actionName, helper.CustomActionTypes.Publishing, publishPayload)
+            .then(function (publishingResult) {
+              var publishingOutput = helper.GetCustomActionObject(publishingResult);
+              var publishedPayload =
+                typeof runOptions.getPublishedPayload === "function"
+                  ? runOptions.getPublishedPayload(publishingOutput, publishingResult, saveOutput)
+                  : publishPayload;
+
+              if (!publishedPayload) {
+                app.UnlockGrid();
+                return publishingResult;
+              }
+
+              app.LockGrid(helper.GetOperationPublished());
+              return helper.ExecuteTypedCustomAction(
+                runOptions.actionName,
+                helper.CustomActionTypes.Published,
+                publishedPayload
+              );
+            });
+        })
+        .then(function (result) {
+          var output = helper.GetCustomActionObject(result);
+          var shouldReload =
+            typeof runOptions.shouldReload === "function" ? runOptions.shouldReload(output, result) : false;
+
+          if (!shouldReload) {
+            app.UnlockGrid();
+            return result;
+          }
+
+          app.LockGrid(helper.GetOperationReLoading());
+          return runOptions.reloadAction(result, output).then(function () {
+            app.UnlockGrid();
+            return result;
+          });
+        })
+        .catch(function (error) {
+          if (typeof app.UnlockGrid === "function") {
+            app.UnlockGrid();
+          }
+
+          throw error;
+        });
+    })
   };
 
   globalThis.window = {};
   globalThis.XrmTranslator = xrmTranslator;
   globalThis.Helper = helper;
+  globalThis.DialogHelper = {
+    alert: vi.fn(function () {
+      return Promise.resolve();
+    })
+  };
   globalThis.w2utils = {
     encodeTags: vi.fn(function (value) {
       return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -176,7 +381,8 @@ function createHarness(options) {
     grid: grid,
     state: state,
     XrmTranslator: xrmTranslator,
-    Helper: helper
+    Helper: helper,
+    DialogHelper: globalThis.DialogHelper
   };
 }
 
@@ -197,6 +403,7 @@ beforeEach(function () {
   delete globalThis.window;
   delete globalThis.XrmTranslator;
   delete globalThis.Helper;
+  delete globalThis.DialogHelper;
   delete globalThis.w2utils;
 });
 
@@ -236,8 +443,8 @@ describe("WebResourceHandler.Load", function () {
     );
     expect(parent.w2ui.children[0]._emptyEditablePlaceholders["1033"]).toBe("Add display text (*)");
     expect(context.XrmTranslator.AddSummary).toHaveBeenCalledWith(context.grid.add.mock.calls[0][0]);
-    expect(context.grid.unlock).toHaveBeenCalledOnce();
-    expect(context.XrmTranslator.EnableLoadAndSave).toHaveBeenCalledOnce();
+    expect(context.XrmTranslator.UnlockGrid).toHaveBeenCalledOnce();
+    expect(context.XrmTranslator.LockGrid).toHaveBeenCalledWith("Loading ...");
   });
 
   it("handles missing group collections and load errors", async function () {
@@ -248,6 +455,8 @@ describe("WebResourceHandler.Load", function () {
     expect(emptyContext.grid.add).toHaveBeenCalledWith([]);
 
     var fallbackContext = await setup({ groups: [group("empty-group", undefined, undefined)] });
+    delete fallbackContext.XrmTranslator.SetMetadata;
+    delete fallbackContext.XrmTranslator.GetMetadata;
 
     await fallbackContext.handler.Load();
 
@@ -331,7 +540,6 @@ describe("WebResourceHandler.Save", function () {
     expect(context.XrmTranslator.LockGrid).toHaveBeenCalledWith("Publishing ...");
     expect(context.XrmTranslator.LockGrid).toHaveBeenCalledWith("Published");
     expect(context.XrmTranslator.LockGrid).toHaveBeenCalledWith("Re-Loading ...");
-    expect(context.XrmTranslator.EnableLoadAndSave).toHaveBeenCalled();
   });
 
   it("returns without publishing when the save result has no web resource ids", async function () {
@@ -343,8 +551,39 @@ describe("WebResourceHandler.Save", function () {
 
     expect(context.Helper.GetCustomActionObject(result).webresourceIds).toEqual([]);
     expect(getCalls(context, "Publishing")).toHaveLength(0);
-    expect(context.XrmTranslator.UnlockGrid).toHaveBeenCalledOnce();
-    expect(context.XrmTranslator.EnableLoadAndSave).toHaveBeenCalledOnce();
+    expect(context.XrmTranslator.UnlockGrid).toHaveBeenCalledTimes(2);
+    expect(getCalls(context, "Saving")[0].input.resourceChanges).toEqual([
+      {
+        webresourceid: null,
+        lcid: "1041",
+        baseWebresourceid: null,
+        contentChanges: [{ key: "title", value: "Title" }]
+      }
+    ]);
+  });
+
+  it("shows a dialog and skips the server when there are no changes", async function () {
+    var context = await setup({ records: [{ recid: "group", schemaName: "group", w2ui: {} }] });
+
+    await context.handler.Save();
+
+    expect(context.DialogHelper.alert).toHaveBeenCalledWith("There are no web resource changes to save.", {
+      title: "Web Resources"
+    });
+    expect(getCalls(context, "Saving")).toHaveLength(0);
+    expect(context.XrmTranslator.LockGrid).not.toHaveBeenCalled();
+  });
+
+  it("supports legacy app metadata fallback during save", async function () {
+    var context = await setup({
+      baseLanguage: null,
+      records: [{ recid: "legacy|title", schemaName: "title", w2ui: { changes: { 1041: "Title" } } }]
+    });
+    delete context.XrmTranslator.GetMetadata;
+    delete context.XrmTranslator.metadata;
+
+    await context.handler.Save();
+
     expect(getCalls(context, "Saving")[0].input.resourceChanges).toEqual([
       {
         webresourceid: null,
@@ -425,6 +664,7 @@ describe("WebResourceHandler.Save", function () {
 
     var error = new Error("save failed");
     var failingContext = await setup({
+      records: [{ recid: "failed|title", schemaName: "title", w2ui: { changes: { 1041: "Title" } } }],
       executeTypedCustomAction: function () {
         return Promise.reject(error);
       }
@@ -432,6 +672,5 @@ describe("WebResourceHandler.Save", function () {
 
     await expect(failingContext.handler.Save()).rejects.toThrow(error);
     expect(failingContext.XrmTranslator.UnlockGrid).toHaveBeenCalledOnce();
-    expect(failingContext.XrmTranslator.EnableLoadAndSave).toHaveBeenCalledOnce();
   });
 });

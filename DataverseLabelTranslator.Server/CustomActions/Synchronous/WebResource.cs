@@ -103,7 +103,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 }
             }
 
-            groups.Sort((a, b) => string.Compare(a.key ?? string.Empty, b.key ?? string.Empty, StringComparison.OrdinalIgnoreCase));
+            groups.Sort((a, b) => string.Compare(a.key, b.key, StringComparison.OrdinalIgnoreCase));
 
             return new LoadingWebResourceOutput
             {
@@ -137,7 +137,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                         savedId = CreateWebResource(serviceAdmin, change);
                     }
 
-                    if (!string.IsNullOrWhiteSpace(savedId) && savedIdSet.Add(savedId))
+                    if (savedIdSet.Add(savedId))
                     {
                         savedIds.Add(savedId);
                     }
@@ -403,7 +403,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             }
             else
             {
-                content = DevKitJson.Deserialize<Dictionary<string, string>>(rawText) ?? new Dictionary<string, string>();
+                content = ParseJsonContent(rawText);
             }
 
             return new WebResourceOutput
@@ -427,10 +427,6 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             }
 
             var doc = XDocument.Parse(xml);
-            if (doc.Root == null)
-            {
-                return result;
-            }
 
             foreach (var dataElem in doc.Root.Elements("data"))
             {
@@ -438,8 +434,30 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 var valueElem = dataElem.Element("value");
                 if (!string.IsNullOrEmpty(name))
                 {
-                    result[name] = valueElem?.Value ?? string.Empty;
+                    result[name] = valueElem == null ? string.Empty : valueElem.Value;
                 }
+            }
+
+            return result;
+        }
+
+        private static Dictionary<string, string> ParseJsonContent(string json)
+        {
+            var result = new Dictionary<string, string>();
+            if (string.IsNullOrEmpty(json))
+            {
+                return result;
+            }
+
+            var parsed = DevKitJson.Deserialize(json) as Dictionary<string, object>;
+            if (parsed == null)
+            {
+                return result;
+            }
+
+            foreach (var kv in parsed)
+            {
+                result[kv.Key] = kv.Value == null ? string.Empty : Convert.ToString(kv.Value);
             }
 
             return result;
@@ -448,10 +466,6 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         private static string SerializeResxContent(string originalXml, Dictionary<string, string> content)
         {
             var doc = XDocument.Parse(originalXml);
-            if (doc.Root == null)
-            {
-                return originalXml;
-            }
 
             var existingNames = new HashSet<string>(StringComparer.Ordinal);
 
@@ -511,7 +525,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             }
             else
             {
-                content = DevKitJson.Deserialize<Dictionary<string, string>>(rawText) ?? new Dictionary<string, string>();
+                content = ParseJsonContent(rawText);
             }
 
             if (change.contentChanges != null)
@@ -560,7 +574,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 }
                 else
                 {
-                    baseContent = DevKitJson.Deserialize<Dictionary<string, string>>(rawText) ?? new Dictionary<string, string>();
+                    baseContent = ParseJsonContent(rawText);
                 }
 
                 var baseLcid = GetResourceLcid(baseEntity);
@@ -666,7 +680,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 sb.Append("<webresource>").Append(id).Append("</webresource>");
             }
 
-            return "<importexportxml><webresources>" + sb + "</webresources></importexportxml>";
+            return string.Concat("<importexportxml><webresources>", sb.ToString(), "</webresources></importexportxml>");
         }
 
         private static void Wait(int milliseconds)
