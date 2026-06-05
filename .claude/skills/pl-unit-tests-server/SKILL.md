@@ -14,10 +14,11 @@ Use this skill when the user asks to run, verify, debug, or explain server-side 
 ## What This Skill Does
 
 1. Regenerates early-bound proxy classes before server tests so FakeXrmEasy can resolve Dataverse entity types.
-2. Runs the server-side MSTest suite from `DataverseLabelTranslator.Test`.
-3. Uses shared test utilities from `DataverseLabelTranslator.Shared.Test`.
-4. Tests server code from `DataverseLabelTranslator.Server` without deploying to Dataverse.
-5. Reports exact failing test names, projects, and relevant assertion/error output.
+2. Runs the server-side MSTest suite from `DataverseLabelTranslator.Test` with code coverage collection.
+3. Reports coverage summary after tests pass, including per-assembly coverage percentages.
+4. Uses shared test utilities from `DataverseLabelTranslator.Shared.Test`.
+5. Tests server code from `DataverseLabelTranslator.Server` without deploying to Dataverse.
+6. Reports exact failing test names, projects, and relevant assertion/error output.
 
 ## Project Map
 
@@ -38,22 +39,38 @@ Regenerate early-bound proxy types first:
 DataverseLabelTranslator.ProxyTypes\run.bat
 ```
 
-Run all server unit tests:
+Run all server unit tests with coverage:
 
 ```powershell
-dotnet test DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug
+dotnet test DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug --collect:"Code Coverage" --results-directory DataverseLabelTranslator.Test\TestResults
 ```
 
-Run a filtered server test:
+Run a filtered server test with coverage:
 
 ```powershell
-dotnet test DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug --filter "<test-filter>"
+dotnet test DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug --filter "<test-filter>" --collect:"Code Coverage" --results-directory DataverseLabelTranslator.Test\TestResults
 ```
 
 Build the server test project without running tests:
 
 ```powershell
 dotnet build DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug
+```
+
+Convert the binary `.coverage` file to XML and report per-module coverage:
+
+```powershell
+$latest = Get-ChildItem DataverseLabelTranslator.Test\TestResults -Recurse -Filter *.coverage | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+dotnet-coverage merge $latest.FullName --output DataverseLabelTranslator.Test\TestResults\coverage.xml --output-format xml
+[xml]$cov = Get-Content DataverseLabelTranslator.Test\TestResults\coverage.xml
+$cov.results.modules.module | Where-Object { $_.name -like "*DataverseLabelTranslator*" } | ForEach-Object { [PSCustomObject]@{ Module = $_.name; LineCoverage = "$($_.line_coverage)%"; BlockCoverage = "$($_.block_coverage)%"; LinesCovered = "$($_.lines_covered)/$([int]$_.lines_covered + [int]$_.lines_partially_covered + [int]$_.lines_not_covered)"; BlocksCovered = "$($_.blocks_covered)/$([int]$_.blocks_covered + [int]$_.blocks_not_covered)" } } | Format-Table -AutoSize
+```
+
+Generate an HTML coverage report (requires `dotnet-reportgenerator-globaltool`):
+
+```powershell
+reportgenerator -reports:DataverseLabelTranslator.Test\TestResults\coverage.xml -targetdir:DataverseLabelTranslator.Test\coverage -reporttypes:Html
+start DataverseLabelTranslator.Test\coverage\index.html
 ```
 
 ## Proxy Type Rule
@@ -76,11 +93,12 @@ Proxy generation can call the dev Dataverse environment to retrieve metadata. Th
 
 1. Check `git status --short` so generated proxy changes, test changes, and unrelated work are visible.
 2. Regenerate proxy types with `DataverseLabelTranslator.ProxyTypes\run.bat` unless the user requested `no-proxy`.
-3. Run `dotnet test DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug` unless the user supplied a specific test filter.
-4. If a filter is supplied, pass it through with `--filter "<test-filter>"`.
+3. Run `dotnet test DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug --collect:"XPlat Code Coverage" --results-directory DataverseLabelTranslator.Test\TestResults` unless the user supplied a specific test filter.
+4. If a filter is supplied, pass it through with `--filter "<test-filter>"` (still with coverage collection).
 5. If proxy generation fails, report the DevKit error and do not run tests.
 6. If tests fail, report the failing project, test class/name, and relevant assertion/error.
-7. If tests pass, summarize the command and result.
+7. If tests pass, convert the latest `.coverage` file to XML with `dotnet-coverage merge`, then parse and report per-module line and block coverage percentages for `DataverseLabelTranslator.Server.dll` and `DataverseLabelTranslator.Test.dll`.
+8. Summarize the test and coverage results.
 
 ## Dependency Note
 

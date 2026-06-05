@@ -2,6 +2,8 @@ node_modules/
 coverage/
 DataverseLabelTranslator.WebResource/node_modules/
 DataverseLabelTranslator.WebResource/coverage/
+DataverseLabelTranslator.Test/TestResults/
+DataverseLabelTranslator.Test/coverage/
 Publish/
 __pycache__/
 DataverseLabelTranslator.Scripts/__pycache__/

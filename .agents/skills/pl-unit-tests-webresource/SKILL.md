@@ -12,7 +12,7 @@ Use this skill when the user asks to run, verify, debug, or explain unit tests, 
 ## What This Skill Does
 
 1. Runs the client Vitest unit tests from `DataverseLabelTranslator.WebResource`.
-2. Runs coverage when requested and checks the configured coverage thresholds.
+2. Always runs coverage and reports the coverage summary against configured thresholds.
 3. Keeps unit tests isolated from Dataverse by using fakes/mocks instead of live Web API calls.
 4. Reports exact failing suites/tests and the command output needed to act on failures.
 
@@ -65,11 +65,11 @@ Thresholds are 100% for lines, functions, branches, and statements.
 ## Workflow
 
 1. Check `git status --short` so test changes are not confused with unrelated work.
-2. Run `npm --prefix DataverseLabelTranslator.WebResource test` unless the user specifically asked only for coverage.
-3. If coverage is requested, run `npm --prefix DataverseLabelTranslator.WebResource run test:coverage`.
+2. Run `npm --prefix DataverseLabelTranslator.WebResource run test:coverage` to run all tests with coverage.
+3. After coverage completes, read `DataverseLabelTranslator.WebResource\coverage\coverage-summary.json` and report the coverage percentages for each covered file against the configured thresholds.
 4. If a test fails, report the failing file, suite/test name, and the relevant assertion/error.
-5. If coverage fails, report the uncovered file/metric from the coverage output.
-6. If tests pass, summarize the command and result.
+5. If coverage falls below thresholds, report the uncovered file/metric from the coverage output.
+6. If tests pass and coverage meets thresholds, summarize the results including coverage percentages.
 
 ## Dependency Note
 
