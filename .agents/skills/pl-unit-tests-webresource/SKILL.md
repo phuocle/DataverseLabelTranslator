@@ -47,8 +47,10 @@ start DataverseLabelTranslator.WebResource\coverage\index.html
 `DataverseLabelTranslator.WebResource\vitest.config.mjs` currently includes coverage for:
 
 ```text
-js/GlobalOptionSetHandler.js
-js/WebResourceHandler.js
+js/Handler/DashboardHandler.js
+js/Handler/GlobalOptionSetHandler.js
+js/Handler/SiteMapHandler.js
+js/Handler/WebResourceHandler.js
 ```
 
 Thresholds are 100% for lines, functions, branches, and statements.

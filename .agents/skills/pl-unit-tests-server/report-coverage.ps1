@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Converts the latest .coverage binary to XML and reports line/block coverage
-    for the three Dataverse Label Translator handler classes.
+    for the four Dataverse Label Translator handler classes.
 .DESCRIPTION
     Finds the most recent .coverage file in DataverseLabelTranslator.Test\TestResults,
     converts it to XML via dotnet-coverage merge, then reports coverage percentages
@@ -55,7 +55,7 @@ Write-Host "Merged to: $OutputXml"
 # Parse and report
 [xml]$cov = Get-Content $OutputXml
 
-$targetClasses = @('Dashboard', 'WebResource', 'GlobalOptionSet')
+$targetClasses = @('SiteMap', 'Dashboard', 'WebResource', 'GlobalOptionSet')
 
 $results = $cov.results.modules.module |
     Where-Object { $_.name -like "*Server.dll" } |

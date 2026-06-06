@@ -9,6 +9,7 @@ export default defineConfig({
       include: [
         "js/Handler/DashboardHandler.js",
         "js/Handler/GlobalOptionSetHandler.js",
+        "js/Handler/SiteMapHandler.js",
         "js/Handler/WebResourceHandler.js"
       ],
       reporter: ["text", "json", "json-summary", "html"],

@@ -67,6 +67,9 @@ namespace DataverseLabelTranslator.Server.CustomActions
                 case ActionNames.GlobalOptionSet:
                     action = new GlobalOptionSet();
                     break;
+                case ActionNames.SiteMap:
+                    action = new SiteMap();
+                    break;
                 case ActionNames.WebResource:
                     action = new WebResource();
                     break;

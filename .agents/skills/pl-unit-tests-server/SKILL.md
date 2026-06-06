@@ -55,7 +55,7 @@ Build the server test project without running tests:
 dotnet build DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug
 ```
 
-Convert the binary `.coverage` file to XML and report coverage for the three handler classes:
+Convert the binary `.coverage` file to XML and report coverage for the four handler classes:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .agents\skills\pl-unit-tests-server\report-coverage.ps1
@@ -70,10 +70,11 @@ start DataverseLabelTranslator.Test\coverage\index.html
 
 ## Current Coverage Target
 
-Coverage is tracked for these three handler files (matching the JS handler coverage targets):
+Coverage is tracked for these four handler files (matching the JS handler coverage targets):
 
 | # | Handler | C# File | Class Name |
 |---|---------|---------|------------|
+| 15 | Sitemap | `DataverseLabelTranslator.Server/CustomActions/Synchronous/SiteMap.cs` | `SiteMap` |
 | 16 | Dashboards | `DataverseLabelTranslator.Server/CustomActions/Synchronous/Dashboard.cs` | `Dashboard` |
 | 17 | Web Resources | `DataverseLabelTranslator.Server/CustomActions/Synchronous/WebResource.cs` | `WebResource` |
 | 18 | Global Option Sets | `DataverseLabelTranslator.Server/CustomActions/Synchronous/GlobalOptionSet.cs` | `GlobalOptionSet` |
@@ -102,7 +103,7 @@ Proxy generation can call the dev Dataverse environment to retrieve metadata. Th
 4. If a filter is supplied, pass it through with `--filter "<test-filter>"` (still with coverage collection).
 5. If proxy generation fails, report the DevKit error and do not run tests.
 6. If tests fail, report the failing project, test class/name, and relevant assertion/error.
-7. If tests pass, run `.agents\skills\pl-unit-tests-server\report-coverage.ps1` to convert the latest `.coverage` file and report line/block coverage for the three handler classes: `Dashboard`, `WebResource`, `GlobalOptionSet`. The script exits non-zero if any class is below 100%.
+7. If tests pass, run `.agents\skills\pl-unit-tests-server\report-coverage.ps1` to convert the latest `.coverage` file and report line/block coverage for the four handler classes: `SiteMap`, `Dashboard`, `WebResource`, `GlobalOptionSet`. The script exits non-zero if any class is below 100%.
 8. Summarize the test and coverage results.
 
 ## Dependency Note
