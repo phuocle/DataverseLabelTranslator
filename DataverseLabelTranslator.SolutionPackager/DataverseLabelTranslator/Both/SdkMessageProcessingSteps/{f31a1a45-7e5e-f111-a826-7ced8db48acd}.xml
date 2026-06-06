@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SdkMessageProcessingStep Name="DataverseLabelTranslator.Server.CustomActions.PostDataverseLabelTranslatorCustomActionSynchronous" SdkMessageProcessingStepId="{f31a1a45-7e5e-f111-a826-7ced8db48acd}" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SdkMessageId>9b5417e0-7a5e-f111-a826-7ced8db48acd</SdkMessageId>
+  <PluginTypeName>DataverseLabelTranslator.Server.CustomActions.PostDataverseLabelTranslatorCustomActionSynchronous, DataverseLabelTranslator.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f6b5bb82f2d2b826</PluginTypeName>
+  <PluginTypeId>f21a1a45-7e5e-f111-a826-7ced8db48acd</PluginTypeId>
+  <AsyncAutoDelete>0</AsyncAutoDelete>
+  <FilteringAttributes></FilteringAttributes>
+  <InvocationSource>0</InvocationSource>
+  <Mode>0</Mode>
+  <Rank>1</Rank>
+  <EventHandlerTypeCode>4602</EventHandlerTypeCode>
+  <Stage>40</Stage>
+  <IsCustomizable>1</IsCustomizable>
+  <IsHidden>0</IsHidden>
+  <SupportedDeployment>0</SupportedDeployment>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <SdkMessageProcessingStepImages />
+</SdkMessageProcessingStep>

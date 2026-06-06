@@ -120,19 +120,19 @@
   "solutionpackagers": [
     {
       "profile": "Extract-Both",
-      "solution": "???",
+      "solution": "DataverseLabelTranslator",
       "rootfolder": "",
       "solutiontype": "Both",
-      "folder": "???",
+      "folder": "DataverseLabelTranslator",
       "type": "Extract",
       "mapfile": ""
     },
     {
       "profile": "Pack-Both",
-      "solution": "???",
+      "solution": "DataverseLabelTranslator",
       "rootfolder": "",
       "solutiontype": "Both",
-      "folder": "???",
+      "folder": "DataverseLabelTranslator",
       "type": "Pack",
       "mapfile": ""
     }

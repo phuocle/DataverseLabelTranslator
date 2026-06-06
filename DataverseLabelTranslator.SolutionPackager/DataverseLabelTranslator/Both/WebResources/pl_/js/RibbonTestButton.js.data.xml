@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WebResource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <WebResourceId>{9ad26340-ee5e-f111-a826-7ced8db48acd}</WebResourceId>
+  <Name>pl_/js/RibbonTestButton.js</Name>
+  <DisplayName>pl_/js/RibbonTestButton.js</DisplayName>
+  <Description>4.12.34.56</Description>
+  <WebResourceType>3</WebResourceType>
+  <IntroducedVersion>1.0</IntroducedVersion>
+  <IsEnabledForMobileClient>0</IsEnabledForMobileClient>
+  <IsAvailableForMobileOffline>0</IsAvailableForMobileOffline>
+  <IsCustomizable>1</IsCustomizable>
+  <CanBeDeleted>1</CanBeDeleted>
+  <IsHidden>0</IsHidden>
+  <FileName>/WebResources/pl_jsRibbonTestButtonjs9AD26340-EE5E-F111-A826-7CED8DB48ACD</FileName>
+</WebResource>

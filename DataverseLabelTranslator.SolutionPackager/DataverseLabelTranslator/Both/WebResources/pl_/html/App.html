@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Dataverse Label Translator</title>
+    <link rel="stylesheet" type="text/css" href="../css/w2ui.css" />
+    <link rel="stylesheet" type="text/css" href="../css/style.css" />
+    <script src="../../ClientGlobalContext.js.aspx" type="text/javascript"></script>
+    <script type="text/javascript" src="../js/lib/w2ui.js"></script>
+    <script type="text/javascript" src="../js/lib/WebApiClient.js"></script>
+    <script type="text/javascript">
+      WebApiClient.Configure({ ApiVersion: "9.2" });
+    </script>
+    <script type="text/javascript" src="../js/lib/jszip.min.js"></script>
+    <script type="text/javascript" src="../js/Helper.js"></script>
+    <script type="text/javascript" src="../js/EasyTranslator.js"></script>
+    <script type="text/javascript" src="../js/DialogHelper.js"></script>
+    <script type="text/javascript" src="../js/DataverseDataWebResourceService.js"></script>
+    <script type="text/javascript" src="../js/AppSettingsService.js"></script>
+    <script type="text/javascript" src="../js/Handler/AttributeHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/OptionSetHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/GlobalOptionSetHandler.js"></script>
+    <script type="text/javascript" src="../js/TranslationDictionaryService.js"></script>
+    <script type="text/javascript" src="../js/TranslationHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/FormHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/DashboardHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/ViewHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/FormMetaHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/EntityHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/ChartHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/ContentSnippetHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/WebResourceHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/BpfHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/BusinessRuleHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/RelationshipHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/RibbonHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/ModernCommandHandler.js"></script>
+    <script type="text/javascript" src="../js/TranslationPackageService.js"></script>
+    <script type="text/javascript" src="../js/Handler/EntityMessageHandler.js"></script>
+    <script type="text/javascript" src="../js/Handler/SiteMapHandler.js"></script>
+    <script type="text/javascript" src="../js/AllInOneHandler.js"></script>
+    <script type="text/javascript" src="../js/XrmTranslator.js"></script>
+  </head>
+  <body style="margin: 0px">
+    <div id="grid" style="position: absolute; width: 100%; top: 0; bottom: 0"></div>
+    <script type="text/javascript">
+      window.onload = function () {
+        var hasAllowedRole = XrmTranslator.UserHasAllowedRole();
+        XrmTranslator.Initialize(hasAllowedRole);
+      };
+    </script>
+  </body>
+</html>

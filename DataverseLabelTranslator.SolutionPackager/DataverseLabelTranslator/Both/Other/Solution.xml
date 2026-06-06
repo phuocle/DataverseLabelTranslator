@@ -1,0 +1,138 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ImportExportXml version="9.2.26053.140" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26053.140" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.26053.00140">
+  <SolutionManifest>
+    <UniqueName>DataverseLabelTranslator</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="Dataverse Label Translator" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions />
+    <Version>1.0.0.0</Version>
+    <Managed>2</Managed>
+    <Publisher>
+      <UniqueName>pl</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="PL" languagecode="1033" />
+      </LocalizedNames>
+      <Descriptions />
+      <EMailAddress xsi:nil="true"></EMailAddress>
+      <SupportingWebsiteUrl xsi:nil="true"></SupportingWebsiteUrl>
+      <CustomizationPrefix>pl</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>77777</CustomizationOptionValuePrefix>
+      <Addresses>
+        <Address>
+          <AddressNumber>1</AddressNumber>
+          <AddressTypeCode>1</AddressTypeCode>
+          <City xsi:nil="true"></City>
+          <County xsi:nil="true"></County>
+          <Country xsi:nil="true"></Country>
+          <Fax xsi:nil="true"></Fax>
+          <FreightTermsCode xsi:nil="true"></FreightTermsCode>
+          <ImportSequenceNumber xsi:nil="true"></ImportSequenceNumber>
+          <Latitude xsi:nil="true"></Latitude>
+          <Line1 xsi:nil="true"></Line1>
+          <Line2 xsi:nil="true"></Line2>
+          <Line3 xsi:nil="true"></Line3>
+          <Longitude xsi:nil="true"></Longitude>
+          <Name xsi:nil="true"></Name>
+          <PostalCode xsi:nil="true"></PostalCode>
+          <PostOfficeBox xsi:nil="true"></PostOfficeBox>
+          <PrimaryContactName xsi:nil="true"></PrimaryContactName>
+          <ShippingMethodCode>1</ShippingMethodCode>
+          <StateOrProvince xsi:nil="true"></StateOrProvince>
+          <Telephone1 xsi:nil="true"></Telephone1>
+          <Telephone2 xsi:nil="true"></Telephone2>
+          <Telephone3 xsi:nil="true"></Telephone3>
+          <TimeZoneRuleVersionNumber xsi:nil="true"></TimeZoneRuleVersionNumber>
+          <UPSZone xsi:nil="true"></UPSZone>
+          <UTCOffset xsi:nil="true"></UTCOffset>
+          <UTCConversionTimeZoneCode xsi:nil="true"></UTCConversionTimeZoneCode>
+        </Address>
+        <Address>
+          <AddressNumber>2</AddressNumber>
+          <AddressTypeCode>1</AddressTypeCode>
+          <City xsi:nil="true"></City>
+          <County xsi:nil="true"></County>
+          <Country xsi:nil="true"></Country>
+          <Fax xsi:nil="true"></Fax>
+          <FreightTermsCode xsi:nil="true"></FreightTermsCode>
+          <ImportSequenceNumber xsi:nil="true"></ImportSequenceNumber>
+          <Latitude xsi:nil="true"></Latitude>
+          <Line1 xsi:nil="true"></Line1>
+          <Line2 xsi:nil="true"></Line2>
+          <Line3 xsi:nil="true"></Line3>
+          <Longitude xsi:nil="true"></Longitude>
+          <Name xsi:nil="true"></Name>
+          <PostalCode xsi:nil="true"></PostalCode>
+          <PostOfficeBox xsi:nil="true"></PostOfficeBox>
+          <PrimaryContactName xsi:nil="true"></PrimaryContactName>
+          <ShippingMethodCode>1</ShippingMethodCode>
+          <StateOrProvince xsi:nil="true"></StateOrProvince>
+          <Telephone1 xsi:nil="true"></Telephone1>
+          <Telephone2 xsi:nil="true"></Telephone2>
+          <Telephone3 xsi:nil="true"></Telephone3>
+          <TimeZoneRuleVersionNumber xsi:nil="true"></TimeZoneRuleVersionNumber>
+          <UPSZone xsi:nil="true"></UPSZone>
+          <UTCOffset xsi:nil="true"></UTCOffset>
+          <UTCConversionTimeZoneCode xsi:nil="true"></UTCConversionTimeZoneCode>
+        </Address>
+      </Addresses>
+    </Publisher>
+    <RootComponents>
+      <RootComponent type="29" id="{0d6f3c34-7b5e-f111-a826-7ced8db48acd}" behavior="0" />
+      <RootComponent type="29" id="{9a5417e0-7a5e-f111-a826-7ced8db48acd}" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/css/style.css" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/css/w2ui.css" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/html/App.html" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/img/app-icon.svg" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/AllInOneHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/AppSettingsService.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/DataverseDataWebResourceService.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/DialogHelper.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/EasyTranslator.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/AttributeHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/BpfHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/BusinessRuleHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/ChartHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/ContentSnippetHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/DashboardHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/EntityHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/EntityMessageHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/FormHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/FormMetaHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/GlobalOptionSetHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/ModernCommandHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/OptionSetHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/RelationshipHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/RibbonHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/SiteMapHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/ViewHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Handler/WebResourceHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/Helper.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/lib/jszip.min.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/lib/w2ui.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/lib/WebApiClient.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/RibbonTestButton.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/TranslationDictionaryService.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/TranslationHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/TranslationPackageService.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/XrmTranslator.js" behavior="0" />
+      <RootComponent type="62" schemaName="pl_DataverseLabelTranslator" behavior="0" />
+      <RootComponent type="80" schemaName="pl_DataverseLabelTranslator" behavior="0" />
+      <RootComponent type="91" id="{eb1a1a45-7e5e-f111-a826-7ced8db48acd}" schemaName="DataverseLabelTranslator.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f6b5bb82f2d2b826" behavior="0" />
+      <RootComponent type="92" id="{ef1a1a45-7e5e-f111-a826-7ced8db48acd}" behavior="0" />
+      <RootComponent type="92" id="{f31a1a45-7e5e-f111-a826-7ced8db48acd}" behavior="0" />
+    </RootComponents>
+    <MissingDependencies>
+      <MissingDependency>
+        <Required type="61" schemaName="pl_/DataverseLabelTranslator/img/app-icon.svg" displayName="pl_/DataverseLabelTranslator/img/app-icon.svg" solution="Active" />
+        <Dependent type="80" schemaName="pl_DataverseLabelTranslator" displayName="Dataverse Label Translator" />
+      </MissingDependency>
+      <MissingDependency>
+        <Required type="SettingDefinition" displayName="AppChannel" solution="msdyn_AppFrameworkInfraExtensions (1.0.0.17)" id.uniquename="AppChannel">
+          <package appName="PowerAppsAppFramework Package" version="1.0.0.25">PowerAppsAppFramework_Anchor (1.0.0.25)</package>
+        </Required>
+        <Dependent type="AppSetting" displayName="parentappmoduleid.uniquename=pl_DataverseLabelTranslator,settingdefinitionid.uniquename=AppChannel" id.parentappmoduleid.uniquename="pl_DataverseLabelTranslator" id.settingdefinitionid.uniquename="AppChannel" />
+      </MissingDependency>
+    </MissingDependencies>
+  </SolutionManifest>
+</ImportExportXml>
