@@ -467,6 +467,22 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             Assert.AreEqual(string.Empty, ((Dictionary<string, string>)InvokePrivate("ParseResxContent", "<root><data name=\"novalue\"></data></root>"))["novalue"]);
             Assert.AreEqual(0, ((Dictionary<string, string>)InvokePrivate("ParseJsonContent", string.Empty)).Count);
             Assert.AreEqual(0, ((Dictionary<string, string>)InvokePrivate("ParseJsonContent", "[]")).Count);
+            Assert.AreEqual(0, InvokePrivate("GetOptionValue", null, "webresourcetype"));
+            Assert.AreEqual(0, InvokePrivate("GetOptionValue", new Entity("webresource"), "webresourcetype"));
+            Assert.AreEqual(0, InvokePrivate("GetOptionValue", new Entity("webresource") { ["webresourcetype"] = null }, "webresourcetype"));
+            Assert.AreEqual(12, InvokePrivate("GetOptionValue", new Entity("webresource") { ["webresourcetype"] = 12 }, "webresourcetype"));
+
+            try
+            {
+                InvokePrivate("GetOptionValue", new Entity("webresource") { ["webresourcetype"] = "resx" }, "webresourcetype");
+                Assert.Fail("Expected InvalidPluginExecutionException.");
+            }
+            catch (TargetInvocationException ex)
+            {
+                var inner = ex.InnerException as InvalidPluginExecutionException;
+                Assert.IsNotNull(inner);
+                Assert.AreEqual("WebResource webresourcetype has unsupported value type.", inner.Message);
+            }
 
             var serialized = (string)InvokePrivate(
                 "SerializeResxContent",

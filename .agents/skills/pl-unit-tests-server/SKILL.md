@@ -55,13 +55,10 @@ Build the server test project without running tests:
 dotnet build DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug
 ```
 
-Convert the binary `.coverage` file to XML and report per-module coverage:
+Convert the binary `.coverage` file to XML and report coverage for the three handler classes:
 
 ```powershell
-$latest = Get-ChildItem DataverseLabelTranslator.Test\TestResults -Recurse -Filter *.coverage | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-dotnet-coverage merge $latest.FullName --output DataverseLabelTranslator.Test\TestResults\coverage.xml --output-format xml
-[xml]$cov = Get-Content DataverseLabelTranslator.Test\TestResults\coverage.xml
-$cov.results.modules.module | Where-Object { $_.name -like "*DataverseLabelTranslator*" } | ForEach-Object { [PSCustomObject]@{ Module = $_.name; LineCoverage = "$($_.line_coverage)%"; BlockCoverage = "$($_.block_coverage)%"; LinesCovered = "$($_.lines_covered)/$([int]$_.lines_covered + [int]$_.lines_partially_covered + [int]$_.lines_not_covered)"; BlocksCovered = "$($_.blocks_covered)/$([int]$_.blocks_covered + [int]$_.blocks_not_covered)" } } | Format-Table -AutoSize
+powershell -ExecutionPolicy Bypass -File .agents\skills\pl-unit-tests-server\report-coverage.ps1
 ```
 
 Generate an HTML coverage report (requires `dotnet-reportgenerator-globaltool`):
@@ -71,7 +68,17 @@ reportgenerator -reports:DataverseLabelTranslator.Test\TestResults\coverage.xml 
 start DataverseLabelTranslator.Test\coverage\index.html
 ```
 
-## Proxy Type Rule
+## Current Coverage Target
+
+Coverage is tracked for these three handler files (matching the JS handler coverage targets):
+
+| # | Handler | C# File | Class Name |
+|---|---------|---------|------------|
+| 16 | Dashboards | `DataverseLabelTranslator.Server/CustomActions/Synchronous/Dashboard.cs` | `Dashboard` |
+| 17 | Web Resources | `DataverseLabelTranslator.Server/CustomActions/Synchronous/WebResource.cs` | `WebResource` |
+| 18 | Global Option Sets | `DataverseLabelTranslator.Server/CustomActions/Synchronous/GlobalOptionSet.cs` | `GlobalOptionSet` |
+
+Thresholds are 100% for lines, functions, branches, and statements.
 
 Run `DataverseLabelTranslator.ProxyTypes\run.bat` before test execution unless the user explicitly asks to skip proxy generation. This command reads local Dataverse connection values from root `.env` or inherited `DEVKIT_*` environment variables and updates `DataverseLabelTranslator.ProxyTypes\GeneratedCode.cs`.
 
@@ -91,11 +98,11 @@ Proxy generation can call the dev Dataverse environment to retrieve metadata. Th
 
 1. Check `git status --short` so generated proxy changes, test changes, and unrelated work are visible.
 2. Regenerate proxy types with `DataverseLabelTranslator.ProxyTypes\run.bat` unless the user requested `no-proxy`.
-3. Run `dotnet test DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug --collect:"XPlat Code Coverage" --results-directory DataverseLabelTranslator.Test\TestResults` unless the user supplied a specific test filter.
+3. Run `dotnet test DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug --collect:"Code Coverage" --results-directory DataverseLabelTranslator.Test\TestResults` unless the user supplied a specific test filter.
 4. If a filter is supplied, pass it through with `--filter "<test-filter>"` (still with coverage collection).
 5. If proxy generation fails, report the DevKit error and do not run tests.
 6. If tests fail, report the failing project, test class/name, and relevant assertion/error.
-7. If tests pass, convert the latest `.coverage` file to XML with `dotnet-coverage merge`, then parse and report per-module line and block coverage percentages for `DataverseLabelTranslator.Server.dll` and `DataverseLabelTranslator.Test.dll`.
+7. If tests pass, run `.agents\skills\pl-unit-tests-server\report-coverage.ps1` to convert the latest `.coverage` file and report line/block coverage for the three handler classes: `Dashboard`, `WebResource`, `GlobalOptionSet`. The script exits non-zero if any class is below 100%.
 8. Summarize the test and coverage results.
 
 ## Dependency Note

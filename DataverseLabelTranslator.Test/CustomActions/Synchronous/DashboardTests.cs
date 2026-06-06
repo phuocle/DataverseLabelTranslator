@@ -8,6 +8,7 @@ using NSubstitute;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 
 namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
@@ -276,6 +277,131 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             Assert.AreEqual("Dashboard Other operation is required.", ex.Message);
         }
 
+        [TestMethod]
+        public void Loading_Throws_WhenBaseLanguageIsNotPositive()
+        {
+            var action = new Dashboard();
+            var serviceAdmin = Substitute.For<IOrganizationService>();
+            serviceAdmin.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(Entities(new Entity("organization") { ["languagecode"] = 0 }));
+
+            var ex = ThrowsInvalidPluginExecutionException(() => action.Loading(null, serviceAdmin, null, null, "{\"solutionId\":\"all\"}"));
+
+            Assert.AreEqual("Could not retrieve organization base language.", ex.Message);
+        }
+
+        [TestMethod]
+        public void Saving_Throws_WhenDashboardIdIsBlank()
+        {
+            var action = new Dashboard();
+            var serviceAdmin = Substitute.For<IOrganizationService>();
+
+            var ex = ThrowsInvalidPluginExecutionException(() => action.Saving(null, serviceAdmin, null, null, "{\"dashboardUpdates\":[{\"dashboardId\":\" \",\"labels\":[{\"LanguageCode\":\"1033\",\"Label\":\"X\"}]}]}"));
+            var missing = ThrowsInvalidPluginExecutionException(() => action.Saving(null, serviceAdmin, null, null, "{\"dashboardUpdates\":[{\"labels\":[{\"LanguageCode\":\"1033\",\"Label\":\"X\"}]}]}"));
+
+            Assert.AreEqual("Dashboard dashboardId must be a GUID.", ex.Message);
+            Assert.AreEqual("Dashboard dashboardId must be a GUID.", missing.Message);
+        }
+
+        [TestMethod]
+        public void PrivateHelpers_CoverFallbackBranches()
+        {
+            var intValue = new Entity("systemform") { ["type"] = 10 };
+            var unsupportedValue = new Entity("systemform") { ["type"] = "interactive" };
+            var nullValue = new Entity("systemform") { ["type"] = null };
+            var boolValue = new Entity("systemform") { ["iscustomizable"] = true };
+            var unsupportedBool = new Entity("systemform") { ["iscustomizable"] = "yes" };
+            var inactive = new Entity("systemform") { ["formactivationstate"] = 0 };
+            var notCustomizable = new Entity("systemform") { ["iscustomizable"] = false };
+            var unsupportedTypeCandidate = new Entity("systemform") { ["type"] = "dashboard" };
+
+            Assert.IsNull(InvokePrivate("ParseSolutionId", "ALL"));
+            Assert.IsNull(InvokePrivate("ParseSolutionId", " "));
+            Assert.AreEqual(0, ((List<Entity>)InvokePrivate("ToList", new object[] { null })).Count);
+            Assert.IsTrue((bool)InvokePrivate("IsDashboardCandidate", new Entity("systemform")));
+            Assert.IsTrue((bool)InvokePrivate("IsDashboardCandidate", intValue));
+            Assert.IsTrue((bool)InvokePrivate("IsDashboardCandidate", unsupportedTypeCandidate));
+            Assert.IsFalse((bool)InvokePrivate("IsDashboardCandidate", inactive));
+            Assert.IsFalse((bool)InvokePrivate("IsDashboardCandidate", notCustomizable));
+            Assert.IsNull(InvokePrivate("GetOptionValue", null, "type"));
+            Assert.IsNull(InvokePrivate("GetOptionValue", new Entity("systemform"), "type"));
+            Assert.IsNull(InvokePrivate("GetOptionValue", nullValue, "type"));
+            Assert.AreEqual(10, InvokePrivate("GetOptionValue", intValue, "type"));
+            Assert.IsNull(InvokePrivate("GetOptionValue", unsupportedValue, "type"));
+            Assert.IsNull(InvokePrivate("GetManagedBooleanValue", null, "iscustomizable"));
+            Assert.IsNull(InvokePrivate("GetManagedBooleanValue", new Entity("systemform"), "iscustomizable"));
+            Assert.IsNull(InvokePrivate("GetManagedBooleanValue", new Entity("systemform") { ["iscustomizable"] = null }, "iscustomizable"));
+            Assert.AreEqual(true, InvokePrivate("GetManagedBooleanValue", boolValue, "iscustomizable"));
+            Assert.IsNull(InvokePrivate("GetManagedBooleanValue", unsupportedBool, "iscustomizable"));
+            Assert.AreEqual(0, ((DashboardLabelOutput)InvokePrivate("BuildLabelOutput", new object[] { null })).LocalizedLabels.Count);
+            Assert.AreEqual(string.Empty, InvokePrivate("GetBaseLabel", null, 1033));
+            Assert.AreEqual("fallback name", InvokePrivate("GetBaseLabel", new DashboardMetadataOutput { name = "fallback name" }, 1033));
+            Assert.AreEqual("fallback id", InvokePrivate("GetBaseLabel", new DashboardMetadataOutput { formid = "fallback id" }, 1033));
+            Assert.AreEqual("no labels", InvokePrivate("GetBaseLabel", new DashboardMetadataOutput
+            {
+                name = "no labels",
+                Label = new DashboardLabelOutput { LocalizedLabels = null }
+            }, 1033));
+            Assert.AreEqual("empty labels", InvokePrivate("GetBaseLabel", new DashboardMetadataOutput
+            {
+                name = "empty labels",
+                Label = new DashboardLabelOutput()
+            }, 1033));
+            Assert.AreEqual("nonbase fallback", InvokePrivate("GetBaseLabel", new DashboardMetadataOutput
+            {
+                name = "nonbase fallback",
+                Label = new DashboardLabelOutput
+                {
+                    LocalizedLabels = new List<DashboardLocalizedLabelOutput>
+                    {
+                        new DashboardLocalizedLabelOutput { LanguageCode = 1041, Label = "nonbase" }
+                    }
+                }
+            }, 1033));
+            Assert.AreEqual("base", InvokePrivate("GetBaseLabel", new DashboardMetadataOutput
+            {
+                name = "fallback",
+                Label = new DashboardLabelOutput
+                {
+                    LocalizedLabels = new List<DashboardLocalizedLabelOutput>
+                    {
+                        new DashboardLocalizedLabelOutput { LanguageCode = 1033, Label = string.Empty },
+                        new DashboardLocalizedLabelOutput { LanguageCode = 1033, Label = "base" }
+                    }
+                }
+            }, 1033));
+
+            var serviceAdmin = Substitute.For<IOrganizationService>();
+            serviceAdmin.Execute(Arg.Any<OrganizationRequest>()).Returns((OrganizationResponse)null);
+            var retrievedLabel = (Label)InvokePrivate("RetrieveDashboardLabel", serviceAdmin, Guid.NewGuid());
+            Assert.AreEqual(0, retrievedLabel.LocalizedLabels.Count);
+
+            var labelChangeType = typeof(Dashboard).GetNestedType("DashboardLabelChange", BindingFlags.NonPublic);
+            var changesType = typeof(List<>).MakeGenericType(labelChangeType);
+            var changes = (System.Collections.IList)Activator.CreateInstance(changesType);
+            var change = Activator.CreateInstance(labelChangeType);
+            labelChangeType.GetProperty("LanguageCode").SetValue(change, 1033);
+            labelChangeType.GetProperty("Label").SetValue(change, null);
+            changes.Add(change);
+            var merged = (LocalizedLabel[])InvokePrivate("BuildMergedLabel", null, changes);
+            Assert.AreEqual(string.Empty, merged.Single().Label);
+
+            var duplicateChanges = (System.Collections.IList)Activator.CreateInstance(changesType);
+            var firstChange = Activator.CreateInstance(labelChangeType);
+            labelChangeType.GetProperty("LanguageCode").SetValue(firstChange, 1041);
+            labelChangeType.GetProperty("Label").SetValue(firstChange, "first");
+            duplicateChanges.Add(firstChange);
+            var secondChange = Activator.CreateInstance(labelChangeType);
+            labelChangeType.GetProperty("LanguageCode").SetValue(secondChange, 1041);
+            labelChangeType.GetProperty("Label").SetValue(secondChange, "second");
+            duplicateChanges.Add(secondChange);
+            var current = new Label();
+            current.LocalizedLabels.Add(new LocalizedLabel(null, 1033));
+            current.LocalizedLabels.Add(new LocalizedLabel("duplicate", 1033));
+            var mergedDuplicates = (LocalizedLabel[])InvokePrivate("BuildMergedLabel", current, duplicateChanges);
+            Assert.AreEqual(string.Empty, mergedDuplicates.Single(label => label.LanguageCode == 1033).Label);
+            Assert.AreEqual("second", mergedDuplicates.Single(label => label.LanguageCode == 1041).Label);
+        }
+
         private static EntityCollection Entities(params Entity[] entities)
         {
             return new EntityCollection(entities.ToList());
@@ -320,6 +446,13 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
 
             Assert.Fail("Expected InvalidPluginExecutionException.");
             return null;
+        }
+
+        private static object InvokePrivate(string name, params object[] args)
+        {
+            var method = typeof(Dashboard).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(method, "Private method not found: " + name);
+            return method.Invoke(null, args);
         }
     }
 }

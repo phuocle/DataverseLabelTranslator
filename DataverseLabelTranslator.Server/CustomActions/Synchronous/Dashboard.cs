@@ -62,7 +62,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                         continue;
                     }
 
-                    var dashboardId = ValidateDashboardId(update?.dashboardId);
+                    var dashboardId = ValidateDashboardId(update.dashboardId);
                     var currentLabel = RetrieveDashboardLabel(serviceAdmin, dashboardId);
                     var mergedLabel = BuildMergedLabel(currentLabel, changes);
 
@@ -445,7 +445,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             var labels = new List<LocalizedLabel>();
             foreach (var languageCode in languageOrder)
             {
-                labels.Add(new LocalizedLabel(values[languageCode] ?? string.Empty, languageCode));
+                labels.Add(new LocalizedLabel(values[languageCode], languageCode));
             }
 
             return labels.ToArray();

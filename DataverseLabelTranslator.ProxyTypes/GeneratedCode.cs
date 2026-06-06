@@ -2188,10 +2188,13 @@ namespace DataverseLabelTranslator.ProxyTypes
 		Nhtkchythuhochslngln = 10802,
 		
 		[System.Runtime.Serialization.EnumMemberAttribute()]
-		HarvestWorkItem = 10803,
+		Mccngvicthuthpdliu = 10803,
 		
 		[System.Runtime.Serialization.EnumMemberAttribute()]
 		AthenaReconciliationInfo = 10816,
+		
+		[System.Runtime.Serialization.EnumMemberAttribute()]
+		HistoricalCaseHarvestRunLog = 10817,
 	}
 	
 	/// <summary>
