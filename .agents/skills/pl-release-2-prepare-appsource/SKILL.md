@@ -1,13 +1,23 @@
 ﻿---
 name: "pl-release-2-prepare-appsource"
 display-name: "PL Release 2 Prepare AppSource"
-description: "Build the final AppSource all-in-one Marketplace ZIP for Dataverse Label Translator. Does not export Dataverse solution or upload to Azure."
+description: "Build the final AppSource all-in-one Marketplace ZIP from the SolutionPackager-produced managed release ZIP. Does not export, pack, or upload."
 argument-hint: "[solution-version]"
 ---
 
-# Release AppSource
+# Prepare AppSource
 
 Use this skill when the user asks to run `Release AppSource`, `/pl-release-2-prepare-appsource`, or build the final AppSource package.
+
+This workflow starts after `/pl-release-1-export-solutions` has already produced the final managed release ZIP through the DevKit SolutionPackager project. It must consume only the selected versioned release ZIP under `DataverseLabelTranslator.Release\<version>\dataverse\solutions`.
+
+Do not use raw ZIPs from:
+
+```text
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.SolutionPackager\DataverseLabelTranslator\Solutions-Extract
+```
+
+Do not run `Extract-Both.bat`, `Pack-Both.bat`, or any Power Platform CLI solution export/unpack/pack command in this workflow.
 
 ## Version Resolution
 
@@ -38,7 +48,7 @@ Each version is self-contained under:
 D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\<solution-version>
 ```
 
-For a new version, copy the whole previous version folder, for example `DataverseLabelTranslator.Release\1.0.0.0` to `DataverseLabelTranslator.Release\1.0.1.0`, replace the managed solution under `dataverse\solutions`, then run this skill with `-SolutionVersion 1.0.1.0`. The script only rebuilds `appsource\src` and `appsource\zip` for the selected version and must not touch older version folders.
+For a new version, prepare the version folder first, for example copy `DataverseLabelTranslator.Release\1.0.0.0` to `DataverseLabelTranslator.Release\1.0.1.0` if you need to carry forward AppSource assets. The managed solution under `dataverse\solutions` must come from the release step 1 SolutionPackager workflow, not from `Solutions-Extract`. Then run this skill with `-SolutionVersion 1.0.1.0`. The script only rebuilds `appsource\src` and `appsource\zip` for the selected version and must not touch older version folders.
 
 ## Output Contract
 
@@ -66,13 +76,18 @@ Always trust the selected existing managed solution as latest/newest:
 D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\<solution-version>\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
+That file must be the final managed ZIP copied by `/pl-release-1-export-solutions` after `Pack-Both.bat` packs the cleaned SolutionPackager tree.
+
 Do not run `/pl-release-1-export-solutions`.
 Do not run the `pl-release-1-export-solutions` skill.
+Do not run `Extract-Both.bat`.
+Do not run `Pack-Both.bat`.
+Do not use `DataverseLabelTranslator.SolutionPackager\DataverseLabelTranslator\Solutions-Extract\*.zip` as the AppSource source.
 Do not check Dataverse freshness.
 Do not read the version from Dataverse.
 Do not suggest exporting in this workflow.
 
-If the managed solution file is missing, stop and report the missing file.
+If the managed solution file is missing, stop and report the missing file. Do not create or replace it in this workflow.
 
 ## Workflow
 
@@ -115,7 +130,8 @@ logo32x32.png
 - final ZIP path,
 - final ZIP size,
 - nested Package Deployer ZIP path,
-- confirmation that the existing managed solution was used as source,
+- confirmation that the selected release managed solution was used as source,
+- confirmation that no raw SolutionPackager `Solutions-Extract` ZIP was used,
 - confirmation that nothing was uploaded.
 
 ## Generated Assets
@@ -146,4 +162,6 @@ For newer versions, replace `1.0.0.0` with the selected solution version.
 - Do not upload to Azure.
 - Do not write a real SAS URL into git.
 - Do not deploy to Dataverse.
+- Do not run SolutionPackager extract or pack.
+- Do not use raw SolutionPackager export ZIPs as the managed solution source.
 - Do not modify older version folders. Treat existing version folders such as `DataverseLabelTranslator.Release\1.0.0.0` as read-only unless the user explicitly selected that version.

@@ -1,6 +1,6 @@
 ---
 name: pl-release-1-export-solutions
-description: Export the DataverseLabelTranslator solution with cleaned labels and final managed/unmanaged release ZIPs.
+description: Export, clean, pack, and publish release ZIPs through the DevKit SolutionPackager project.
 agent: agent
 ---
 

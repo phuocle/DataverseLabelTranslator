@@ -1,7 +1,7 @@
-﻿---
+---
 name: "pl-release-1-export-solutions"
 display-name: "PL Release 1 Export Solutions"
-description: "Export the DataverseLabelTranslator solution with cleaned labels and final managed/unmanaged release ZIPs."
+description: "Export, clean, pack, and publish release ZIPs through the DevKit SolutionPackager project."
 ---
 
 # pl-release-1-export-solutions
@@ -10,9 +10,24 @@ Use this skill when the user asks to run the Dataverse Label Translator command 
 
 ## Command Template
 
-# Export Solution
+# Export Solutions With SolutionPackager
 
-Export the Dataverse Label Translator (`DataverseLabelTranslator`) solution, remove non-base-language labels, stamp a hard-coded release version, and pack the final managed and unmanaged release ZIPs.
+Export the Dataverse Label Translator (`DataverseLabelTranslator`) solution through the checked-in DevKit SolutionPackager project, remove non-base-language labels directly from the SolutionPackager unpacked tree, stamp a hard-coded release version, pack through SolutionPackager, and copy the final managed and unmanaged release ZIPs into the release folder.
+
+The release workflow must use these checked-in batch files:
+
+```text
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.SolutionPackager\Extract-Both.bat
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.SolutionPackager\Pack-Both.bat
+```
+
+Do not invoke Power Platform CLI solution export, unpack, or pack commands directly in this workflow. The DevKit SolutionPackager project is the source of truth for export, unpack, and pack.
+
+The label cleanup and version stamp must update this source-controlled SolutionPackager unpack folder directly:
+
+```text
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.SolutionPackager\DataverseLabelTranslator\Both
+```
 
 ## Current Release Version
 
@@ -31,15 +46,22 @@ D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\1.0.0.0\data
 D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\1.0.0.0\dataverse\solutions\DataverseLabelTranslator_managed.zip
 ```
 
-Temporary raw export files must be created outside the release folder and removed after the final ZIPs are packed.
+`Extract-Both.bat` updates the normal SolutionPackager output under:
 
-The cleaned unpacked solution must remain available for review at:
+```text
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.SolutionPackager\DataverseLabelTranslator\Both
+D:\github\DataverseLabelTranslator\DataverseLabelTranslator.SolutionPackager\DataverseLabelTranslator\Solutions-Extract
+```
+
+`Pack-Both.bat` creates the packed solution ZIPs under the SolutionPackager project. Copy those packed ZIPs into the versioned release folder using the fixed output names above.
+
+The cleaned unpacked solution must also remain available for review at:
 
 ```text
 D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\1.0.0.0\dataverse\unpack
 ```
 
-After packing, do not stage anything. Leave the generated ZIP files as normal git changes. The `/pl-commit` command is responsible for staging and committing when needed. Do not commit and do not push.
+After packing, do not stage anything. Leave generated files as normal git changes. The `/pl-commit` command is responsible for staging and committing when needed. Do not commit and do not push.
 
 ## Instructions
 
@@ -59,126 +81,154 @@ git rev-parse --show-toplevel
 
 If the result is not `D:\github\DataverseLabelTranslator`, stop.
 
-### Step 2: Check PAC Profile
+### Step 2: Confirm SolutionPackager Project
 
-Run:
-
-```powershell
-pac auth list
-```
-
-Look for a profile named exactly `DataverseLabelTranslator`.
-
-If the profile does not exist, stop and ask the user to create it:
-
-```powershell
-pac auth create --name DataverseLabelTranslator --url <your-environment-url>
-```
-
-### Step 3: Select PAC Profile
-
-Run:
-
-```powershell
-pac auth select --name DataverseLabelTranslator
-```
-
-If this fails, show the error and stop.
-
-### Step 4: Prepare Paths
-
-Use the hard-coded version and reset only that version's `dataverse` folder. Do not delete or rewrite `DataverseLabelTranslator.Release\$Version\appsource`.
+Prepare and validate the SolutionPackager paths:
 
 ```powershell
 $RepoRoot = "D:\github\DataverseLabelTranslator"
+$SolutionPackagerDir = Join-Path $RepoRoot "DataverseLabelTranslator.SolutionPackager"
+$ExtractBat = Join-Path $SolutionPackagerDir "Extract-Both.bat"
+$PackBat = Join-Path $SolutionPackagerDir "Pack-Both.bat"
+$PackagerSolutionDir = Join-Path $SolutionPackagerDir "DataverseLabelTranslator"
+$PackagerUnpackDir = Join-Path $PackagerSolutionDir "Both"
+$PackagerExtractDir = Join-Path $PackagerSolutionDir "Solutions-Extract"
+$CleanLanguageScript = Join-Path $RepoRoot "DataverseLabelTranslator.Scripts\clean-language.ps1"
+
+if (-not (Test-Path -LiteralPath $ExtractBat)) {
+    throw "Missing SolutionPackager extract script: $ExtractBat"
+}
+
+if (-not (Test-Path -LiteralPath $PackBat)) {
+    throw "Missing SolutionPackager pack script: $PackBat"
+}
+
+if (-not (Test-Path -LiteralPath $CleanLanguageScript)) {
+    throw "Missing clean-language script: $CleanLanguageScript"
+}
+```
+
+Do not require a separate auth profile in this skill. The DevKit batch files read connection settings from root `.env` / `DEVKIT_*` environment variables through the checked-in batch format.
+
+### Step 3: Prepare Release Paths
+
+Use the hard-coded version and reset only that version's `dataverse` folder. Do not delete or rewrite `DataverseLabelTranslator.Release\$Version\appsource`. Do not delete the SolutionPackager project folder.
+
+```powershell
 $Version = "1.0.0.0"
 $BaseLanguageCode = 1033
 $ReleaseDir = Join-Path $RepoRoot "DataverseLabelTranslator.Release\$Version"
 $DataverseDir = Join-Path $ReleaseDir "dataverse"
 $SolutionsDir = Join-Path $DataverseDir "solutions"
 $ReleaseUnpackDir = Join-Path $DataverseDir "unpack"
-$TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) "DataverseLabelTranslator-export-$Version"
-$TempRawDir = Join-Path $TempRoot "raw"
-$TempUnpackDir = Join-Path $TempRoot "unpack"
-$CleanLanguageScript = Join-Path $RepoRoot "DataverseLabelTranslator.Scripts\clean-language.ps1"
 
 if (Test-Path -LiteralPath $DataverseDir) {
     Remove-Item -LiteralPath $DataverseDir -Recurse -Force
 }
 
-if (Test-Path -LiteralPath $TempRoot) {
-    Remove-Item -LiteralPath $TempRoot -Recurse -Force
+New-Item -ItemType Directory -Path $SolutionsDir -Force | Out-Null
+New-Item -ItemType Directory -Path $ReleaseUnpackDir -Force | Out-Null
+```
+
+### Step 4: Extract Through SolutionPackager
+
+Run the checked-in DevKit SolutionPackager extract batch file from the repository root:
+
+```powershell
+& $ExtractBat
+if ($LASTEXITCODE -ne 0) {
+    throw "Extract-Both.bat failed with exit code $LASTEXITCODE."
+}
+```
+
+If the batch file fails, show the full output and stop.
+
+Verify the expected SolutionPackager output exists:
+
+```powershell
+if (-not (Test-Path -LiteralPath $PackagerUnpackDir)) {
+    throw "Missing SolutionPackager unpack folder: $PackagerUnpackDir"
 }
 
-New-Item -ItemType Directory -Path $SolutionsDir -Force | Out-Null
-New-Item -ItemType Directory -Path $TempRawDir | Out-Null
+if (-not (Test-Path -LiteralPath $PackagerExtractDir)) {
+    throw "Missing SolutionPackager extract folder: $PackagerExtractDir"
+}
 ```
 
-### Step 5: Export Raw Solution ZIPs To Temp
+### Step 5: Clean SolutionPackager Unpack And Stamp Version
 
-Run exactly these two exports:
+Run cleanup directly against the SolutionPackager unpack folder:
 
 ```powershell
-$RawUnmanagedZip = Join-Path $TempRawDir "DataverseLabelTranslator.zip"
-$RawManagedZip = Join-Path $TempRawDir "DataverseLabelTranslator_managed.zip"
-
-pac solution export --name DataverseLabelTranslator --path $RawUnmanagedZip --overwrite
-pac solution export --name DataverseLabelTranslator --path $RawManagedZip --managed --overwrite
+powershell -ExecutionPolicy Bypass -File $CleanLanguageScript -Path $PackagerUnpackDir -BaseLanguageCode $BaseLanguageCode -Version $Version
 ```
 
-If either export fails, show the full error output and stop.
+This removes non-base-language entries from the source-controlled SolutionPackager unpacked solution and replaces `Version: x.xx.xx.xx` with `Version: 1.0.0.0`.
 
-### Step 6: Unpack
+If cleanup fails, show the full output and stop.
 
-Unpack to temp only:
+### Step 6: Pack Through SolutionPackager
+
+Run the checked-in DevKit SolutionPackager pack batch file from the repository root:
 
 ```powershell
-pac solution unpack --zipfile $RawUnmanagedZip --folder $TempUnpackDir --packagetype Both --allowWrite true --clobber true
+$PackStartedAt = Get-Date
+
+& $PackBat
+if ($LASTEXITCODE -ne 0) {
+    throw "Pack-Both.bat failed with exit code $LASTEXITCODE."
+}
 ```
 
-If unpack fails, show the full error output and stop.
+If the batch file fails, show the full output and stop.
 
-### Step 7: Clean Labels And Stamp Version
+### Step 7: Copy Packed ZIPs To Release Folder
 
-Run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File $CleanLanguageScript -Path $TempUnpackDir -BaseLanguageCode $BaseLanguageCode -Version $Version
-```
-
-This removes non-base-language entries and replaces `Version: x.xx.xx.xx` with `Version: 1.0.0.0`.
-
-If cleanup fails, show the full error output and stop.
-
-### Step 8: Pack Final Release ZIPs
-
-Pack only these two final ZIPs into the versioned `dataverse\solutions` folder:
+Find the ZIPs created by `Pack-Both.bat` under the SolutionPackager project. Do not use ZIPs from `Solutions-Extract` as the final release output.
 
 ```powershell
+$PackedZipCandidates = Get-ChildItem -LiteralPath $PackagerSolutionDir -Recurse -File -Filter "*.zip" |
+    Where-Object {
+        $_.FullName -notlike "$PackagerExtractDir\*" -and
+        $_.Name -like "DataverseLabelTranslator*.zip" -and
+        $_.LastWriteTime -ge $PackStartedAt.AddMinutes(-1)
+    }
+
+$PackagerUnmanagedZip = $PackedZipCandidates |
+    Where-Object { $_.Name -notlike "*_managed.zip" } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
+$PackagerManagedZip = $PackedZipCandidates |
+    Where-Object { $_.Name -like "*_managed.zip" } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
+if (-not $PackagerUnmanagedZip) {
+    throw "Could not find unmanaged ZIP created by Pack-Both.bat under: $PackagerSolutionDir"
+}
+
+if (-not $PackagerManagedZip) {
+    throw "Could not find managed ZIP created by Pack-Both.bat under: $PackagerSolutionDir"
+}
+
 $UnmanagedZip = Join-Path $SolutionsDir "DataverseLabelTranslator.zip"
 $ManagedZip = Join-Path $SolutionsDir "DataverseLabelTranslator_managed.zip"
 
-pac solution pack --zipfile $UnmanagedZip --folder $TempUnpackDir --packagetype Unmanaged
-pac solution pack --zipfile $ManagedZip --folder $TempUnpackDir --packagetype Managed
+Copy-Item -LiteralPath $PackagerUnmanagedZip.FullName -Destination $UnmanagedZip -Force
+Copy-Item -LiteralPath $PackagerManagedZip.FullName -Destination $ManagedZip -Force
 ```
 
-If either pack fails, show the full error output and stop.
+### Step 8: Keep Review Copy
 
-### Step 9: Keep Review Copy And Remove Temp Files
-
-Copy the cleaned unpacked solution into `dataverse\unpack`:
+Copy the cleaned SolutionPackager unpacked solution into `dataverse\unpack`:
 
 ```powershell
-Copy-Item -LiteralPath $TempUnpackDir -Destination $ReleaseUnpackDir -Recurse -Force
+Get-ChildItem -LiteralPath $PackagerUnpackDir -Force |
+    Copy-Item -Destination $ReleaseUnpackDir -Recurse -Force
 ```
 
-Then remove only the temp root. The review copy under the `dataverse` folder must remain:
-
-```powershell
-Remove-Item -LiteralPath $TempRoot -Recurse -Force
-```
-
-### Step 10: Verify Output Contract
+### Step 9: Verify Output Contract
 
 Ensure the `dataverse\solutions` folder contains exactly two ZIP files:
 
@@ -209,13 +259,13 @@ if (-not (Test-Path -LiteralPath $ReleaseUnpackDir)) {
 }
 ```
 
-### Step 11: Do Not Stage Files
+### Step 10: Do Not Stage Files
 
 Do not run `git add`.
 Do not run `git commit`.
 Do not run `git push`.
 
-Leave these files as normal uncommitted git changes:
+Leave generated files as normal uncommitted git changes. At minimum, the final release ZIPs must exist:
 
 ```text
 DataverseLabelTranslator.Release\$Version\dataverse\solutions\DataverseLabelTranslator.zip
@@ -224,11 +274,14 @@ DataverseLabelTranslator.Release\$Version\dataverse\solutions\DataverseLabelTran
 
 The `DataverseLabelTranslator.Release\$Version\dataverse\unpack` folder is for manual review only and should be ignored by git.
 
-### Step 12: Report Result
+### Step 11: Report Result
 
 Report:
 
 - Release version: `1.0.0.0`
+- SolutionPackager extract script: `D:\github\DataverseLabelTranslator\DataverseLabelTranslator.SolutionPackager\Extract-Both.bat`
+- SolutionPackager pack script: `D:\github\DataverseLabelTranslator\DataverseLabelTranslator.SolutionPackager\Pack-Both.bat`
+- Cleaned SolutionPackager unpack folder: `D:\github\DataverseLabelTranslator\DataverseLabelTranslator.SolutionPackager\DataverseLabelTranslator\Both`
 - Release folder: `D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\1.0.0.0`
 - Unpacked review folder: `D:\github\DataverseLabelTranslator\DataverseLabelTranslator.Release\1.0.0.0\dataverse\unpack`
 - Exported files: `DataverseLabelTranslator.zip`, `DataverseLabelTranslator_managed.zip`

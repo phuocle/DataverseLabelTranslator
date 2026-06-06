@@ -7,9 +7,8 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "lib": ["es6", "dom", "es2016"],
-    "strict": false,
-    "typeRoots": ["./node_modules/@types"]
+    "strict": false
   },
-  "include": ["entities/**/*", "lib/**/*", "test/**/*", "js/**/*", "tests/**/*"],
+  "include": ["js/**/*", "tests/**/*"],
   "exclude": ["node_modules", "bin", "obj", "coverage", "js/lib/**/*"]
 }

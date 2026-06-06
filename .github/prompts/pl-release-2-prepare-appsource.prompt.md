@@ -1,6 +1,6 @@
 ---
 name: pl-release-2-prepare-appsource
-description: Build the final AppSource all-in-one Marketplace ZIP for Dataverse Label Translator. Does not export Dataverse solution or upload to Azure.
+description: Build the final AppSource all-in-one Marketplace ZIP from the SolutionPackager-produced managed release ZIP. Does not export, pack, or upload.
 argument-hint: '[solution-version]'
 agent: agent
 ---
