@@ -138,9 +138,17 @@ When files are edited or created under `DataverseLabelTranslator.WebResource/htm
 
 When server code is edited under `DataverseLabelTranslator.Server`, run `DataverseLabelTranslator.Server\deploy.debug.bat` from the repo root and report only the DevKit summary or error.
 
+### /pl-release-0-preflight-deploy
+
+Run the release preflight gate before exporting solutions: run `pl-unit-tests-webresource`, run `pl-unit-tests-server`, require 100% coverage for both, build `DataverseLabelTranslator.Server`, run `pl-deploy-server`, then run `pl-deploy-webresource`.
+If tests, coverage, build, or deploy fails, stop and report the failure.
+Do not export solutions, prepare AppSource, upload to Azure, stage, commit, or push.
+
 ### /pl-release-1-export-solutions
 
-Export `DataverseLabelTranslator` solution via PAC CLI.
+Export, clean, pack, and publish the `DataverseLabelTranslator` managed/unmanaged release ZIPs through the DevKit SolutionPackager project.
+Use `DataverseLabelTranslator.SolutionPackager\Extract-Both.bat`, clean/stamp the SolutionPackager `Both` folder, use `DataverseLabelTranslator.SolutionPackager\Pack-Both.bat`, then copy the final ZIPs to `DataverseLabelTranslator.Release/<version>/dataverse/solutions`.
+Do not use raw `Solutions-Extract` ZIPs as release output.
 
 ### /pl-release-2-prepare-appsource
 
