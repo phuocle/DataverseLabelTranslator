@@ -3791,7 +3791,7 @@
 
         switch (target) {
             case "autoTranslate":
-                TranslationHandler.ShowTranslationPrompt();
+                EasyTranslator.ShowAITranslate();
                 break;
             case "aiSettings":
                 TranslationHandler.ShowAppSettings();

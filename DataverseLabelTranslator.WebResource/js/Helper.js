@@ -234,6 +234,23 @@
         return result && result.object ? result.object : {};
     };
 
+    Helper.ShowError = function (message, options) {
+        options = options || {};
+        var text = message && message.message ? message.message : String(message || "");
+        var title = options.title || "Error";
+
+        if (window.DialogHelper && typeof DialogHelper.alert === "function") {
+            return DialogHelper.alert(text, { title: title });
+        }
+
+        if (window.w2alert) {
+            return w2alert(text, title);
+        }
+
+        window.alert(text);
+        return null;
+    };
+
     Helper.ExecuteCustomAction = function (functionName, input) {
         var request = {
             f: functionName,
