@@ -54,7 +54,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             var optionSetNames = new List<string>();
             var optionSetNameSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             SaveOptionSetDescriptions(serviceAdmin, input.optionSetDescriptionUpdates, optionSetNames, optionSetNameSet);
-            SaveOptionValues(serviceAdmin, input.optionValueUpdates, optionSetNames, optionSetNameSet);
+            SaveOptionValues(serviceAdmin, input.optionValueUpdates, input.component, optionSetNames, optionSetNameSet);
 
             return new SavingGlobalOptionSetOutput
             {
@@ -258,7 +258,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             }
         }
 
-        private static void SaveOptionValues(IOrganizationService serviceAdmin, List<OptionValueUpdate> updates, List<string> optionSetNames, HashSet<string> optionSetNameSet)
+        private static void SaveOptionValues(IOrganizationService serviceAdmin, List<OptionValueUpdate> updates, string component, List<string> optionSetNames, HashSet<string> optionSetNameSet)
         {
             if (updates == null || updates.Count == 0)
             {
@@ -281,7 +281,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 };
 
                 var label = BuildLabel(update.labels);
-                if (IsDescriptionComponent(update.component))
+                if (IsDescriptionComponent(update.component) || (string.IsNullOrWhiteSpace(update.component) && IsDescriptionComponent(component)))
                 {
                     request.Description = label;
                 }

@@ -211,6 +211,39 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
         }
 
         [TestMethod]
+        public void Saving_UsesRootComponentForOptionValueDescriptionUpdates()
+        {
+            var action = new GlobalOptionSet();
+            var requests = new List<OrganizationRequest>();
+            var serviceAdmin = Substitute.For<IOrganizationService>();
+            serviceAdmin.Execute(Arg.Any<OrganizationRequest>()).Returns(call =>
+            {
+                var request = (OrganizationRequest)call[0];
+                requests.Add(request);
+                return new OrganizationResponse();
+            });
+
+            var json =
+                "{"
+                + "\"component\":\"Description\","
+                + "\"optionValueUpdates\":["
+                + "{\"optionSetName\":\"pl_status\",\"value\":1,\"labels\":[{\"languageCode\":1033,\"label\":\"Base desc\"},{\"languageCode\":1036,\"label\":\"French desc\"}]}"
+                + "]"
+                + "}";
+
+            var output = (SavingGlobalOptionSetOutput)action.Saving(null, serviceAdmin, null, null, json);
+
+            Assert.AreEqual(1, output.optionValueUpdateCount);
+            CollectionAssert.AreEqual(new[] { "pl_status" }, output.optionSetNames);
+
+            var valueUpdate = requests.OfType<UpdateOptionValueRequest>().Single();
+            Assert.IsNull(valueUpdate.Label);
+            Assert.IsNotNull(valueUpdate.Description);
+            Assert.AreEqual("Base desc", valueUpdate.Description.LocalizedLabels.Single(label => label.LanguageCode == 1033).Label);
+            Assert.AreEqual("French desc", valueUpdate.Description.LocalizedLabels.Single(label => label.LanguageCode == 1036).Label);
+        }
+
+        [TestMethod]
         public void Saving_Throws_WhenOptionSetNameOrOptionValueIsMissing()
         {
             var action = new GlobalOptionSet();

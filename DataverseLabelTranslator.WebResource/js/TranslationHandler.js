@@ -1136,6 +1136,14 @@
                                 };
                             }
 
+                            var includeGlobalOptionSetDescriptionParent =
+                                XrmTranslator.GetType() === "globalOptionSet" &&
+                                XrmTranslator.IsDescriptionComponent &&
+                                XrmTranslator.IsDescriptionComponent();
+                            var includeBranchRecords =
+                                ["bpf", "forms", "dashboards", "allInOne"].indexOf(XrmTranslator.GetType()) !== -1 ||
+                                includeGlobalOptionSetDescriptionParent;
+
                             XrmTranslator.ShowRecordSelector(
                                 "TranslationHandler.ProposeTranslations",
                                 [sourceLcid, targetLcid, translateMissingVal, apiProviderVal, useDictionaryFirstVal],
@@ -1145,9 +1153,7 @@
                                     title: "Records to Translate",
                                     sourceLcid: sourceLcid,
                                     leafOnly: true,
-                                    includeBranchRecords:
-                                        ["bpf", "forms", "dashboards", "allInOne"].indexOf(XrmTranslator.GetType()) !==
-                                        -1,
+                                    includeBranchRecords: includeBranchRecords,
                                     selectAllOnly: true,
                                     excludeEmptySource: true,
                                     emptyMessage:
