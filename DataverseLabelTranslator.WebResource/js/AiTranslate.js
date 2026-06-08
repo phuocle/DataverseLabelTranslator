@@ -50,6 +50,10 @@
         return record ? record[field] : "";
     }
 
+    function areCellValuesEqual(left, right) {
+        return normalizeText(decodeValue(left)) === normalizeText(decodeValue(right));
+    }
+
     function getLanguageItemText(lcid) {
         if (!state) {
             return lcid;
@@ -834,6 +838,18 @@
     }
 
     function applyWorkspaceCellChange(record, field, value) {
+        if (areCellValuesEqual(record ? record[field] : "", value)) {
+            if (record && record.w2ui && record.w2ui.changes) {
+                delete record.w2ui.changes[field];
+
+                if (Object.keys(record.w2ui.changes).length === 0) {
+                    delete record.w2ui.changes;
+                }
+            }
+
+            return false;
+        }
+
         if (!record.w2ui) {
             record.w2ui = {};
         }
@@ -843,6 +859,7 @@
         }
 
         record.w2ui.changes[field] = value;
+        return true;
     }
 
     function applyTranslationResults(results, targetLcid) {
