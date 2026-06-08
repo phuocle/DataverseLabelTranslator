@@ -326,6 +326,34 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             StringAssert.Contains(descriptionXml, "Descriptions");
             StringAssert.Contains(descriptionXml, "Description=\"\"");
 
+            var missingIdXml = "<sitemap><Area><Group><SubArea /></Group></Area></sitemap>";
+            var missingIdAreaXml = (string)InvokePrivate("UpdateSitemapXml", missingIdXml, new SiteMapUpdateInput
+            {
+                compositeId = "",
+                nodeType = "Area",
+                component = "DisplayText",
+                labels = new List<SiteMapLabelInput> { new SiteMapLabelInput { LanguageCode = "1033", Label = "Missing Area" } }
+            });
+            StringAssert.Contains(missingIdAreaXml, "Title=\"Missing Area\"");
+
+            var missingIdGroupXml = (string)InvokePrivate("UpdateSitemapXml", missingIdXml, new SiteMapUpdateInput
+            {
+                compositeId = "|",
+                nodeType = "Group",
+                component = "DisplayText",
+                labels = new List<SiteMapLabelInput> { new SiteMapLabelInput { LanguageCode = "1033", Label = "Missing Group" } }
+            });
+            StringAssert.Contains(missingIdGroupXml, "Title=\"Missing Group\"");
+
+            var missingIdSubAreaXml = (string)InvokePrivate("UpdateSitemapXml", missingIdXml, new SiteMapUpdateInput
+            {
+                compositeId = "||",
+                nodeType = "SubArea",
+                component = "DisplayText",
+                labels = new List<SiteMapLabelInput> { new SiteMapLabelInput { LanguageCode = "1033", Label = "Missing SubArea" } }
+            });
+            StringAssert.Contains(missingIdSubAreaXml, "Title=\"Missing SubArea\"");
+
             var root = XDocument.Parse(xml).Root;
             Assert.IsNull(InvokePrivate("FindSitemapNode", null, "A", "Area"));
             Assert.IsNull(InvokePrivate("FindSitemapNode", root, " ", "Area"));
@@ -338,6 +366,10 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             Assert.IsNotNull(InvokePrivate("FindSitemapNode", root, "A", "Area"));
             Assert.IsNotNull(InvokePrivate("FindSitemapNode", root, "A|G", "Group"));
             Assert.IsNotNull(InvokePrivate("FindSitemapNode", root, "A|G|S", "SubArea"));
+            var missingIdRoot = XDocument.Parse(missingIdXml).Root;
+            Assert.IsNotNull(InvokePrivate("FindSitemapNode", missingIdRoot, "", "Area"));
+            Assert.IsNotNull(InvokePrivate("FindSitemapNode", missingIdRoot, "|", "Group"));
+            Assert.IsNotNull(InvokePrivate("FindSitemapNode", missingIdRoot, "||", "SubArea"));
             Assert.IsFalse((bool)InvokePrivate("IsNodeType", null, "Area"));
             Assert.IsTrue((bool)InvokePrivate("IsNodeType", root.Element("Area"), " "));
             Assert.IsTrue((bool)InvokePrivate("IsNodeType", root.Element("Area"), "Area"));

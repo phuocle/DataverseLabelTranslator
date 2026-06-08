@@ -156,7 +156,65 @@
         return localizedLabelContainer.LocalizedLabels || [];
     };
 
-    Helper.GetChangedLabels = function (changes, allowEmpty) {
+    function GetRecordValue(record, field) {
+        if (!record) {
+            return "";
+        }
+
+        if (record.w2ui && record.w2ui.changes && Object.prototype.hasOwnProperty.call(record.w2ui.changes, field)) {
+            return record.w2ui.changes[field];
+        }
+
+        if (Object.prototype.hasOwnProperty.call(record, field)) {
+            return record[field];
+        }
+
+        var stringField = String(field);
+        if (
+            record.w2ui &&
+            record.w2ui.changes &&
+            Object.prototype.hasOwnProperty.call(record.w2ui.changes, stringField)
+        ) {
+            return record.w2ui.changes[stringField];
+        }
+
+        return Object.prototype.hasOwnProperty.call(record, stringField) ? record[stringField] : "";
+    }
+
+    function AddBaseDisplayTextLabel(labels, options) {
+        options = options || {};
+
+        if (!options.includeBaseDisplayText || labels.length === 0) {
+            return labels;
+        }
+
+        var app = options.app || Helper.GetTranslator();
+        if (!app.IsDisplayTextComponent || !app.IsDisplayTextComponent()) {
+            return labels;
+        }
+
+        var baseLanguage = GetBaseLanguage(app);
+        if (!baseLanguage) {
+            return labels;
+        }
+
+        var baseField = String(baseLanguage);
+        for (var i = 0; i < labels.length; i++) {
+            if (String(labels[i].LanguageCode) === baseField) {
+                return labels;
+            }
+        }
+
+        var baseValue = GetRecordValue(options.record, baseField);
+        if (Helper.IsEmptyLabelValue(baseValue)) {
+            return labels;
+        }
+
+        labels.push({ LanguageCode: baseField, Label: baseValue });
+        return labels;
+    }
+
+    Helper.GetChangedLabels = function (changes, allowEmpty, options) {
         var labels = [];
 
         for (var change in changes) {
@@ -179,7 +237,7 @@
             labels.push({ LanguageCode: change, Label: label });
         }
 
-        return labels;
+        return AddBaseDisplayTextLabel(labels, options);
     };
 
     Helper.ValidateBaseLanguageNotEmpty = function (record, changes, options) {

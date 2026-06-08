@@ -61,8 +61,8 @@ namespace DataverseLabelTranslator.Server.CustomActions
             var action = default(ICustomAction);
             switch (f)
             {
-                case ActionNames.AiTranslate:
-                    action = new AiTranslate();
+                case ActionNames.Other:
+                    action = new OtherAction();
                     break;
                 case ActionNames.Dashboard:
                     action = new Dashboard();

@@ -207,13 +207,37 @@ function createHarness(options) {
     GetComponentLocalizedLabels: vi.fn(function () {
       return [];
     }),
-    GetChangedLabels: vi.fn(function (changes) {
+    IsEmptyLabelValue: vi.fn(function (value) {
+      return value == null || String(value).trim().length === 0;
+    }),
+    GetChangedLabels: vi.fn(function (changes, allowEmpty, labelOptions) {
       var labels = [];
       for (var key in changes) {
         if (Object.prototype.hasOwnProperty.call(changes, key)) {
           labels.push({ LanguageCode: key, Label: changes[key] });
         }
       }
+
+      labelOptions = labelOptions || {};
+      var labelApp = labelOptions.app || app;
+      if (
+        labelOptions.includeBaseDisplayText &&
+        labels.length > 0 &&
+        labelApp.IsDisplayTextComponent &&
+        labelApp.IsDisplayTextComponent()
+      ) {
+        var baseLanguage = String(labelApp.baseLanguage || options.baseLanguage || 1033);
+        var hasBase = labels.some(function (label) {
+          return String(label.LanguageCode) === baseLanguage;
+        });
+        var record = labelOptions.record || {};
+        var baseLabel = record[baseLanguage];
+
+        if (!hasBase && !helper.IsEmptyLabelValue(baseLabel)) {
+          labels.push({ LanguageCode: baseLanguage, Label: baseLabel });
+        }
+      }
+
       return labels;
     }),
     ValidateBaseLanguageNotEmpty:
@@ -575,6 +599,73 @@ describe("SiteMapHandler", function () {
     expect(saveCalls[0].publishPayload).toBeNull();
     expect(saveCalls[0].publishedPayload).toBeNull();
     expect(saveCalls[0].shouldReload).toBe(false);
+  });
+
+  it("includes the current base display text when saving translated sitemap target labels", async function () {
+    var savePayload = null;
+    var context = await setup({
+      baseLanguage: 1033,
+      records: [
+        {
+          recid: "sitemap-1|A|G|S",
+          schemaName: "[SubArea] S",
+          _siteMapId: "sitemap-1",
+          _siteMapCompositeId: "A|G|S",
+          _siteMapNodeType: "SubArea",
+          1033: "Account",
+          w2ui: { changes: { 1036: "Compte" } }
+        }
+      ],
+      saveHandler: vi.fn(function (runOptions) {
+        savePayload = runOptions.getSavePayload();
+        return Promise.resolve({ ok: true, object: {}, type: "Saving" });
+      })
+    });
+
+    await context.handler.Save();
+
+    expect(savePayload.sitemapUpdates).toEqual([
+      {
+        sitemapId: "sitemap-1",
+        compositeId: "A|G|S",
+        nodeType: "SubArea",
+        component: "DisplayText",
+        labels: [
+          { LanguageCode: "1036", Label: "Compte" },
+          { LanguageCode: "1033", Label: "Account" }
+        ]
+      }
+    ]);
+  });
+
+  it("keeps empty sitemap composite ids when saving nodes without XML ids", async function () {
+    var savePayload = null;
+    var context = await setup({
+      records: [
+        {
+          recid: "sitemap-1|",
+          schemaName: "[Area] ",
+          _siteMapId: "sitemap-1",
+          _siteMapCompositeId: "",
+          _siteMapNodeType: "Area",
+          w2ui: { changes: { 1033: "Missing id area" } }
+        }
+      ],
+      saveHandler: vi.fn(function (runOptions) {
+        savePayload = runOptions.getSavePayload();
+        return Promise.resolve({ ok: true, object: {}, type: "Saving" });
+      })
+    });
+
+    await context.handler.Save();
+
+    expect(savePayload.sitemapUpdates[0]).toEqual({
+      sitemapId: "sitemap-1",
+      compositeId: "",
+      nodeType: "Area",
+      component: "DisplayText",
+      labels: [{ LanguageCode: "1033", Label: "Missing id area" }]
+    });
   });
 
   it("handles sitemap nodes with missing optional XML attributes", async function () {

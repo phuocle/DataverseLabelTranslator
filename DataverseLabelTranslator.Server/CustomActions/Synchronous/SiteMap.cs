@@ -459,12 +459,12 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
 
         private static XElement FindSitemapNode(XElement root, string compositeId, string nodeType)
         {
-            if (root == null || string.IsNullOrWhiteSpace(compositeId))
+            if (root == null || compositeId == null)
             {
                 return null;
             }
 
-            var identifiers = compositeId.Split(new[] { "|" }, StringSplitOptions.RemoveEmptyEntries);
+            var identifiers = compositeId.Split(new[] { "|" }, StringSplitOptions.None);
             if (identifiers.Length == 0)
             {
                 return null;
@@ -473,7 +473,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             XElement current = null;
             foreach (var area in root.Elements("Area"))
             {
-                if (!string.Equals((string)area.Attribute("Id"), identifiers[0], StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(GetNodeId(area), identifiers[0], StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
@@ -486,7 +486,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
 
                 foreach (var group in area.Elements("Group"))
                 {
-                    if (!string.Equals((string)group.Attribute("Id"), identifiers[1], StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(GetNodeId(group), identifiers[1], StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
                     }
@@ -499,7 +499,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
 
                     foreach (var subArea in group.Elements("SubArea"))
                     {
-                        if (string.Equals((string)subArea.Attribute("Id"), identifiers[2], StringComparison.OrdinalIgnoreCase))
+                        if (string.Equals(GetNodeId(subArea), identifiers[2], StringComparison.OrdinalIgnoreCase))
                         {
                             return identifiers.Length == 3 && IsNodeType(subArea, nodeType) ? subArea : null;
                         }
@@ -512,6 +512,11 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             }
 
             return null;
+        }
+
+        private static string GetNodeId(XElement node)
+        {
+            return (string)node?.Attribute("Id") ?? string.Empty;
         }
 
         private static bool IsNodeType(XElement node, string nodeType)

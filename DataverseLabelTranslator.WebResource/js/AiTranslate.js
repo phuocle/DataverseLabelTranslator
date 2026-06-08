@@ -1,7 +1,7 @@
 (function (EasyTranslator, undefined) {
     "use strict";
 
-    var actionName = "AiTranslate";
+    var actionName = "Other";
     var workspaceGridName = "easyAiTranslateGrid";
     var state = null;
 
@@ -185,6 +185,29 @@
         };
     }
 
+    function getAllMissingModeText(isAllMissing) {
+        return isAllMissing ? "All Missing" : "All Overwrite";
+    }
+
+    function getAllMissingModeTooltip(isAllMissing) {
+        return isAllMissing
+            ? "Only translate rows where the target language is empty."
+            : "Translate every eligible row and overwrite target values in this workspace.";
+    }
+
+    function updateAllMissingModeButton(toolbar) {
+        var item = toolbar ? toolbar.get("allMissing") : null;
+        var isAllMissing = !!(item && item.checked);
+
+        if (item) {
+            item.text = getAllMissingModeText(isAllMissing);
+            item.tooltip = getAllMissingModeTooltip(isAllMissing);
+            toolbar.refresh();
+        }
+
+        return isAllMissing;
+    }
+
     function createColumns() {
         var columns = [
             { field: "schemaName", text: "Schema Name", size: "25%", sortable: true, searchable: true, frozen: true }
@@ -280,7 +303,13 @@
                 selected: state.providerId,
                 items: providerItems
             },
-            { type: "check", id: "allMissing", text: "All Missing", checked: false },
+            {
+                type: "check",
+                id: "allMissing",
+                text: getAllMissingModeText(false),
+                tooltip: getAllMissingModeTooltip(false),
+                checked: false
+            },
             { type: "check", id: "useDictionary", text: "Use Dictionary", checked: true },
             { type: "spacer" },
             { type: "button", id: "translate", text: "Translate", icon: "icon-translate", disabled: !canTranslate() },
@@ -607,8 +636,8 @@
 
         if (target === "allMissing") {
             event.onComplete = function () {
-                var item = w2ui[workspaceGridName].toolbar.get("allMissing");
-                state.allMissing = !!(item && item.checked);
+                var toolbar = w2ui[workspaceGridName].toolbar;
+                state.allMissing = updateAllMissingModeButton(toolbar);
                 rebuildGridRows();
                 normalizeSearchUiSoon();
             };
