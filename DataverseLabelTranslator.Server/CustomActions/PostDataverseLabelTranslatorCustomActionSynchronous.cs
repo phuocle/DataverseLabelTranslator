@@ -64,17 +64,8 @@ namespace DataverseLabelTranslator.Server.CustomActions
                 case ActionNames.Other:
                     action = new OtherAction();
                     break;
-                case ActionNames.Dashboard:
-                    action = new Dashboard();
-                    break;
-                case ActionNames.GlobalOptionSet:
-                    action = new GlobalOptionSet();
-                    break;
-                case ActionNames.SiteMap:
-                    action = new SiteMap();
-                    break;
-                case ActionNames.WebResource:
-                    action = new WebResource();
+                case ActionNames.EasyTranslator:
+                    action = new EasyTranslator();
                     break;
                 default:
                     throw new InvalidPluginExecutionException($"Unsupported action: {f}");

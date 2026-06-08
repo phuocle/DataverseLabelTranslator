@@ -1252,7 +1252,7 @@
             w2ui["grid_toolbar"].show("removeOverriddenAttributeLabels");
             currentHandler = FormHandler;
         } else if (XrmTranslator.GetType() === "dashboards") {
-            currentHandler = DashboardHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "views") {
             currentHandler = ViewHandler;
         } else if (XrmTranslator.GetType() === "formMeta") {
@@ -1262,7 +1262,7 @@
         } else if (XrmTranslator.GetType() === "relationships") {
             currentHandler = RelationshipHandler;
         } else if (XrmTranslator.GetType() === "sitemap") {
-            currentHandler = SiteMapHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "charts") {
             currentHandler = ChartHandler;
         } else if (XrmTranslator.GetType() === "bpf") {
@@ -1279,9 +1279,9 @@
             w2ui.grid.show.selectColumn = true;
             currentHandler = ContentSnippetHandler;
         } else if (XrmTranslator.GetType() === "webresources") {
-            currentHandler = WebResourceHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "globalOptionSet") {
-            currentHandler = GlobalOptionSetHandler;
+            currentHandler = EasyTranslatorHandler;
         }
 
         w2ui.grid.refresh();
@@ -2986,7 +2986,8 @@
         "formMeta",
         "entityMeta",
         "globalOptionSet",
-        "sitemap"
+        "sitemap",
+        "webresources"
     ];
 
     function UpdateComponentDropdown(selectedType) {
@@ -4038,7 +4039,10 @@
                         }
 
                         if (!XrmTranslator.HasPendingChanges()) {
-                            if (XrmTranslator.GetType() === "globalOptionSet") {
+                            if (
+                                window.EasyTranslatorHandler &&
+                                EasyTranslatorHandler.IsUnifiedType(XrmTranslator.GetType())
+                            ) {
                                 grid.refresh();
                                 return currentHandler.Save().then(function (result) {
                                     XrmTranslator.EnableLoadAndSave();

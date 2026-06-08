@@ -176,31 +176,6 @@
         return EasyTranslator.baseLanguage;
     };
 
-    var aiTranslateSupportedTypeNames = ["Sitemap", "Dashboards", "Web Resources", "Global Option Set"];
-
-    function NormalizeAiTranslateTypeName(value) {
-        return String(value || "")
-            .replace(/<[^>]*>/g, "")
-            .replace(/^\s*\d+\.\s*/, "")
-            .replace(/\s+\([^)]+\)\s*$/, "")
-            .replace(/\.\.\.$/, "")
-            .replace(/\s+/g, " ")
-            .trim()
-            .toLowerCase();
-    }
-
-    function IsAiTranslateSupportedTypeName(typeName) {
-        var normalized = NormalizeAiTranslateTypeName(typeName);
-
-        for (var i = 0; i < aiTranslateSupportedTypeNames.length; i++) {
-            if (NormalizeAiTranslateTypeName(aiTranslateSupportedTypeNames[i]) === normalized) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     function ShowLegacyAiTranslate() {
         if (window.TranslationHandler && typeof TranslationHandler.ShowTranslationPrompt === "function") {
             return TranslationHandler.ShowTranslationPrompt();
@@ -271,6 +246,26 @@
         });
     }
 
+    function IsGenericAiTranslatableRecord(record) {
+        if (!record || IsSummaryRecord(record)) {
+            return false;
+        }
+
+        if (!record.gridKey || record.isEditable !== true || record.isTranslatable !== true) {
+            return false;
+        }
+
+        if (record.w2ui && record.w2ui.editable === false) {
+            return false;
+        }
+
+        if (record.ai && record.ai.include === false) {
+            return false;
+        }
+
+        return true;
+    }
+
     function CreateAiTranslateRow(record, languages, translatable) {
         if (!record || IsSummaryRecord(record)) {
             return null;
@@ -287,109 +282,73 @@
             row[languages[i].lcid] = GetCurrentCellValue(record, languages[i].lcid);
         }
 
-        if (HasChildRecords(record)) {
-            row.w2ui.children = [];
+        if (record.ai && record.ai.location) {
+            row.location = record.ai.location;
         }
 
         return row;
     }
 
-    function CollectChildRows(rootRecords, languages) {
-        var rows = [];
+    function BuildGenericAiTranslateTree(record, languages) {
+        var childRows = [];
+        var children = HasChildRecords(record) ? record.w2ui.children : [];
 
-        for (var i = 0; i < rootRecords.length; i++) {
-            var parent = rootRecords[i];
-            if (!HasChildRecords(parent)) {
-                continue;
-            }
-
-            var group = CreateAiTranslateRow(parent, languages, false);
-            if (!group) {
-                continue;
-            }
-
-            for (var c = 0; c < parent.w2ui.children.length; c++) {
-                var child = CreateAiTranslateRow(parent.w2ui.children[c], languages, true);
-                if (child) {
-                    child.w2ui.parent_recid = group.recid;
-                    group.w2ui.children.push(child);
-                }
-            }
-
-            if (group.w2ui.children.length > 0) {
-                rows.push(group);
+        for (var i = 0; i < children.length; i++) {
+            var child = BuildGenericAiTranslateTree(children[i], languages);
+            if (child) {
+                childRows.push(child);
             }
         }
 
-        return rows;
-    }
+        var translatable = IsGenericAiTranslatableRecord(record);
+        if (!translatable && childRows.length === 0) {
+            return null;
+        }
 
-    function CollectDashboardRows(rootRecords, languages) {
-        var rows = [];
+        var row = CreateAiTranslateRow(record, languages, translatable);
+        if (!row) {
+            return null;
+        }
 
-        for (var i = 0; i < rootRecords.length; i++) {
-            if (!HasChildRecords(rootRecords[i])) {
-                var row = CreateAiTranslateRow(rootRecords[i], languages, true);
-                if (row) {
-                    rows.push(row);
-                }
+        if (childRows.length > 0) {
+            row.w2ui.children = [];
+            for (var c = 0; c < childRows.length; c++) {
+                childRows[c].w2ui.parent_recid = row.recid;
+                row.w2ui.children.push(childRows[c]);
             }
         }
 
-        return rows;
+        return row;
     }
 
-    function CollectGlobalOptionSetRows(rootRecords, languages) {
-        var rows = [];
-        var isDescription = EasyTranslator.IsDescriptionComponent();
-
-        for (var i = 0; i < rootRecords.length; i++) {
-            var parent = rootRecords[i];
-            var group = CreateAiTranslateRow(parent, languages, isDescription);
-            if (!group) {
-                continue;
-            }
-
-            if (!HasChildRecords(parent)) {
-                rows.push(group);
-                continue;
-            }
-
-            group.w2ui.children = [];
-
-            for (var c = 0; c < parent.w2ui.children.length; c++) {
-                var child = CreateAiTranslateRow(parent.w2ui.children[c], languages, true);
-                if (child) {
-                    child.w2ui.parent_recid = group.recid;
-                    group.w2ui.children.push(child);
-                }
-            }
-
-            if (isDescription || group.w2ui.children.length > 0) {
-                rows.push(group);
-            }
-        }
-
-        return rows;
-    }
-
-    function BuildAiTranslateRows(typeName, languages) {
+    function BuildAiTranslateRows(languages) {
         var rootRecords = GetRootGridRecords();
-        var normalized = NormalizeAiTranslateTypeName(typeName);
+        var rows = [];
 
-        if (normalized === "sitemap" || normalized === "web resources") {
-            return CollectChildRows(rootRecords, languages);
+        for (var i = 0; i < rootRecords.length; i++) {
+            var row = BuildGenericAiTranslateTree(rootRecords[i], languages);
+            if (row) {
+                rows.push(row);
+            }
         }
 
-        if (normalized === "dashboards") {
-            return CollectDashboardRows(rootRecords, languages);
+        return rows;
+    }
+
+    function HasTranslatableRows(rows) {
+        rows = rows || [];
+
+        for (var i = 0; i < rows.length; i++) {
+            if (rows[i].targetRecid) {
+                return true;
+            }
+
+            if (rows[i].w2ui && Array.isArray(rows[i].w2ui.children) && HasTranslatableRows(rows[i].w2ui.children)) {
+                return true;
+            }
         }
 
-        if (normalized === "global option set") {
-            return CollectGlobalOptionSetRows(rootRecords, languages);
-        }
-
-        return [];
+        return false;
     }
 
     function ApplyAiTranslateChanges(changes) {
@@ -434,27 +393,25 @@
             componentText: EasyTranslator.GetCurrentComponentText(),
             languages: languages,
             baseLcid: baseLcid || (languages.length ? languages[0].lcid : ""),
-            rows: BuildAiTranslateRows(typeName, languages),
+            rows: BuildAiTranslateRows(languages),
             applyChanges: ApplyAiTranslateChanges
         };
     };
 
     EasyTranslator.ShowAITranslate = function () {
-        var typeName = EasyTranslator.GetCurrentToolbarTypeText();
-
-        if (!IsAiTranslateSupportedTypeName(typeName)) {
-            return ShowLegacyAiTranslate();
-        }
-
         if (typeof EasyTranslator.OpenAiTranslateWorkspace !== "function") {
             return ShowLegacyAiTranslate();
         }
 
-        return EasyTranslator.OpenAiTranslateWorkspace(EasyTranslator.BuildAiTranslateDataSource());
+        var dataSource = EasyTranslator.BuildAiTranslateDataSource();
+        if (!HasTranslatableRows(dataSource.rows)) {
+            return ShowLegacyAiTranslate();
+        }
+
+        return EasyTranslator.OpenAiTranslateWorkspace(dataSource);
     };
 
     EasyTranslator.AiTranslateDataSource = {
-        IsSupportedTypeName: IsAiTranslateSupportedTypeName,
-        NormalizeDisplayName: NormalizeAiTranslateTypeName
+        HasTranslatableRows: HasTranslatableRows
     };
 })((window.EasyTranslator = window.EasyTranslator || {}));

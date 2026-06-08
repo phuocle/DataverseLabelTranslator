@@ -191,7 +191,7 @@
 
     function getAllMissingModeTooltip(isAllMissing) {
         return isAllMissing
-            ? "Only translate rows where the target language is empty."
+            ? "Show rows where any non-base language is empty."
             : "Translate every eligible row and overwrite target values in this workspace.";
     }
 
@@ -318,7 +318,32 @@
         ];
     }
 
-    function isRowEligible(row, source, target, allMissing) {
+    function getNonBaseLanguageLcids() {
+        var lcids = [];
+
+        for (var i = 0; state && i < state.languages.length; i++) {
+            var lcid = String(state.languages[i].lcid || "");
+            if (lcid && lcid !== state.baseLcid) {
+                lcids.push(lcid);
+            }
+        }
+
+        return lcids;
+    }
+
+    function hasMissingAnyNonBaseLanguage(row) {
+        var lcids = getNonBaseLanguageLcids();
+
+        for (var i = 0; i < lcids.length; i++) {
+            if (!hasText(getWorkspaceValue(row, lcids[i]))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function isRowEligible(row, source, target, allMissing, targetOnly) {
         if (!row.targetRecid) {
             return false;
         }
@@ -327,14 +352,19 @@
             return false;
         }
 
-        if (allMissing && hasText(getWorkspaceValue(row, target))) {
-            return false;
+        if (allMissing) {
+            if (targetOnly) {
+                return !hasText(getWorkspaceValue(row, target));
+            }
+
+            return hasMissingAnyNonBaseLanguage(row);
         }
 
         return true;
     }
 
-    function filterRows(rows) {
+    function filterRows(rows, options) {
+        options = options || {};
         var source = state.sourceLcid;
         var target = state.targetLcid;
         var allMissing = !!state.allMissing;
@@ -345,7 +375,7 @@
             var row = rows[i];
             var clone = JSON.parse(JSON.stringify(row));
             var children = row.w2ui && Array.isArray(row.w2ui.children) ? row.w2ui.children : [];
-            var filteredChildren = filterRows(children);
+            var filteredChildren = filterRows(children, options);
 
             if (filteredChildren.length > 0) {
                 clone.w2ui = clone.w2ui || {};
@@ -354,7 +384,7 @@
                 continue;
             }
 
-            if (isRowEligible(row, source, target, allMissing)) {
+            if (isRowEligible(row, source, target, allMissing, options.targetOnly === true)) {
                 if (clone.w2ui && clone.w2ui.children) {
                     delete clone.w2ui.children;
                 }
@@ -859,7 +889,7 @@
         if (!isLanguageField(target)) return "Target language column is invalid.";
         if (!getIso(source) || !getIso(target)) return "Could not resolve source or target language ISO code.";
         syncGridRowsToState();
-        if (!getTranslatableRows(filterRows(grid.records || [])).length) {
+        if (!getTranslatableRows(filterRows(state.allRows || [], { targetOnly: true })).length) {
             return "No records to translate for the selected options.";
         }
 
@@ -925,7 +955,7 @@
         var sourceLcid = state.sourceLcid;
         var targetLcid = state.targetLcid;
         syncGridRowsToState();
-        var eligibleRows = getTranslatableRows(filterRows(grid.records || []));
+        var eligibleRows = getTranslatableRows(filterRows(state.allRows || [], { targetOnly: true }));
 
         w2popup.lock("Translating...", true);
         executeOther("Translate", {
