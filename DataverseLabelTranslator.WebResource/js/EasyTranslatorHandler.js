@@ -197,7 +197,7 @@
     }
 
     EasyTranslatorHandler.IsUnifiedType = function (type) {
-        return ["sitemap", "dashboards", "webresources", "globalOptionSet"].indexOf(type) !== -1;
+        return ["sitemap", "dashboards", "webresources", "globalOptionSet", "entityMeta"].indexOf(type) !== -1;
     };
 
     EasyTranslatorHandler.Load = function (lockText) {

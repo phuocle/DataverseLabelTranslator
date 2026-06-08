@@ -17,7 +17,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         private const int SitemapComponentType = 62;
         private const int PublishedWaitMilliseconds = 10000;
         private const string TranslatorType = "sitemap";
-        private const string PublishKind = "sitemap";
+        private const string AppModulePublishKind = "appmodule";
+        private const string SitemapPublishKind = "sitemap";
         public static Action<int> WaitAction { get; set; } = Thread.Sleep;
 
         public EasyTranslatorLoadOutput Load(EasyTranslatorRuntimeContext context, EasyTranslatorLoadInput input)
@@ -102,7 +103,16 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 context.ServiceAdmin.Update(entity);
 
                 output.changedRowCount++;
-                AddPublishTarget(output, seenTargets, PublishKind, sitemapId.ToString("D"));
+                var appModuleIds = ResolveAppModuleIdsForSitemap(context.ServiceAdmin, sitemapId);
+                if (appModuleIds.Count == 0)
+                {
+                    AddPublishTarget(output, seenTargets, SitemapPublishKind, sitemapId.ToString("D"));
+                }
+
+                foreach (var appModuleId in appModuleIds)
+                {
+                    AddPublishTarget(output, seenTargets, AppModulePublishKind, appModuleId.ToString("D"));
+                }
             }
 
             return output;
@@ -110,23 +120,26 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
         public EasyTranslatorSaveOutput Publish(EasyTranslatorRuntimeContext context, EasyTranslatorPublishInput input)
         {
-            var sitemapIds = GetPublishTargetIds(input, PublishKind, true);
+            var appModuleIds = GetPublishTargetIds(input, AppModulePublishKind, true);
+            var sitemapIds = GetPublishTargetIds(input, SitemapPublishKind, true);
 
-            if (sitemapIds.Count > 0)
+            if (appModuleIds.Count > 0 || sitemapIds.Count > 0)
             {
                 context.ServiceAdmin.Execute(new PublishXmlRequest
                 {
-                    ParameterXml = BuildPublishXml(sitemapIds)
+                    ParameterXml = BuildPublishXml(appModuleIds, sitemapIds)
                 });
             }
 
-            return ToPublishOutput(PublishKind, sitemapIds);
+            return ToPublishOutput(appModuleIds, sitemapIds);
         }
 
         public EasyTranslatorSaveOutput Published(EasyTranslatorRuntimeContext context, EasyTranslatorPublishInput input)
         {
             Wait(PublishedWaitMilliseconds);
-            return ToPublishOutput(PublishKind, GetPublishTargetIds(input, PublishKind, true));
+            return ToPublishOutput(
+                GetPublishTargetIds(input, AppModulePublishKind, true),
+                GetPublishTargetIds(input, SitemapPublishKind, true));
         }
 
         private static List<SitemapInfo> RetrieveAllSitemaps(IOrganizationService serviceAdmin)
@@ -186,6 +199,62 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             return ids;
+        }
+
+        private static List<Guid> ResolveAppModuleIdsForSitemap(IOrganizationService serviceAdmin, Guid sitemapId)
+        {
+            var appModuleIds = new List<Guid>();
+            var seen = new HashSet<Guid>();
+            var query = new QueryExpression("appmodulecomponent")
+            {
+                ColumnSet = new ColumnSet("appmoduleidunique"),
+                Criteria = new FilterExpression
+                {
+                    Conditions =
+                    {
+                        new ConditionExpression("componenttype", ConditionOperator.Equal, SitemapComponentType),
+                        new ConditionExpression("objectid", ConditionOperator.Equal, sitemapId)
+                    }
+                }
+            };
+
+            var link = query.AddLink("appmodule", "appmoduleidunique", "appmoduleidunique", JoinOperator.Inner);
+            link.Columns = new ColumnSet("appmoduleid");
+            link.EntityAlias = "app";
+
+            foreach (var component in ToList(serviceAdmin.RetrieveMultiple(query)))
+            {
+                var appModuleId = GetAliasedGuid(component, "app.appmoduleid");
+                if (appModuleId.HasValue && seen.Add(appModuleId.Value))
+                {
+                    appModuleIds.Add(appModuleId.Value);
+                }
+            }
+
+            return appModuleIds;
+        }
+
+        private static Guid? GetAliasedGuid(Entity entity, string alias)
+        {
+            if (entity == null || !entity.Attributes.TryGetValue(alias, out var value))
+            {
+                return null;
+            }
+
+            if (value is AliasedValue aliasedValue)
+            {
+                if (aliasedValue.Value is Guid guid)
+                {
+                    return guid;
+                }
+
+                if (aliasedValue.Value is EntityReference reference)
+                {
+                    return reference.Id;
+                }
+            }
+
+            return null;
         }
 
         private static List<EasyTranslatorGridRowOutput> BuildSitemapNodeRows(SitemapInfo sitemap, string component, int baseLanguage, Dictionary<string, Label> entityLabels)
@@ -502,15 +571,43 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 (string.IsNullOrWhiteSpace(nodeType) || string.Equals(node.Name.LocalName, nodeType, StringComparison.OrdinalIgnoreCase));
         }
 
-        private static string BuildPublishXml(List<string> sitemapIds)
+        private static string BuildPublishXml(List<string> appModuleIds, List<string> sitemapIds)
         {
-            var sb = new StringBuilder();
-            foreach (var sitemapId in sitemapIds)
+            var appModules = new StringBuilder();
+            foreach (var appModuleId in appModuleIds)
             {
-                sb.Append("<sitemap>").Append(sitemapId).Append("</sitemap>");
+                appModules.Append("<appmodule>").Append(appModuleId).Append("</appmodule>");
             }
 
-            return string.Concat("<importexportxml><sitemaps>", sb.ToString(), "</sitemaps></importexportxml>");
+            var sitemaps = new StringBuilder();
+            foreach (var sitemapId in sitemapIds)
+            {
+                sitemaps.Append("<sitemap>").Append(sitemapId).Append("</sitemap>");
+            }
+
+            return string.Concat(
+                "<importexportxml><appmodules>",
+                appModules.ToString(),
+                "</appmodules><sitemaps>",
+                sitemaps.ToString(),
+                "</sitemaps></importexportxml>");
+        }
+
+        private static EasyTranslatorSaveOutput ToPublishOutput(List<string> appModuleIds, List<string> sitemapIds)
+        {
+            var output = new EasyTranslatorSaveOutput();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var appModuleId in appModuleIds ?? new List<string>())
+            {
+                AddPublishTarget(output, seen, AppModulePublishKind, appModuleId);
+            }
+
+            foreach (var sitemapId in sitemapIds ?? new List<string>())
+            {
+                AddPublishTarget(output, seen, SitemapPublishKind, sitemapId);
+            }
+
+            return output;
         }
 
         private static void Wait(int milliseconds)

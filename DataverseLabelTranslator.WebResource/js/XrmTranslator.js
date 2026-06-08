@@ -60,7 +60,6 @@
         "type:forms",
         "type:views",
         "type:formMeta",
-        "type:entityMeta",
         "type:relationships",
         "type:charts",
         "type:content",
@@ -70,7 +69,7 @@
         "type:commands",
         "type:entityMessages"
     ];
-    var GLOBAL_TYPE_ITEMS = ["type:sitemap", "type:dashboards", "type:webresources", "type:globalOptionSet"];
+    var GLOBAL_TYPE_ITEMS = ["type:sitemap", "type:dashboards", "type:webresources", "type:globalOptionSet", "type:entityMeta"];
     var TYPE_STATE_LABELS = {
         allInOne: "All-In-One",
         attributes: "Attributes",
@@ -1004,7 +1003,6 @@
                     "forms",
                     "views",
                     "formMeta",
-                    "entityMeta",
                     "relationships",
                     "charts",
                     "bpf",
@@ -1028,7 +1026,7 @@
             }
 
             if (
-                ["content", "webresources", "dashboards", "sitemap", "globalOptionSet"].indexOf(
+                ["content", "webresources", "dashboards", "sitemap", "globalOptionSet", "entityMeta"].indexOf(
                     GetToolbar().get("type").selected
                 ) !== -1
             ) {
@@ -1258,7 +1256,7 @@
         } else if (XrmTranslator.GetType() === "formMeta") {
             currentHandler = FormMetaHandler;
         } else if (XrmTranslator.GetType() === "entityMeta") {
-            currentHandler = EntityHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "relationships") {
             currentHandler = RelationshipHandler;
         } else if (XrmTranslator.GetType() === "sitemap") {
