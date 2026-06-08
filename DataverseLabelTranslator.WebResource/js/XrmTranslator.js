@@ -53,15 +53,9 @@
     var appLoadingActive = false;
     var appLoadingToolbarState = null;
     var ENTITY_DEPENDENT_TYPE_ITEMS = [
-        "type:allInOne",
-        "type:entitySeparator",
         "type:attributes",
         "type:options",
         "type:forms",
-        "type:views",
-        "type:formMeta",
-        "type:relationships",
-        "type:charts",
         "type:content",
         "type:bpf",
         "type:businessRules",
@@ -69,7 +63,17 @@
         "type:commands",
         "type:entityMessages"
     ];
-    var GLOBAL_TYPE_ITEMS = ["type:sitemap", "type:dashboards", "type:webresources", "type:globalOptionSet", "type:entityMeta"];
+    var GLOBAL_TYPE_ITEMS = [
+        "type:sitemap",
+        "type:dashboards",
+        "type:webresources",
+        "type:globalOptionSet",
+        "type:entityMeta",
+        "type:views",
+        "type:formMeta",
+        "type:relationships",
+        "type:charts"
+    ];
     var TYPE_STATE_LABELS = {
         allInOne: "All-In-One",
         attributes: "Attributes",
@@ -997,14 +1001,9 @@
 
             if (
                 [
-                    "allInOne",
                     "attributes",
                     "options",
                     "forms",
-                    "views",
-                    "formMeta",
-                    "relationships",
-                    "charts",
                     "bpf",
                     "content",
                     "businessRules",
@@ -1026,7 +1025,7 @@
             }
 
             if (
-                ["content", "webresources", "dashboards", "sitemap", "globalOptionSet", "entityMeta"].indexOf(
+                ["content", "webresources", "dashboards", "sitemap", "globalOptionSet", "entityMeta", "views", "formMeta", "relationships", "charts"].indexOf(
                     GetToolbar().get("type").selected
                 ) !== -1
             ) {
@@ -1252,17 +1251,17 @@
         } else if (XrmTranslator.GetType() === "dashboards") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "views") {
-            currentHandler = ViewHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "formMeta") {
-            currentHandler = FormMetaHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "entityMeta") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "relationships") {
-            currentHandler = RelationshipHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "sitemap") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "charts") {
-            currentHandler = ChartHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "bpf") {
             currentHandler = BpfHandler;
         } else if (XrmTranslator.GetType() === "businessRules") {
@@ -3836,13 +3835,7 @@
                     return el ? CompactToolbarText(el.text, 18, true) : "Type";
                 },
                 selected: "sitemap",
-                items: (XrmTranslator.showAllInOneType
-                    ? [
-                          { id: "allInOne", text: "All-In-One", icon: "icon-grid" },
-                          { id: "entitySeparator", text: "--" }
-                      ]
-                    : []
-                ).concat([
+                items: [
                     { id: "attributes", text: "Attributes", icon: "icon-attribute" },
                     { id: "options", text: "Option Sets", icon: "icon-options" },
                     { id: "forms", text: "Forms", icon: "icon-form" },
@@ -3861,7 +3854,7 @@
                     { id: "dashboards", text: "Dashboards", icon: "icon-dashboard" },
                     { id: "webresources", text: "Web Resources", icon: "icon-file-code" },
                     { id: "globalOptionSet", text: "Global Option Set", icon: "icon-global-options" }
-                ])
+                ]
             },
             {
                 type: "menu-radio",

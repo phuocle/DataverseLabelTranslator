@@ -14,7 +14,11 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 { "dashboards", () => new DashboardAdapter() },
                 { "webresources", () => new WebResourceAdapter() },
                 { "globalOptionSet", () => new GlobalOptionSetAdapter() },
-                { "entityMeta", () => new EntityMetadataAdapter() }
+                { "entityMeta", () => new EntityMetadataAdapter() },
+                { "views", () => new ViewAdapter() },
+                { "formMeta", () => new FormMetaAdapter() },
+                { "relationships", () => new RelationshipAdapter() },
+                { "charts", () => new ChartAdapter() }
             };
 
         public object Loading(IPluginExecutionContext context, IOrganizationService serviceAdmin, IOrganizationService service, ITracingService tracing, string json)
