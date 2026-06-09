@@ -2494,55 +2494,7 @@
     };
 
     function ShowFindAndReplaceResults(results) {
-        if (!w2ui.findAndReplaceGrid) {
-            new w2grid({
-                name: "findAndReplaceGrid",
-                show: { selectColumn: true },
-                multiSelect: true,
-                columns: [
-                    { field: "schemaName", text: "Schema Name", size: "25%", sortable: true, searchable: true },
-                    { field: "column", text: "Column LCID", sortable: true, searchable: true, hidden: true },
-                    { field: "columnName", text: "Column", size: "25%", sortable: true, searchable: true },
-                    { field: "current", text: "Current Text", size: "25%", sortable: true, searchable: true },
-                    {
-                        field: "replaced",
-                        text: "Replaced Text",
-                        size: "25%",
-                        sortable: true,
-                        searchable: true,
-                        editable: { type: "text" }
-                    }
-                ],
-                records: []
-            });
-        }
-
-        w2ui.findAndReplaceGrid.clear();
-        w2ui.findAndReplaceGrid.add(results);
-
-        w2popup.open({
-            title: "Apply Find and Replace",
-            buttons:
-                '<button class="w2ui-btn" onclick="w2popup.close();">Cancel</button> ' +
-                '<button class="w2ui-btn" onclick="XrmTranslator.ApplyFindAndReplace(w2ui.findAndReplaceGrid.getSelection(), w2ui.findAndReplaceGrid.records); w2popup.close();">Apply</button>',
-            width: 900,
-            height: 600,
-            showMax: true,
-            body: '<div id="main" style="position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px;"></div>',
-            onOpen: function (event) {
-                event.onComplete = function () {
-                    w2ui.findAndReplaceGrid.render("#w2ui-popup #main");
-                    w2ui.findAndReplaceGrid.selectAll();
-                };
-            },
-            onToggle: function (event) {
-                w2ui.findAndReplaceGrid.box.style.display = "none";
-                event.onComplete = function () {
-                    w2ui.findAndReplaceGrid.box.style.display = "";
-                    w2ui.findAndReplaceGrid.resize();
-                };
-            }
-        });
+        DialogHelper.ShowFindAndReplaceResults(results, XrmTranslator.ApplyFindAndReplace);
     }
 
     XrmTranslator.FindRecords = function (
@@ -3080,127 +3032,18 @@
         RefreshToolbar();
     }
 
-    function InitializeFindAndReplaceDialog() {
-        var languageItems = [];
-        var availableLanguages = XrmTranslator.GetGrid().columns;
-
-        for (var i = 0; i < availableLanguages.length; i++) {
-            if (availableLanguages[i].field === "schemaName") {
-                continue;
-            }
-
-            languageItems.push({ id: availableLanguages[i].field, text: availableLanguages[i].text });
-        }
-
-        if (!w2ui.findAndReplace) {
-            new w2form({
-                name: "findAndReplace",
-                style: "border: 0px; background-color: transparent;",
-                formHTML:
-                    '<div class="w2ui-page page-0 xqt-find-replace-form">' +
-                    '    <div class="xqt-find-replace-field">' +
-                    '        <label>Replace in Column <span class="xqt-required">*</span></label>' +
-                    '        <input name="column" type="list"/>' +
-                    "    </div>" +
-                    '    <div class="xqt-find-replace-field">' +
-                    '        <label>Find <span class="xqt-required">*</span></label>' +
-                    '        <input name="find" type="text"/>' +
-                    "    </div>" +
-                    '    <div class="xqt-find-replace-field">' +
-                    '        <label>Replace <span class="xqt-required">*</span></label>' +
-                    '        <input name="replace" type="text"/>' +
-                    "    </div>" +
-                    '    <div class="xqt-find-replace-options">' +
-                    '        <label><input name="regex" type="checkbox"/> Use Regex</label>' +
-                    '        <label><input name="ignoreCase" type="checkbox"/> Ignore Case</label>' +
-                    '        <label><input name="selectRecords" type="checkbox"/> Select Records</label>' +
-                    "    </div>" +
-                    "</div>" +
-                    '<div class="w2ui-buttons xqt-find-replace-buttons">' +
-                    '    <button class="w2ui-btn" name="cancel">Cancel</button>' +
-                    '    <button class="w2ui-btn" name="ok">Ok</button>' +
-                    "</div>",
-                fields: [
-                    { field: "find", type: "text", required: true },
-                    { field: "replace", type: "text", required: true },
-                    { field: "regex", type: "checkbox", required: true },
-                    { field: "ignoreCase", type: "checkbox", required: true },
-                    { field: "selectRecords", type: "checkbox", required: false },
-                    { field: "column", type: "list", required: true, options: { items: languageItems } }
-                ],
-                actions: {
-                    ok: function () {
-                        var errors = this.validate();
-                        if (errors.length > 0 || !this.record.column) {
-                            return;
-                        }
-
-                        w2popup.close();
-                        XrmTranslator.FindRecords(
-                            undefined,
-                            this.record.find,
-                            this.record.replace,
-                            this.record.regex,
-                            this.record.ignoreCase,
-                            this.record.column.id,
-                            this.record.column.text,
-                            this.record.selectRecords
-                        );
-                    },
-                    cancel: function () {
-                        w2popup.close();
-                    }
-                }
-            });
-        } else {
-            // Columns will be different when user switches to portal content snippet or back from it, we need to make sure columns always match current grid columns
-            var columnField = w2ui.findAndReplace.fields.find(function (field) {
-                return field.field === "column";
-            });
-
-            if (columnField) {
-                columnField.options.items = languageItems;
-            }
-
-            w2ui.findAndReplace.refresh();
-        }
-
-        return Promise.resolve({});
-    }
-
     function OpenFindAndReplaceDialog() {
-        InitializeFindAndReplaceDialog().then(function () {
-            w2popup.open({
-                title: "Find and Replace",
-                name: "findAndReplacePopup",
-                body: '<div id="form" class="xqt-find-replace-popup-form"></div>',
-                style: "padding: 0",
-                width: 720,
-                height: 305,
-                showMax: false,
-                onToggle: function (event) {
-                    w2ui.findAndReplace.box.style.display = "none";
-                    event.onComplete = function () {
-                        w2ui.findAndReplace.box.style.display = "";
-                        w2ui.findAndReplace.resize();
-                    };
-                },
-                onOpen: function (event) {
-                    event.onComplete = function () {
-                        var popup = document.querySelector("#w2ui-popup");
-                        if (popup) {
-                            popup.classList.add("xqt-find-replace-popup");
-                        }
-                        w2ui.findAndReplace.render("#w2ui-popup #form");
-                    };
-                },
-                onClose: function () {
-                    var popup = document.querySelector("#w2ui-popup");
-                    if (popup) {
-                        popup.classList.remove("xqt-find-replace-popup");
-                    }
-                }
-            });
+        DialogHelper.ShowFindAndReplaceDialog(XrmTranslator.GetGrid().columns, function (values) {
+            XrmTranslator.FindRecords(
+                undefined,
+                values.find,
+                values.replace,
+                values.regex,
+                values.ignoreCase,
+                values.columnId,
+                values.columnText,
+                values.selectRecords
+            );
         });
     }
 

@@ -7,10 +7,6 @@
     <link rel="stylesheet" type="text/css" href="../css/style.css" />
     <script src="../../ClientGlobalContext.js.aspx" type="text/javascript"></script>
     <script type="text/javascript" src="../js/lib/w2ui.js"></script>
-    <script type="text/javascript" src="../js/lib/WebApiClient.js"></script>
-    <script type="text/javascript">
-      WebApiClient.Configure({ ApiVersion: "9.2" });
-    </script>
     <script type="text/javascript" src="../js/lib/jszip.min.js"></script>
     <script type="text/javascript" src="../js/Helper.js"></script>
     <script type="text/javascript" src="../js/XrmService.js"></script>
@@ -20,14 +16,12 @@
     <script type="text/javascript" src="../js/EasyTranslatorHandler.js"></script>
     <script type="text/javascript" src="../js/AppService.js"></script>
     <script type="text/javascript" src="../js/DictionaryService.js"></script>
-    <script type="text/javascript" src="../js/TranslationHandler.js"></script>
-    <script type="text/javascript" src="../js/XrmTranslator.js"></script>
   </head>
   <body style="margin: 0px">
     <div id="grid" style="position: absolute; width: 100%; top: 0; bottom: 0"></div>
     <script type="text/javascript">
       window.onload = function () {
-        XrmTranslator.Initialize();
+        EasyTranslator.Initialize();
       };
     </script>
   </body>

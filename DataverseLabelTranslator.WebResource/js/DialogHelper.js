@@ -149,6 +149,248 @@
         );
     };
 
+    function getFindAndReplaceColumnItems(columns) {
+        var languageItems = [];
+
+        for (var i = 0; i < columns.length; i++) {
+            if (columns[i].field === "schemaName") {
+                continue;
+            }
+
+            languageItems.push({ id: columns[i].field, text: columns[i].text });
+        }
+
+        return languageItems;
+    }
+
+    DialogHelper.ShowFindAndReplaceDialog = function (columns, onSubmit) {
+        var languageItems = getFindAndReplaceColumnItems(columns || []);
+
+        if (!w2ui.findAndReplace) {
+            new w2form({
+                name: "findAndReplace",
+                style: "border: 0px; background-color: transparent;",
+                formHTML:
+                    '<div class="w2ui-page page-0 xqt-find-replace-form">' +
+                    '    <div class="xqt-find-replace-field">' +
+                    '        <label>Replace in Column <span class="xqt-required">*</span></label>' +
+                    '        <input name="column" type="list"/>' +
+                    "    </div>" +
+                    '    <div class="xqt-find-replace-field">' +
+                    '        <label>Find <span class="xqt-required">*</span></label>' +
+                    '        <input name="find" type="text"/>' +
+                    "    </div>" +
+                    '    <div class="xqt-find-replace-field">' +
+                    '        <label>Replace <span class="xqt-required">*</span></label>' +
+                    '        <input name="replace" type="text"/>' +
+                    "    </div>" +
+                    '    <div class="xqt-find-replace-options">' +
+                    '        <label><input name="regex" type="checkbox"/> Use Regex</label>' +
+                    '        <label><input name="ignoreCase" type="checkbox"/> Ignore Case</label>' +
+                    '        <label><input name="selectRecords" type="checkbox"/> Select Records</label>' +
+                    "    </div>" +
+                    "</div>" +
+                    '<div class="w2ui-buttons xqt-find-replace-buttons">' +
+                    '    <button class="w2ui-btn" name="cancel">Cancel</button>' +
+                    '    <button class="w2ui-btn" name="ok">Ok</button>' +
+                    "</div>",
+                fields: [
+                    { field: "find", type: "text", required: true },
+                    { field: "replace", type: "text", required: true },
+                    { field: "regex", type: "checkbox", required: true },
+                    { field: "ignoreCase", type: "checkbox", required: true },
+                    { field: "selectRecords", type: "checkbox", required: false },
+                    { field: "column", type: "list", required: true, options: { items: languageItems } }
+                ],
+                actions: {
+                    ok: function () {
+                        var errors = this.validate();
+                        if (errors.length > 0 || !this.record.column) {
+                            return;
+                        }
+
+                        w2popup.close();
+                        onSubmit({
+                            find: this.record.find,
+                            replace: this.record.replace,
+                            regex: this.record.regex,
+                            ignoreCase: this.record.ignoreCase,
+                            columnId: this.record.column.id,
+                            columnText: this.record.column.text,
+                            selectRecords: this.record.selectRecords
+                        });
+                    },
+                    cancel: function () {
+                        w2popup.close();
+                    }
+                }
+            });
+        } else {
+            var columnField = w2ui.findAndReplace.fields.find(function (field) {
+                return field.field === "column";
+            });
+
+            if (columnField) {
+                columnField.options.items = languageItems;
+            }
+
+            w2ui.findAndReplace.refresh();
+        }
+
+        w2popup.open({
+            title: "Find and Replace",
+            name: "findAndReplacePopup",
+            body: '<div id="form" class="xqt-find-replace-popup-form"></div>',
+            style: "padding: 0",
+            width: 720,
+            height: 330,
+            showMax: false,
+            onToggle: function (event) {
+                w2ui.findAndReplace.box.style.display = "none";
+                event.onComplete = function () {
+                    w2ui.findAndReplace.box.style.display = "";
+                    w2ui.findAndReplace.resize();
+                };
+            },
+            onOpen: function (event) {
+                event.onComplete = function () {
+                    var popup = document.querySelector("#w2ui-popup");
+                    if (popup) {
+                        popup.classList.add("xqt-find-replace-popup");
+                    }
+                    w2ui.findAndReplace.render("#w2ui-popup #form");
+                };
+            },
+            onClose: function () {
+                var popup = document.querySelector("#w2ui-popup");
+                if (popup) {
+                    popup.classList.remove("xqt-find-replace-popup");
+                }
+            }
+        });
+    };
+
+    DialogHelper.ShowFindAndReplaceResults = function (results, onApply) {
+        if (!w2ui.findAndReplaceGrid) {
+            new w2grid({
+                name: "findAndReplaceGrid",
+                show: { selectColumn: true },
+                multiSelect: true,
+                columns: [
+                    { field: "schemaName", text: "Schema Name", size: "25%", sortable: true, searchable: true },
+                    { field: "column", text: "Column LCID", sortable: true, searchable: true, hidden: true },
+                    { field: "columnName", text: "Column", size: "25%", sortable: true, searchable: true },
+                    { field: "current", text: "Current Text", size: "25%", sortable: true, searchable: true },
+                    {
+                        field: "replaced",
+                        text: "Replaced Text",
+                        size: "25%",
+                        sortable: true,
+                        searchable: true,
+                        editable: { type: "text" }
+                    }
+                ],
+                records: []
+            });
+        }
+
+        w2ui.findAndReplaceGrid.clear();
+        w2ui.findAndReplaceGrid.add(results);
+
+        DialogHelper._applyFindAndReplaceResults = function () {
+            onApply(w2ui.findAndReplaceGrid.getSelection(), w2ui.findAndReplaceGrid.records);
+            w2popup.close();
+        };
+
+        w2popup.open({
+            title: "Apply Find and Replace",
+            buttons:
+                '<button class="w2ui-btn" onclick="w2popup.close();">Cancel</button> ' +
+                '<button class="w2ui-btn" onclick="DialogHelper._applyFindAndReplaceResults();">Apply</button>',
+            width: 900,
+            height: 600,
+            showMax: true,
+            body: '<div id="main" style="position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px;"></div>',
+            onOpen: function (event) {
+                event.onComplete = function () {
+                    w2ui.findAndReplaceGrid.render("#w2ui-popup #main");
+                    w2ui.findAndReplaceGrid.selectAll();
+                };
+            },
+            onClose: function () {
+                DialogHelper._applyFindAndReplaceResults = null;
+            },
+            onToggle: function (event) {
+                w2ui.findAndReplaceGrid.box.style.display = "none";
+                event.onComplete = function () {
+                    w2ui.findAndReplaceGrid.box.style.display = "";
+                    w2ui.findAndReplaceGrid.resize();
+                };
+            }
+        });
+    };
+
+    DialogHelper.ShowApplyDictionaryPrompt = function (onApply) {
+        var applyModeItems = [
+            { id: "overwrite", text: "All Overwrite" },
+            { id: "missing", text: "All Missing" }
+        ];
+
+        if (w2ui.applyDictionaryPrompt) {
+            w2ui.applyDictionaryPrompt.destroy();
+        }
+
+        if (!w2ui.applyDictionaryPrompt) {
+            new w2form({
+                name: "applyDictionaryPrompt",
+                style: "border: 0px; background-color: transparent;",
+                formHTML:
+                    '<div class="w2ui-page page-0 xqt-apply-dictionary-form">' +
+                    '    <p class="xqt-apply-dictionary-description">Apply existing dictionary entries to all matching records in the current grid.</p>' +
+                    '    <div class="xqt-apply-dictionary-row">' +
+                    '        <label class="xqt-apply-dictionary-label" for="applyMode">Mode:</label>' +
+                    '        <div class="xqt-apply-dictionary-control"><input name="applyMode" type="list" /></div>' +
+                    "    </div>" +
+                    "</div>" +
+                    '<div class="w2ui-buttons">' +
+                    '    <button class="w2ui-btn" name="cancel">Cancel</button>' +
+                    '    <button class="w2ui-btn" name="ok">Ok</button>' +
+                    "</div>",
+                fields: [{ field: "applyMode", type: "list", required: true, options: { items: applyModeItems } }],
+                record: {
+                    applyMode: applyModeItems[0]
+                },
+                actions: {
+                    ok: function () {
+                        if (this.validate().length > 0) return;
+                        var mode = this.record.applyMode ? this.record.applyMode.id : "overwrite";
+                        w2popup.close();
+                        onApply(mode);
+                    },
+                    cancel: function () {
+                        w2popup.close();
+                    }
+                }
+            });
+        }
+
+        w2popup.open({
+            title: "Apply Dictionary",
+            name: "applyDictionaryPopup",
+            body: '<div id="form" class="xqt-apply-dictionary-popup-form"></div>',
+            style: "padding: 0px; overflow-x: hidden;",
+            width: 620,
+            height: 230,
+            showMax: false,
+            onOpen: function (event) {
+                event.onComplete = function () {
+                    w2ui.applyDictionaryPrompt.render("#w2ui-popup #form");
+                    w2ui.applyDictionaryPrompt.resize();
+                };
+            }
+        });
+    };
+
     DialogHelper.ShowAbout = function () {
         var html =
             '<div style="padding: 25px 30px; font-size: 16px; line-height: 1.6; text-align: center;">' +

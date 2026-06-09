@@ -387,7 +387,7 @@
   display: grid;
   gap: 10px;
   grid-auto-rows: min-content;
-  padding: 18px 32px 4px;
+  padding: 30px 44px 8px !important;
   overflow: visible !important;
 }
 

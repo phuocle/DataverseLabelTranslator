@@ -1710,64 +1710,7 @@
     };
 
     TranslationHandler.ShowApplyDictionaryPrompt = function () {
-        var applyModeItems = [
-            { id: "overwrite", text: "All Overwrite" },
-            { id: "missing", text: "All Missing" }
-        ];
-
-        if (w2ui.applyDictionaryPrompt) {
-            w2ui.applyDictionaryPrompt.destroy();
-        }
-
-        if (!w2ui.applyDictionaryPrompt) {
-            new w2form({
-                name: "applyDictionaryPrompt",
-                style: "border: 0px; background-color: transparent;",
-                formHTML:
-                    '<div class="w2ui-page page-0 xqt-apply-dictionary-form">' +
-                    '    <p class="xqt-apply-dictionary-description">Apply existing dictionary entries to all matching records in the current grid.</p>' +
-                    '    <div class="xqt-apply-dictionary-row">' +
-                    '        <label class="xqt-apply-dictionary-label" for="applyMode">Mode:</label>' +
-                    '        <div class="xqt-apply-dictionary-control"><input name="applyMode" type="list" /></div>' +
-                    "    </div>" +
-                    "</div>" +
-                    '<div class="w2ui-buttons">' +
-                    '    <button class="w2ui-btn" name="cancel">Cancel</button>' +
-                    '    <button class="w2ui-btn" name="ok">Ok</button>' +
-                    "</div>",
-                fields: [{ field: "applyMode", type: "list", required: true, options: { items: applyModeItems } }],
-                record: {
-                    applyMode: applyModeItems[0]
-                },
-                actions: {
-                    ok: function () {
-                        if (this.validate().length > 0) return;
-                        var mode = this.record.applyMode ? this.record.applyMode.id : "overwrite";
-                        w2popup.close();
-                        ApplyDictionaryToGrid(mode);
-                    },
-                    cancel: function () {
-                        w2popup.close();
-                    }
-                }
-            });
-        }
-
-        w2popup.open({
-            title: "Apply Dictionary",
-            name: "applyDictionaryPopup",
-            body: '<div id="form" class="xqt-apply-dictionary-popup-form"></div>',
-            style: "padding: 0px; overflow-x: hidden;",
-            width: 620,
-            height: 230,
-            showMax: false,
-            onOpen: function (event) {
-                event.onComplete = function () {
-                    w2ui.applyDictionaryPrompt.render("#w2ui-popup #form");
-                    w2ui.applyDictionaryPrompt.resize();
-                };
-            }
-        });
+        DialogHelper.ShowApplyDictionaryPrompt(ApplyDictionaryToGrid);
     };
 
     function ApplyDictionaryToGrid(mode) {
