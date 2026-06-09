@@ -12,7 +12,6 @@
     XrmTranslator.userSettings = null;
     XrmTranslator.installedLanguages = null;
     XrmTranslator.baseLanguage = null;
-    XrmTranslator.hasAllowedRole = null;
 
     XrmTranslator.columnRestoreNeeded = false;
 
@@ -93,10 +92,6 @@
         dashboards: "Dashboards",
         webresources: "Web Resources",
         globalOptionSet: "Global Option Set"
-    };
-    var ALLOWED_ROLE_NAMES = {
-        "system administrator": true,
-        "system customizer": true
     };
     RegExp.escape = function (s) {
         return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
@@ -1039,71 +1034,6 @@
 
         toolbar.refresh();
     }
-
-    function GetRoleItems(roles) {
-        var items = [];
-
-        if (!roles) {
-            return items;
-        }
-
-        if (typeof roles.getAll === "function") {
-            return roles.getAll() || [];
-        }
-
-        if (Array.isArray(roles)) {
-            return roles;
-        }
-
-        if (typeof roles.forEach === "function") {
-            roles.forEach(function (role) {
-                items.push(role);
-            });
-            return items;
-        }
-
-        if (typeof roles.getLength === "function" && typeof roles.get === "function") {
-            for (var i = 0; i < roles.getLength(); i++) {
-                items.push(roles.get(i));
-            }
-            return items;
-        }
-
-        if (typeof roles.get === "function") {
-            var allRoles = roles.get();
-            if (Array.isArray(allRoles)) {
-                return allRoles;
-            }
-        }
-
-        return items;
-    }
-
-    function GetRoleName(role) {
-        if (!role) {
-            return "";
-        }
-
-        return String(role.name || role.Name || "")
-            .trim()
-            .toLowerCase();
-    }
-
-    XrmTranslator.UserHasAllowedRole = function () {
-        try {
-            var context = typeof GetGlobalContext === "function" ? GetGlobalContext() : null;
-            var userSettings = context && context.userSettings ? context.userSettings : null;
-            var roles = GetRoleItems(userSettings && userSettings.roles);
-
-            for (var i = 0; i < roles.length; i++) {
-                if (ALLOWED_ROLE_NAMES[GetRoleName(roles[i])]) {
-                    return true;
-                }
-            }
-        } catch (e) {}
-
-        return false;
-    };
 
     function ApplyTypeVisibilityForEntity(entityTarget) {
         if (entityTarget === "entitySelect:none" || entityTarget === "none") {
@@ -3376,10 +3306,6 @@
     }
 
     function LoadHandler() {
-        if (XrmTranslator.hasAllowedRole === false) {
-            return;
-        }
-
         var entity = XrmTranslator.GetEntity();
 
         if (!HasSelectedSolution()) {
@@ -3712,104 +3638,6 @@
             });
     }
 
-    function ShowAbout() {
-        var html =
-            '<div style="padding: 25px 30px; font-size: 16px; line-height: 1.6; text-align: center;">' +
-            '<h2 style="margin: 0 0 10px 0; font-size: 26px; font-weight: 600;">Dataverse Label Translator</h2>' +
-            '<p style="margin: 0 0 10px 0; color: #777; font-size: 15px;">Version: 1.0.0.0</p>' +
-            '<p style="margin: 0 0 15px 0; color: #777; font-size: 15px;">Complete Translation Management UI for Dynamics 365 / Dataverse</p>' +
-            '<hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">' +
-            '<p style="text-align: justify; text-align-last: center; font-size: 15px; margin: 0; color: #444;">Developed by ' +
-            '<a href="https://github.com/phuocle" target="_blank" rel="noopener noreferrer" style="font-weight: 500; text-decoration: none;">Phuoc Le</a>, ' +
-            "featuring AI-powered translation, intelligent dictionary management, and a beautifully optimized workflow.</p>" +
-            "</div>";
-
-        w2popup.open({
-            title: "About",
-            body: html,
-            width: 580,
-            height: 310,
-            modal: true,
-            showClose: true,
-            showMax: false,
-            buttons: '<button class="w2ui-btn" onclick="w2popup.close();">Close</button>',
-            onOpen: function (event) {
-                event.onComplete = function () {
-                    setTimeout(function () {
-                        w2popup.max();
-                    }, 100);
-                };
-            }
-        });
-    }
-
-    function ShowHelp() {
-        var html =
-            '<div style="padding: 15px 20px; font-size: 13px; line-height: 1.8;">' +
-            "<b>Solution filter:</b> Select a Solution first. The Entity list and solution-level types are scoped to that solution." +
-            '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
-            "<b>Entity-based types</b> (select an Entity first):" +
-            '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>Attributes</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Attributes &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Options</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Options &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Forms</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Forms &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Views</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Views &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Form Metadata</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Form Metadata &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Entity Metadata</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Entity Metadata &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Relationships</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Relationships &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Charts</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Charts &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Business Process Flows</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Process Flows &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Business Rules</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Rules &rarr; Load &rarr; Translate &rarr; Save. Save temporarily deactivates each changed rule, patches workflow XAML, then reactivates it.</li>" +
-            "<li><b>Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load &rarr; Translate &rarr; Save. Save imports the updated solution asynchronously, then starts Publish XML asynchronously.</li>" +
-            "<li><b>Commands</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Commands &rarr; Load &rarr; Translate &rarr; Save. Loads modern command designer appaction labels and publishes the selected entity.</li>" +
-            "<li><b>Entity Messages</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Entity Messages &rarr; Load &rarr; Translate &rarr; Save. Loads table messages/display strings from the selected solution translation package, imports changed translations, then publishes the selected entity.</li>" +
-            "<li><b>Content Snippets</b> — Solution &rarr; Entity &rarr; Adx_contentsnippet &rarr; Type &rarr; Content Snippets &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "</ul>" +
-            "<b>Entity-independent types</b> (set Entity to None):" +
-            '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>Sitemap</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Sitemap &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Dashboards</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Dashboards &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Web Resources</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Web Resources &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "<li><b>Global Option Set</b> — Solution &rarr; Entity &rarr; None &rarr; Type &rarr; Global Option Set &rarr; Load &rarr; Translate &rarr; Save</li>" +
-            "</ul>" +
-            '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
-            "<b>AI Translate:</b>" +
-            '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>Auto Translate</b> — Uses the selected enabled provider to translate labels from a source language to a target language. " +
-            "Configure provider credentials via <i>App Settings</i>.</li>" +
-            "<li><b>App Settings</b> — Configure URLs, API keys, model names, and custom prompts for enabled providers. " +
-            "Settings are stored in the Dataverse app settings web resource.</li>" +
-            "</ul>" +
-            "<b>Dictionary:</b>" +
-            '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>Dictionary</b> — Open and manage translation dictionary entries (source &rarr; target term pairs). " +
-            "When <i>Use Dictionary as First Priority</i> is enabled in Auto Translate, dictionary matches are applied before calling the AI provider.</li>" +
-            "<li><b>Apply Dictionary</b> — Batch-apply existing dictionary entries to all matching records in the current grid without calling AI. " +
-            "Supports two modes: <i>All Overwrite</i> and <i>All Missing</i>.</li>" +
-            "<li><b>Storage:</b> Dictionary data is saved as a web resource (<code>pl_/DataverseLabelTranslator/data/TranslationDictionary.xml</code>) " +
-            "inside an unmanaged solution named <b>Dataverse Label Translator Data</b> (unique name: <code>DataverseLabelTranslatorData</code>). " +
-            "This solution is auto-created on first use.</li>" +
-            "</ul>" +
-            "</div>";
-
-        w2popup.open({
-            title: "Translation Guide",
-            body: html,
-            width: 700,
-            height: 520,
-            modal: true,
-            showClose: true,
-            showMax: false,
-            onOpen: function (event) {
-                event.onComplete = function () {
-                    setTimeout(function () {
-                        w2popup.max();
-                    }, 100);
-                };
-            }
-        });
-    }
-
     function TriggerLoading(entity) {
         unfilteredRecords = null;
         var filterBtn = w2ui.grid_toolbar ? w2ui.grid_toolbar.get("filterUntranslated") : null;
@@ -3883,19 +3711,15 @@
     }
 
     function HandleToolbarClick(event) {
-        if (XrmTranslator.hasAllowedRole === false) {
-            return;
-        }
-
         var target = String(event.target || "");
 
         if (target === "about") {
-            ShowAbout();
+            DialogHelper.ShowAbout();
             return;
         }
 
         if (target === "help") {
-            ShowHelp();
+            DialogHelper.ShowHelp();
             return;
         }
 
@@ -4133,10 +3957,6 @@
                 }
             ],
             onSave: function (event) {
-                if (XrmTranslator.hasAllowedRole === false) {
-                    return;
-                }
-
                 SetChangedCellFooter("");
 
                 if (event && typeof event.preventDefault === "function") {
@@ -4504,16 +4324,7 @@
         records.push(summary);
     };
 
-    XrmTranslator.Initialize = function (hasAllowedRole) {
-        XrmTranslator.hasAllowedRole = hasAllowedRole === true;
-
-        if (XrmTranslator.hasAllowedRole === false) {
-            InitializeGrid();
-            XrmTranslator.ClearAppLoading();
-            DisableAllToolbarItems();
-            return;
-        }
-
+    XrmTranslator.Initialize = function () {
         XrmTranslator.GetBaseLanguage()
             .then(function () {
                 InitializeGrid();
