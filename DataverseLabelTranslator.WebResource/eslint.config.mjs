@@ -5,7 +5,6 @@ const appGlobals = {
   ...globals.browser,
   $: "readonly",
   AppSettingsService: "readonly",
-  AttributeHandler: "readonly",
   BpfHandler: "readonly",
   ChartHandler: "readonly",
   ContentSnippetHandler: "readonly",

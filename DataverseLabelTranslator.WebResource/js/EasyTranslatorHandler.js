@@ -203,6 +203,7 @@
                 "dashboards",
                 "webresources",
                 "globalOptionSet",
+                "attributes",
                 "options",
                 "entityMeta",
                 "views",

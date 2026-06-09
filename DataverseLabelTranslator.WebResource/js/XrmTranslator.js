@@ -1246,7 +1246,7 @@
         currentHandler = null;
 
         if (XrmTranslator.GetType() === "attributes") {
-            currentHandler = AttributeHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "options") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "forms") {

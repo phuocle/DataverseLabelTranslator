@@ -17,6 +17,7 @@ Doc nay da duoc sync theo code hien tai. No khong con la plan ban dau cho type 1
 - `dashboards`
 - `webresources`
 - `globalOptionSet`
+- `attributes`
 - `options`
 - `entityMeta`
 - `views`
@@ -92,11 +93,12 @@ one server adapter per Dataverse domain
 | Dashboards | `dashboards` | `EasyTranslatorHandler` |
 | Web Resources | `webresources` | `EasyTranslatorHandler` |
 | Global Option Sets | `globalOptionSet` | `EasyTranslatorHandler` |
+| Attributes | `attributes` | `EasyTranslatorHandler` |
 | Option Sets | `options` | `EasyTranslatorHandler` |
 
 `EasyTranslatorHandler.IsUnifiedType()` phai stay in sync voi danh sach tren. Hien tai no dung chinh danh sach nay de AI toolbar path biet day la unified type.
 
-`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `OptionSetHandler.js`, `EntityMessageHandler.js`, `ModernCommandHandler.js`, `BusinessRuleHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
+`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `AttributeHandler.js`, `OptionSetHandler.js`, `EntityMessageHandler.js`, `ModernCommandHandler.js`, `BusinessRuleHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
 
 ## Server Adapter Registry
 
@@ -108,6 +110,7 @@ one server adapter per Dataverse domain
 | `dashboards` | `DashboardAdapter` |
 | `webresources` | `WebResourceAdapter` |
 | `globalOptionSet` | `GlobalOptionSetAdapter` |
+| `attributes` | `AttributeAdapter` |
 | `options` | `OptionSetAdapter` |
 | `entityMeta` | `EntityMetadataAdapter` |
 | `views` | `ViewAdapter` |
@@ -249,6 +252,7 @@ Publishing input reuses `publishTargets`:
 | Dashboards | `dashboards` | `DashboardAdapter` | flat | `dashboard` |
 | Web Resources | `webresources` | `WebResourceAdapter` | tree for Display Text, flat for Description | `webresource` |
 | Global Option Sets | `globalOptionSet` | `GlobalOptionSetAdapter` | tree | `globalOptionSet` |
+| Attributes | `attributes` | `AttributeAdapter` | flat | `entity` |
 | Option Sets | `options` | `OptionSetAdapter` | tree | `entity`, `globalOptionSet` |
 
 ## Type-Specific Notes
@@ -372,6 +376,15 @@ Publishing input reuses `publishTargets`:
 - Save updates option values on the server with `UpdateOptionValueRequest`.
 - Publish targets include the selected entity and any reused global option sets.
 
+### Attributes
+
+- Reads attribute metadata from the selected entity.
+- Display Text mode edits attribute display names.
+- Description mode edits attribute descriptions.
+- Skips shadow attributes, formula companion fields, non-renameable fields, and BigInt fields.
+- Save updates attribute metadata labels on the server with `UpdateAttributeRequest`.
+- Publish targets are entity logical names.
+
 ## EasyTranslatorHandler Responsibilities
 
 Current implemented responsibilities:
@@ -424,6 +437,7 @@ It must stay generic and must not:
 Legacy client files for migrated unified types have been removed from `js/Handler`:
 
 ```text
+AttributeHandler.js
 EntityMessageHandler.js
 ModernCommandHandler.js
 BusinessRuleHandler.js
