@@ -1778,7 +1778,7 @@
 
         XrmTranslator.LockGrid("Applying dictionary...");
 
-        XrmTranslator.GetBaseLanguage()
+        XrmService.GetBaseLanguage()
             .then(function (baseLanguage) {
                 var baseLcid = String(baseLanguage);
                 var targetLcids = XrmTranslator.GetColumns(false).filter(function (c) {
@@ -1984,6 +1984,6 @@
     };
 
     TranslationHandler.GetAvailableLanguages = function () {
-        return WebApiClient.Execute(WebApiClient.Requests.RetrieveAvailableLanguagesRequest);
+        return XrmService.GetAllNoneBaseLanguageCodes();
     };
 })((window.TranslationHandler = window.TranslationHandler || {}));

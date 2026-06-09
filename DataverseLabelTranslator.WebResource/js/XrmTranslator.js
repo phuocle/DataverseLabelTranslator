@@ -1629,13 +1629,9 @@
             return Promise.resolve(XrmTranslator.baseLanguage);
         }
 
-        return WebApiClient.Retrieve({ entityName: "organization" }).then(function (orgs) {
-            // Org exists always
-            var org = orgs.value[0];
-
-            XrmTranslator.baseLanguage = org.languagecode;
-
-            return org.languagecode;
+        return XrmService.GetBaseLanguage().then(function (languageCode) {
+            XrmTranslator.baseLanguage = languageCode;
+            return languageCode;
         });
     };
 
@@ -3545,7 +3541,7 @@
             );
         }
 
-        return XrmTranslator.GetBaseLanguage()
+        return XrmService.GetBaseLanguage()
             .then(function (baseLanguage) {
                 var baseLcid = String(baseLanguage);
                 var sourceText = DecodeDictionaryText(GetDictionaryGridValue(record, baseLcid)).trim();
@@ -4114,35 +4110,16 @@
         for (var i = 0; i < entities.length; i++) {
             var entity = entities[i];
 
-            var localizedLabel = entity.DisplayName.UserLocalizedLabel || {};
+            var label = entity.DisplayName || "";
             entitySelect.push({
                 id: entity.SchemaName,
-                text: localizedLabel.Label ? `${localizedLabel.Label} (${entity.LogicalName})` : entity.LogicalName,
+                text: label ? `${label} (${entity.LogicalName})` : entity.LogicalName,
                 icon: "icon-entity"
             });
             XrmTranslator.entityMetadata[entity.SchemaName] = entity.MetadataId;
         }
 
         return entities;
-    }
-
-    function GetEntities() {
-        var queryParams = "?$select=SchemaName,LogicalName,MetadataId,DisplayName&$filter=IsCustomizable/Value eq true";
-
-        var request = {
-            entityName: "EntityDefinition",
-            queryParams: queryParams
-        };
-
-        return WebApiClient.Retrieve(request);
-    }
-
-    function GetSolutions() {
-        return WebApiClient.Retrieve({
-            entityName: "solution",
-            queryParams:
-                "?$select=uniquename,friendlyname,solutionid&$filter=ismanaged eq false and isvisible eq true and uniquename ne 'Default'&$orderby=friendlyname asc"
-        });
     }
 
     function FillSolutionSelector(solutions) {
@@ -4160,18 +4137,6 @@
         return solutions;
     }
 
-    function GetSolutionEntities(solutionId) {
-        return WebApiClient.Retrieve({
-            entityName: "solutioncomponent",
-            queryParams: "?$select=objectid&$filter=_solutionid_value eq " + solutionId + " and componenttype eq 1"
-        }).then(function (response) {
-            var metadataIds = response.value.map(function (c) {
-                return c.objectid.toLowerCase();
-            });
-            return metadataIds;
-        });
-    }
-
     function RepopulateEntitySelector(solutionId) {
         var entitySelectItem = GetToolbar().get("entitySelect");
         entitySelectItem.selected = "none";
@@ -4186,11 +4151,9 @@
 
         XrmTranslator.LockGrid("Loading solution entities...");
 
-        return GetSolutionEntities(solutionId)
-            .then(function (metadataIds) {
-                var solutionEntities = XrmTranslator.allEntities.filter(function (e) {
-                    return metadataIds.indexOf(e.MetadataId.toLowerCase()) !== -1;
-                });
+        return XrmService.GetEntities(solutionId)
+            .then(function (solutionEntities) {
+                XrmTranslator.allEntities = solutionEntities;
                 FillEntitySelector(solutionEntities);
                 SetToolbarItemsEnabled(["entitySelect", "type", "load"], true);
                 ApplyTypeVisibilityForEntity("entitySelect:none");
@@ -4325,8 +4288,9 @@
     };
 
     XrmTranslator.Initialize = function () {
-        XrmTranslator.GetBaseLanguage()
-            .then(function () {
+        XrmService.GetBaseLanguage()
+            .then(function (baseLanguage) {
+                XrmTranslator.baseLanguage = baseLanguage;
                 InitializeGrid();
                 RegisterReloadPrevention();
 
@@ -4340,11 +4304,11 @@
             .then(function (response) {
                 XrmTranslator.userSettings = response;
 
-                return Promise.all([GetEntities(), GetSolutions()]);
+                return Promise.all([XrmService.GetEntities("all"), XrmService.GetSolutions()]);
             })
             .then(function (results) {
-                var entities = results[0].value;
-                var solutions = results[1].value;
+                var entities = results[0];
+                var solutions = results[1];
 
                 XrmTranslator.allEntities = entities;
 

@@ -34,6 +34,11 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 return new OtherProvider().Execute(serviceAdmin);
             }
 
+            if (OtherSolutions.IsXrmOperation(input.operation))
+            {
+                return new OtherSolutions().Execute(serviceAdmin, json);
+            }
+
             if (operation == OtherTranslate.NormalizedOperationName)
             {
                 return new OtherTranslate().Execute(serviceAdmin, json);

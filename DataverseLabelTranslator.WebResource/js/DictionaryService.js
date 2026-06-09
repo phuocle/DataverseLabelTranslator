@@ -93,7 +93,7 @@
     }
 
     function buildDictionaryGridContext() {
-        return XrmTranslator.GetBaseLanguage().then(function (baseLanguage) {
+        return XrmService.GetBaseLanguage().then(function (baseLanguage) {
             var baseLcid = String(baseLanguage);
             var localeIds = [];
 

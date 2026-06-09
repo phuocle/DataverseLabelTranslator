@@ -57,6 +57,50 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         public string text { get; set; }
     }
 
+    public class OtherSolutionsOutput
+    {
+        public string operation { get; set; }
+        public List<OtherSolutionItemOutput> solutions { get; set; } = new List<OtherSolutionItemOutput>();
+    }
+
+    public class OtherSolutionItemOutput
+    {
+        public string solutionid { get; set; }
+        public string friendlyname { get; set; }
+        public string uniquename { get; set; }
+    }
+
+    public class OtherEntitiesInput : OtherInput
+    {
+        public string solutionId { get; set; }
+    }
+
+    public class OtherEntitiesOutput
+    {
+        public string operation { get; set; }
+        public List<OtherEntityItemOutput> entities { get; set; } = new List<OtherEntityItemOutput>();
+    }
+
+    public class OtherEntityItemOutput
+    {
+        public string MetadataId { get; set; }
+        public string SchemaName { get; set; }
+        public string LogicalName { get; set; }
+        public string DisplayName { get; set; }
+    }
+
+    public class OtherBaseLanguageOutput
+    {
+        public string operation { get; set; }
+        public int languageCode { get; set; }
+    }
+
+    public class OtherLanguageCodesOutput
+    {
+        public string operation { get; set; }
+        public List<int> LocaleIds { get; set; } = new List<int>();
+    }
+
     public class OtherAppSettingsRoot
     {
         public OtherAiSettings ai { get; set; } = new OtherAiSettings();
