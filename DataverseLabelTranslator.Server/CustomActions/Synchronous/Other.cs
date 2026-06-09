@@ -39,6 +39,11 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 return new OtherTranslate().Execute(serviceAdmin, json);
             }
 
+            if (OtherStorage.IsStorageOperation(input.operation))
+            {
+                return new OtherStorage().Execute(serviceAdmin, json);
+            }
+
             throw new InvalidPluginExecutionException("Other operation is required.");
         }
     }

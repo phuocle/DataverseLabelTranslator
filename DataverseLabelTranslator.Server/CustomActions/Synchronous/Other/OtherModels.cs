@@ -39,6 +39,18 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         public List<OtherProviderItemOutput> providers { get; set; } = new List<OtherProviderItemOutput>();
     }
 
+    public class OtherStorageInput : OtherInput
+    {
+        public string content { get; set; }
+    }
+
+    public class OtherStorageOutput
+    {
+        public string operation { get; set; }
+        public string content { get; set; }
+        public string webResourceName { get; set; }
+    }
+
     public class OtherProviderItemOutput
     {
         public string id { get; set; }

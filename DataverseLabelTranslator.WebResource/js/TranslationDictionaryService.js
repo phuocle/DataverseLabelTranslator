@@ -1,17 +1,7 @@
 (function (TranslationDictionaryService, undefined) {
     "use strict";
 
-    var DICTIONARY_WEBRESOURCE_UNIQUE_NAME = "pl_/DataverseLabelTranslator/data/TranslationDictionary.xml";
-    var DICTIONARY_WEBRESOURCE_DISPLAY_NAME = "Translation Dictionary";
-    var DICTIONARY_WEBRESOURCE_DESCRIPTION = "Stores customer dictionary whitelist for Dataverse Label Translator.";
-    var dictionaryStorageOptions = {
-        uniqueName: DICTIONARY_WEBRESOURCE_UNIQUE_NAME,
-        displayName: DICTIONARY_WEBRESOURCE_DISPLAY_NAME,
-        description: DICTIONARY_WEBRESOURCE_DESCRIPTION,
-        webResourceType: 4,
-        defaultContent: getDefaultDictionaryXml()
-    };
-
+    var actionName = "Other";
     var dictionaryGridContext = null;
     var dictionaryBaselineSignature = null;
     var dictionaryAllowCloseWithoutPrompt = false;
@@ -34,8 +24,18 @@
         ].join("\n");
     }
 
+    function executeOther(operation, payload) {
+        var input = Object.assign({ operation: operation }, payload || {});
+
+        return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Other, input).then(
+            function (result) {
+                return Helper.GetCustomActionObject(result);
+            }
+        );
+    }
+
     function runEnsureInitialized(forceRefresh) {
-        return DataverseDataWebResourceService.EnsureTextWebResource(dictionaryStorageOptions);
+        return executeOther("ReadDictionary");
     }
 
     function ensureInitialized(forceRefresh) {
@@ -560,11 +560,8 @@
         }
 
         return ensureInitialized(false)
-            .then(function (info) {
-                logDebug("loadDictionaryModel:storage", info);
-                return DataverseDataWebResourceService.ReadText(dictionaryStorageOptions);
-            })
             .then(function (content) {
+                content = content && content.content;
                 content = content || getDefaultDictionaryXml();
                 logDebug("loadDictionaryModel:content", {
                     contentLength: content.length,
@@ -598,25 +595,9 @@
             xmlPreview: xml.substring(0, 400)
         });
 
-        return ensureInitialized(false)
-            .then(function (info) {
-                logDebug("saveDictionaryModel:storage", info);
-                return DataverseDataWebResourceService.WriteText(dictionaryStorageOptions, xml).then(
-                    function (updatedWebResource) {
-                        logDebug("saveDictionaryModel:readback", {
-                            id: updatedWebResource && updatedWebResource.webresourceid,
-                            name: updatedWebResource && updatedWebResource.name,
-                            contentLength:
-                                updatedWebResource && updatedWebResource.content
-                                    ? String(updatedWebResource.content).length
-                                    : 0
-                        });
-                    }
-                );
-            })
-            .then(function () {
-                return model;
-            });
+        return executeOther("WriteDictionary", { content: xml }).then(function () {
+            return model;
+        });
     }
 
     function flushActiveDictionaryCellEdit() {

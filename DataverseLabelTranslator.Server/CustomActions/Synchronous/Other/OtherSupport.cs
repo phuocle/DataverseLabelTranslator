@@ -13,6 +13,10 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
     {
         private const string AppSettingsWebResourceName = "pl_/DataverseLabelTranslator/data/AppSettings.xml";
         private const string DictionaryWebResourceName = "pl_/DataverseLabelTranslator/data/TranslationDictionary.xml";
+        internal const int TextWebResourceType = 4;
+
+        internal static string AppSettingsName => AppSettingsWebResourceName;
+        internal static string DictionaryName => DictionaryWebResourceName;
 
         public static OtherAiSettings LoadAiSettings(IOrganizationService serviceAdmin)
         {
@@ -163,11 +167,63 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             return document.Root?.Value ?? string.Empty;
         }
 
-        private static string ReadTextWebResource(IOrganizationService serviceAdmin, string name)
+        public static string ReadTextWebResource(IOrganizationService serviceAdmin, string name)
+        {
+            var webResource = RetrieveTextWebResource(serviceAdmin, name);
+            if (webResource == null)
+            {
+                return string.Empty;
+            }
+
+            return DecodeWebResourceContent(webResource.GetAttributeValue<string>("content"));
+        }
+
+        public static Entity EnsureTextWebResource(
+            IOrganizationService serviceAdmin,
+            string name,
+            string displayName,
+            string description,
+            string defaultContent)
+        {
+            var webResource = RetrieveTextWebResource(serviceAdmin, name);
+            if (webResource != null)
+            {
+                return webResource;
+            }
+
+            var entity = new Entity("webresource");
+            entity["name"] = name;
+            entity["displayname"] = string.IsNullOrWhiteSpace(displayName) ? name : displayName;
+            entity["description"] = description ?? string.Empty;
+            entity["webresourcetype"] = new OptionSetValue(TextWebResourceType);
+            entity["content"] = EncodeWebResourceContent(defaultContent);
+
+            var id = serviceAdmin.Create(entity);
+            return serviceAdmin.Retrieve("webresource", id, new ColumnSet("webresourceid", "name", "content"));
+        }
+
+        public static Entity WriteTextWebResource(
+            IOrganizationService serviceAdmin,
+            string name,
+            string displayName,
+            string description,
+            string content,
+            string defaultContent)
+        {
+            var webResource = EnsureTextWebResource(serviceAdmin, name, displayName, description, defaultContent);
+            var update = new Entity("webresource", webResource.Id);
+            update["content"] = EncodeWebResourceContent(content ?? string.Empty);
+            serviceAdmin.Update(update);
+            PublishWebResource(serviceAdmin, webResource.Id);
+
+            return serviceAdmin.Retrieve("webresource", webResource.Id, new ColumnSet("webresourceid", "name", "content"));
+        }
+
+        private static Entity RetrieveTextWebResource(IOrganizationService serviceAdmin, string name)
         {
             var query = new QueryExpression("webresource")
             {
-                ColumnSet = new ColumnSet("content")
+                ColumnSet = new ColumnSet("webresourceid", "name", "content")
             };
             query.Criteria.AddCondition("name", ConditionOperator.Equal, name);
             query.TopCount = 1;
@@ -175,16 +231,37 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             var result = serviceAdmin.RetrieveMultiple(query);
             if (result.Entities.Count == 0)
             {
-                return string.Empty;
+                return null;
             }
 
-            var encoded = result.Entities[0].GetAttributeValue<string>("content");
+            return result.Entities[0];
+        }
+
+        private static string DecodeWebResourceContent(string encoded)
+        {
             if (string.IsNullOrWhiteSpace(encoded))
             {
                 return string.Empty;
             }
 
             return Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
+        }
+
+        private static string EncodeWebResourceContent(string content)
+        {
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(content ?? string.Empty));
+        }
+
+        private static void PublishWebResource(IOrganizationService serviceAdmin, Guid webResourceId)
+        {
+            var xml =
+                "<importexportxml><webresources><webresource>" +
+                webResourceId.ToString("D") +
+                "</webresource></webresources></importexportxml>";
+
+            var request = new OrganizationRequest("PublishXml");
+            request["ParameterXml"] = xml;
+            serviceAdmin.Execute(request);
         }
 
         private static OtherDictionaryModel ParseDictionaryXml(string xmlContent)

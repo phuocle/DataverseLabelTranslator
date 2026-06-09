@@ -1,17 +1,7 @@
 (function (AppSettingsService, undefined) {
     "use strict";
 
-    var APP_SETTINGS_WEBRESOURCE_UNIQUE_NAME = "pl_/DataverseLabelTranslator/data/AppSettings.xml";
-    var APP_SETTINGS_WEBRESOURCE_DISPLAY_NAME = "App Settings";
-    var APP_SETTINGS_WEBRESOURCE_DESCRIPTION = "Stores environment-owned app settings for Dataverse Label Translator.";
-
-    var storageOptions = {
-        uniqueName: APP_SETTINGS_WEBRESOURCE_UNIQUE_NAME,
-        displayName: APP_SETTINGS_WEBRESOURCE_DISPLAY_NAME,
-        description: APP_SETTINGS_WEBRESOURCE_DESCRIPTION,
-        webResourceType: 4,
-        defaultContent: getDefaultSettingsXml()
-    };
+    var actionName = "Other";
 
     function clone(value) {
         if (value === undefined || value === null) {
@@ -197,18 +187,24 @@
         return normalizeSettings(JSON.parse(jsonText));
     }
 
+    function executeOther(operation, payload) {
+        var input = Object.assign({ operation: operation }, payload || {});
+
+        return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Other, input).then(
+            function (result) {
+                return Helper.GetCustomActionObject(result);
+            }
+        );
+    }
+
     function ensureInitialized(forceRefresh) {
-        return DataverseDataWebResourceService.EnsureTextWebResource(storageOptions);
+        return executeOther("ReadAppSettings");
     }
 
     function readSettings(forceRefresh) {
-        return ensureInitialized(!!forceRefresh)
-            .then(function () {
-                return DataverseDataWebResourceService.ReadText(storageOptions);
-            })
-            .then(function (content) {
-                return parseSettingsContent(content);
-            });
+        return ensureInitialized(!!forceRefresh).then(function (storage) {
+            return parseSettingsContent(storage && storage.content);
+        });
     }
 
     function writeSettings(settings) {
@@ -216,11 +212,9 @@
         normalized.updatedOn = new Date().toISOString();
         normalized.updatedBy = getCurrentUserInfo();
 
-        return DataverseDataWebResourceService.WriteText(storageOptions, serializeSettingsXml(normalized)).then(
-            function () {
-                return normalized;
-            }
-        );
+        return executeOther("WriteAppSettings", { content: serializeSettingsXml(normalized) }).then(function () {
+            return normalized;
+        });
     }
 
     AppSettingsService.EnsureInitialized = function (forceRefresh) {
@@ -265,9 +259,5 @@
 
     AppSettingsService.NormalizeProviderKey = function (providerKey) {
         return normalizeProviderKey(providerKey);
-    };
-
-    AppSettingsService.GetStorageOptions = function () {
-        return clone(storageOptions);
     };
 })((window.AppSettingsService = window.AppSettingsService || {}));
