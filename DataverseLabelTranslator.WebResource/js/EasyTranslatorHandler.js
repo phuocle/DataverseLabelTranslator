@@ -209,7 +209,8 @@
                 "relationships",
                 "charts",
                 "entityMessages",
-                "commands"
+                "commands",
+                "businessRules"
             ].indexOf(type) !== -1
         );
     };

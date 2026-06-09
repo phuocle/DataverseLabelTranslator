@@ -20,7 +20,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 { "relationships", () => new RelationshipAdapter() },
                 { "charts", () => new ChartAdapter() },
                 { "entityMessages", () => new EntityMessageAdapter() },
-                { "commands", () => new CommandAdapter() }
+                { "commands", () => new CommandAdapter() },
+                { "businessRules", () => new BusinessRuleAdapter() }
             };
 
         public object Loading(IPluginExecutionContext context, IOrganizationService serviceAdmin, IOrganizationService service, ITracingService tracing, string json)

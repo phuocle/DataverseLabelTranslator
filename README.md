@@ -51,7 +51,7 @@ When available, **14. Content Snippets** loads `adx_contentsnippet` records grou
 
 ### Business Rule Labels
 
-**10. Business Rules** loads Dataverse business rule labels from `workflow.xaml`, including error messages, recommendation titles, and recommendation details. Save temporarily deactivates each changed rule, patches only its `mcwo:StepLabel` entries by `LabelId` and LCID, then reactivates the rule. The runtime flow does not download or persist a backup file; it keeps the original XAML in memory for best-effort rollback during the same save operation.
+**10. Business Rules** loads Dataverse business rule labels from `workflow.xaml` through the server-side unified handler, including error messages, recommendation titles, and recommendation details. Save temporarily deactivates each changed rule, patches only its `mcwo:StepLabel` entries by `LabelId` and LCID, then reactivates the rule. The runtime flow does not download or persist a backup file; it keeps the original XAML in memory for best-effort rollback during the same save operation.
 
 ### Modern Command Labels
 

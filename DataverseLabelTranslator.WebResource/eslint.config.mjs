@@ -8,7 +8,6 @@ const appGlobals = {
   AppSettingsService: "readonly",
   AttributeHandler: "readonly",
   BpfHandler: "readonly",
-  BusinessRuleHandler: "readonly",
   ChartHandler: "readonly",
   ContentSnippetHandler: "readonly",
   DataverseDataWebResourceService: "readonly",
