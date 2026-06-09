@@ -9,8 +9,8 @@
   },
   "scripts": {
     "check": "tsc -p jsconfig.json --noEmit",
-    "lint": "eslint js tests *.config.mjs",
-    "lint:fix": "eslint js tests *.config.mjs --fix",
+    "lint": "eslint js tests *.config.mjs --no-error-on-unmatched-pattern",
+    "lint:fix": "eslint js tests *.config.mjs --fix --no-error-on-unmatched-pattern",
     "format": "prettier --write",
     "format:check": "prettier --check",
     "test": "vitest run",

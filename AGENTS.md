@@ -62,14 +62,14 @@ These numbers are stable shorthand for humans and AI agents; do not reorder, ren
 | 10  | Business Rules         | `DataverseLabelTranslator.WebResource/js/Handler/BusinessRuleHandler.js`    | None yet                                                           |
 | 11  | Ribbons                | `DataverseLabelTranslator.WebResource/js/Handler/RibbonHandler.js`          | None yet                                                           |
 | 12  | Commands               | `DataverseLabelTranslator.WebResource/js/Handler/ModernCommandHandler.js`   | None yet                                                           |
-| 13  | Entity Messages        | `DataverseLabelTranslator.WebResource/js/Handler/EntityMessageHandler.js`   | None yet                                                           |
+| 13  | Entity Messages        | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/EntityMessageAdapter.cs` | None yet                                                           |
 | 14  | Content Snippets       | `DataverseLabelTranslator.WebResource/js/Handler/ContentSnippetHandler.js`  | None yet                                                           |
-| 15  | Sitemap                | `DataverseLabelTranslator.WebResource/js/Handler/SiteMapHandler.js`         | None yet                                                           |
-| 16  | Dashboards             | `DataverseLabelTranslator.WebResource/js/Handler/DashboardHandler.js`       | None yet                                                           |
-| 17  | Web Resources          | `DataverseLabelTranslator.WebResource/js/Handler/WebResourceHandler.js`     | `DataverseLabelTranslator.WebResource/tests/WebResourceHandler.test.js` |
-| 18  | Global Option Sets     | `DataverseLabelTranslator.WebResource/js/Handler/GlobalOptionSetHandler.js` | `DataverseLabelTranslator.WebResource/tests/GlobalOptionSetHandler.test.js` |
+| 15  | Sitemap                | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/SitemapAdapter.cs` | None yet                                                           |
+| 16  | Dashboards             | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/DashboardAdapter.cs` | None yet                                                           |
+| 17  | Web Resources          | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/WebResourceAdapter.cs` | None yet |
+| 18  | Global Option Sets     | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/GlobalOptionSetAdapter.cs` | None yet |
 
-Dashboards use `DataverseLabelTranslator.WebResource/js/Handler/DashboardHandler.js`. Dashboard grids intentionally show only the dashboard parent rows; do not load dashboard tabs, sections, or cells into type 16. Parent dashboard rows are editable directly across language columns. `DataverseLabelTranslator.WebResource/js/Handler/FormHandler.js` is only for type 3 Forms.
+Dashboards use `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` with `DashboardAdapter.cs`. Dashboard grids intentionally show only the dashboard parent rows; do not load dashboard tabs, sections, or cells into type 16. Parent dashboard rows are editable directly across language columns. `DataverseLabelTranslator.WebResource/js/Handler/FormHandler.js` is only for type 3 Forms.
 
 ## Layout
 

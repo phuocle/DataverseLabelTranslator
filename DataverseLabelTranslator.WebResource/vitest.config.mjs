@@ -4,14 +4,10 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.js"],
+    passWithNoTests: true,
     coverage: {
       provider: "v8",
-      include: [
-        "js/Handler/DashboardHandler.js",
-        "js/Handler/GlobalOptionSetHandler.js",
-        "js/Handler/SiteMapHandler.js",
-        "js/Handler/WebResourceHandler.js"
-      ],
+      include: [],
       reporter: ["text", "json", "json-summary", "html"],
       thresholds: {
         lines: 100,

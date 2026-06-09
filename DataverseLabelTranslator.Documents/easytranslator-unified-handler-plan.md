@@ -1,156 +1,116 @@
 # EasyTranslator Unified Handler Plan
 
-Ngay: 2026-06-08
+Ngay: 2026-06-09
 
-## Dieu Kien Quan Trong
+## Trang Thai Hien Tai
 
-Doc nay la file plan chinh cho huong unified handler. Khi lam theo doc nay, uu tien cac dieu kien sau truoc moi phan khac:
+Doc nay da duoc sync theo code hien tai. No khong con la plan ban dau cho type 15-18 nua. Kien truc unified handler da duoc implement cho nhieu type hon:
 
-1. Khong lam unit test JS/C# trong giai do rewrite nay.
-   - Tests se lam sau, chi sau khi aP test manual ok.
-   - Khong them test moi.
-   - Khong sua coverage gate.
-   - Khong bien unit test hien tai thanh constraint thiet ke.
-2. Khong can giu compatibility voi code/action/handler cu.
-   - App chua release production.
-   - Duoc phep xoa code cu khi generic flow da thay the.
-   - Khong de fallback tam thoi neu fallback do lam kien truc roi rac.
-   - Khong giu old custom actions chi de "compatibility".
-   - Final implementation phai la clean replacement, khong phai wrapper goi lai old handlers/actions.
-3. Khong update cac file `.md` khac trong task nay.
-   - Neu docs khac out of date thi de nguyen.
-   - Chi focus file nay: `DataverseLabelTranslator.Documents/easytranslator-unified-handler-plan.md`.
-   - Sau khi aP review va approve plan nay moi tinh den viec sync docs khac neu can.
+- `sitemap`
+- `dashboards`
+- `webresources`
+- `globalOptionSet`
+- `entityMeta`
+- `views`
+- `formMeta`
+- `relationships`
+- `charts`
+- `entityMessages`
 
-## Muc Tieu
-
-Refactor lai client architecture de type 15, 16, 17, 18 va cac type sau nay khong can moi type mot JavaScript handler rieng.
-
-Huong dung:
-
-```text
-Client EasyTranslatorHandler.js
-  - biet render grid
-  - biet render tree/flat rows
-  - biet hidden key nao gui lai server
-  - biet collect changed grid payload
-  - biet goi Loading/Saving/Publishing/Published
-  - biet AI translate row eligibility theo flag chung
-
-Server EasyTranslator custom action
-  - biet type nao dang load/save
-  - biet Dataverse CRUD / metadata / XML / web resource content
-  - biet map domain object thanh grid rows
-  - biet map changed grid rows thanh Dataverse update
-  - biet publish target nao can publish
-```
-
-Ket luan kien truc: user nhan xet dung. Khi Read/Update da dua len server, client khong nen con 4 file `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, `GlobalOptionSetHandler.js` cung tu parse, tu group, tu gom DTO save theo 4 kieu khac nhau. Do la trang thai refactor nua duong: CRUD da len server, nhung grid projection va save payload mapping van nam o client.
-
-## Van De Hien Tai
-
-Type 15-18 hien da dung custom action server, nhung client van con type-specific handler:
-
-- Type 15 `SiteMapHandler.js` van parse sitemap XML trong browser, build node tree, gan `sitemapId`, `compositeId`, `nodeType`, va tao `sitemapUpdates`.
-- Type 16 `DashboardHandler.js` build flat dashboard rows va tao `dashboardUpdates`.
-- Type 17 `WebResourceHandler.js` build resource group tree, parse group metadata trong client, va tao `resourceChanges`.
-- Type 18 `GlobalOptionSetHandler.js` build option set tree, tu quyet parent editable theo component, va tao `optionValueUpdates` / `optionSetDescriptionUpdates`.
-
-Tat ca cung lam chung mot viec o client:
-
-1. Load data tu server.
-2. Bien raw metadata thanh rows cua w2ui.
-3. Dan label values vao language columns.
-4. Dat parent/child/editable/placeholder.
-5. Tim rows co `w2ui.changes`.
-6. Validate base language.
-7. Convert changed labels thanh save payload.
-8. Goi save/publish/reload.
-
-Khac nhau thuc su khong nam o client. Khac nhau thuc su la domain mapping:
-
-- Sitemap: XML node path va publish sitemap id.
-- Dashboard: systemform name label va publish dashboard id.
-- Web Resource: localized JS/RESX content key va publish webresource id.
-- Global Option Set: option set description / option value label/description va publish option set name.
-
-Nhung domain mapping nay nen o server, vi server moi la noi dang quan ly Dataverse Read/Update.
-
-## Nguyen Tac Moi
-
-Client khong con type-specific CRUD vocabulary.
-
-Client chi biet vocabulary chung:
-
-- `translatorType`
-- `component`
-- `gridKey`
-- `schemaName`
-- `rows`
-- `children`
-- `isEditable`
-- `isTranslatable`
-- `changes`
-- `publishTargets`
-
-Server moi biet vocabulary rieng cua Dataverse:
-
-- `sitemapId`
-- `compositeId`
-- `nodeType`
-- `dashboardId`
-- `webresourceid`
-- `baseWebresourceid`
-- `optionSetName`
-- `optionValue`
-- `Label`
-- `Description`
-- XML / RESX / JSON parsing
-
-`recid` la UI identity cho w2ui. `gridKey` la server identity. Save khong duoc phu thuoc vao text hien thi nhu `schemaName`.
-
-## De Xuat File Moi
-
-Tao mot client handler chung:
+Client toolbar load/save cua cac type tren di qua:
 
 ```text
 DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js
 ```
 
-Handler nay thay the client dispatch cho it nhat:
-
-- Type 15: `sitemap`
-- Type 16: `dashboards`
-- Type 17: `webresources`
-- Type 18: `globalOptionSet`
-
-Sau khi on dinh, type 1-14 se migrate dan vao cung handler.
-
-Khong nen tao mot server class khong lo chua tat ca logic trong mot file. Server nen co mot action chung, nhung domain logic nen nam trong adapter rieng theo type:
+Server custom action chung la:
 
 ```text
 DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslator.cs
-DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/SitemapAdapter.cs
-DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/DashboardAdapter.cs
-DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/WebResourceAdapter.cs
-DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/GlobalOptionSetAdapter.cs
 ```
 
-Ly do: client chi can mot handler, nhung server van can tach domain de code de doc, review, va maintain.
-
-## Generic Load Contract
-
-Client goi mot action chung, vi du action name:
+Domain logic nam trong adapter rieng:
 
 ```text
-EasyTranslator
+DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/
 ```
+
+## Muc Tieu Kien Truc
+
+Client chi lam grid shell:
+
+- Build generic load/save payload tu state hien tai.
+- Render flat/tree rows tu server.
+- Apply placeholder theo component.
+- Collect changed rows.
+- Validate base language.
+- Goi `Loading`, `Saving`, `Publishing`, `Published` cua action `EasyTranslator`.
+
+Server so huu domain logic:
+
+- Dataverse query.
+- Metadata/query XML parsing.
+- Web resource content parsing.
+- Label merge.
+- `SetLocLabelsRequest`, metadata update, web resource create/update.
+- Publish target mapping.
+
+Ranh gioi can giu:
+
+```text
+one generic client handler
+one generic grid row contract
+one generic changedRows save payload
+one server adapter per Dataverse domain
+```
+
+## Client Routing
+
+`XrmTranslator.SetHandler()` hien route cac type sau vao `EasyTranslatorHandler`:
+
+| Toolbar Type | translatorType | Client Handler |
+| --- | --- | --- |
+| Views | `views` | `EasyTranslatorHandler` |
+| Form Metadata | `formMeta` | `EasyTranslatorHandler` |
+| Entity Metadata | `entityMeta` | `EasyTranslatorHandler` |
+| Relationships | `relationships` | `EasyTranslatorHandler` |
+| Charts | `charts` | `EasyTranslatorHandler` |
+| Entity Messages | `entityMessages` | `EasyTranslatorHandler` |
+| Sitemap | `sitemap` | `EasyTranslatorHandler` |
+| Dashboards | `dashboards` | `EasyTranslatorHandler` |
+| Web Resources | `webresources` | `EasyTranslatorHandler` |
+| Global Option Sets | `globalOptionSet` | `EasyTranslatorHandler` |
+
+`EasyTranslatorHandler.IsUnifiedType()` phai stay in sync voi danh sach tren. Hien tai no dung chinh danh sach nay de AI toolbar path biet day la unified type.
+
+`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `EntityMessageHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
+
+## Server Adapter Registry
+
+`EasyTranslator.cs` resolve adapter bang `translatorType`:
+
+| translatorType | Adapter |
+| --- | --- |
+| `sitemap` | `SitemapAdapter` |
+| `dashboards` | `DashboardAdapter` |
+| `webresources` | `WebResourceAdapter` |
+| `globalOptionSet` | `GlobalOptionSetAdapter` |
+| `entityMeta` | `EntityMetadataAdapter` |
+| `views` | `ViewAdapter` |
+| `formMeta` | `FormMetaAdapter` |
+| `relationships` | `RelationshipAdapter` |
+| `charts` | `ChartAdapter` |
+| `entityMessages` | `EntityMessageAdapter` |
+
+Unknown or blank `translatorType` fails in `EasyTranslator.ResolveAdapter()`.
+
+## Shared Contract
 
 Load input:
 
 ```json
 {
-  "translatorType": "sitemap",
+  "translatorType": "views",
   "solutionId": "GUID-or-all",
   "entityName": "account",
   "entityId": "GUID",
@@ -165,101 +125,13 @@ Load output:
   "baseLanguage": "1033",
   "grid": {
     "mode": "tree",
-    "title": "Sitemap",
-    "rows": [
-      {
-        "recid": "sitemap:00000000-0000-0000-0000-000000000000",
-        "gridKey": "sitemap|00000000-0000-0000-0000-000000000000",
-        "schemaName": "Sales Hub",
-        "rowType": "sitemap.root",
-        "isEditable": false,
-        "isTranslatable": false,
-        "children": [
-          {
-            "recid": "sitemap:00000000-0000-0000-0000-000000000000:area:Sales",
-            "gridKey": "sitemap|00000000-0000-0000-0000-000000000000|Area|Sales|DisplayText",
-            "schemaName": "[Area] Sales",
-            "rowType": "sitemap.node",
-            "isEditable": false,
-            "isTranslatable": false,
-            "1033": "Sales"
-          }
-        ]
-      }
-    ]
+    "title": "Views",
+    "rows": []
   }
 }
 ```
 
-Notes:
-
-- Server returns neutral `children`; client converts to `w2ui.children`.
-- Server decides `isEditable` and `isTranslatable`.
-- Server returns language values directly by LCID field name.
-- Client adds placeholders generically based on `component`, `baseLanguage`, `isEditable`, and row flags.
-- Client adds a hidden `gridKey` column or hidden record field. This key must always be sent back on save.
-
-## Generic Save Contract
-
-Client sends only changed rows.
-
-Save input:
-
-```json
-{
-  "translatorType": "sitemap",
-  "solutionId": "GUID-or-all",
-  "entityName": "account",
-  "entityId": "GUID",
-  "component": "DisplayText",
-  "baseLanguage": "1033",
-  "changedRows": [
-    {
-      "gridKey": "sitemap|00000000-0000-0000-0000-000000000000|SubArea|Sales|DisplayText",
-      "recid": "sitemap:00000000-0000-0000-0000-000000000000:subarea:Sales",
-      "rowType": "sitemap.node",
-      "changes": {
-        "1033": "Sales",
-        "1041": "Sales JP"
-      }
-    }
-  ]
-}
-```
-
-Save output:
-
-```json
-{
-  "changed": true,
-  "publishTargets": [
-    {
-      "kind": "sitemap",
-      "id": "00000000-0000-0000-0000-000000000000"
-    }
-  ]
-}
-```
-
-Publishing input should reuse the same generic publish target shape:
-
-```json
-{
-  "translatorType": "sitemap",
-  "publishTargets": [
-    {
-      "kind": "sitemap",
-      "id": "00000000-0000-0000-0000-000000000000"
-    }
-  ]
-}
-```
-
-Server adapter maps `publishTargets` to the correct `PublishXmlRequest` XML.
-
-## Generic Row Contract
-
-Every row returned by server should follow this shape:
+Every server row uses this generic shape:
 
 ```json
 {
@@ -279,366 +151,319 @@ Every row returned by server should follow this shape:
 }
 ```
 
-Rules:
+Save input:
 
-- `recid` only needs to be unique in the current grid.
-- `gridKey` must be stable enough for server save.
-- `schemaName` is display text only.
-- `rowType` helps server validate that a key is used with the expected adapter.
-- `isEditable=false` means client must render readonly cells.
-- `isTranslatable=false` means AI workspace must skip the row.
-- `children` is optional. If present, client renders a tree.
-- Server should not send placeholders as real values.
-
-## Type-Specific Shape Rules
-
-### Type 15: Sitemap
-
-Server load:
-
-- Parent root row is sitemap name.
-- Children are sitemap nodes: Area, Group, SubArea.
-- Server parses XML, not browser JavaScript.
-- Server returns entity display label fallback and XML Title fallback when needed.
-- Server computes `gridKey` from sitemap id, node type, composite path, and component.
-
-Edit rules:
-
-- Sitemap root row is not editable.
-- Leaf nodes are editable when the component supports editing.
-- Parent node editability is a server flag:
-  - Description can be editable for parent nodes when Dataverse node supports descriptions.
-  - Display Text can be readonly for parent/grouping nodes when the product decision is that only leaf nodes should be edited.
-- Client must not hardcode Area/Group/SubArea edit rules. It only respects `isEditable`.
-
-Save:
-
-- Client sends changed rows by `gridKey`.
-- Server finds XML node from `gridKey`, merges labels, updates `sitemapxml`, and returns sitemap publish target.
-- Server must return changed target only when actual XML was updated. If key cannot resolve, fail clearly instead of pretending save succeeded.
-
-### Type 16: Dashboards
-
-Server load:
-
-- Flat rows only.
-- Each row is one dashboard.
-- No dashboard tabs, sections, or cells in type 16.
-- Row `gridKey` maps to systemform id and name label component.
-
-Edit rules:
-
-- Dashboard rows are editable directly across language columns.
-
-Save:
-
-- Server receives changed rows.
-- Server maps `gridKey` to dashboard id and calls localized label update for `systemform.name`.
-- Server returns dashboard publish targets.
-
-### Type 17: Web Resources
-
-Server load:
-
-- Parent rows are web resource groups.
-- Child rows are localizable keys inside JS/RESX content.
-- Server parses localized JS/RESX content and groups resources.
-- Parent row display text is only grouping/read-only.
-- Child rows are editable.
-
-Edit rules:
-
-- Parent group rows are `isEditable=false`, `isTranslatable=false`.
-- Child key rows are `isEditable=true`, `isTranslatable=true`.
-
-Save:
-
-- Client sends changed child rows by `gridKey`.
-- Server maps key to existing localized web resource, or creates one from base resource when missing.
-- Server updates content and returns webresource publish targets.
-
-### Type 18: Global Option Sets
-
-Server load:
-
-- Parent rows are global option sets.
-- Child rows are option values.
-- Server decides whether parent row has labels for current component.
-
-Edit rules:
-
-- Display Text:
-  - Parent option set rows are readonly and not AI translatable.
-  - Child option rows are editable and AI translatable.
-- Description:
-  - Parent option set rows can be editable for option set description.
-  - Child option rows can be editable for option description.
-
-Save:
-
-- Client sends changed rows by `gridKey`.
-- Server maps parent row changes to option set description update.
-- Server maps child row changes to option value label/description update.
-- Server returns option set publish targets.
-
-## EasyTranslatorHandler Responsibilities
-
-`EasyTranslatorHandler.js` should expose only:
-
-```javascript
-EasyTranslatorHandler.Load(lockText)
-EasyTranslatorHandler.Save()
-```
-
-Internal responsibilities:
-
-- Build generic load payload from current app state.
-- Call `Helper.RunServerLoad(...)` with action `EasyTranslator`.
-- Store loaded rows/metadata only as generic grid state.
-- Build w2ui rows recursively from server neutral rows.
-- Add generic placeholders.
-- Add summary row through existing app helper.
-- Collect changed rows through `app.GetAllRecords()`.
-- Ignore summary rows and readonly rows.
-- Validate base language Display Text cannot be empty.
-- Strip placeholders before save.
-- Send `changedRows` with `gridKey`, `rowType`, and LCID changes.
-- Show a generic no-change dialog before server save.
-- Call `Helper.RunServerSaveFlow(...)`.
-- Reload through `EasyTranslatorHandler.Load(Helper.GetOperationReLoading())`.
-
-It must not:
-
-- Parse sitemap XML.
-- Parse RESX/JSON web resource content.
-- Know option set DTO names.
-- Know dashboard systemform update details.
-- Build `sitemapUpdates`, `dashboardUpdates`, `resourceChanges`, or `optionValueUpdates`.
-- Call `WebApiClient` directly.
-- Call direct publish helpers.
-- Expose `SaveOnly`.
-
-## AI Translate Implication
-
-AI Translate should stop switching by type name for row collection.
-
-Instead, it should read generic row flags:
-
-- `isTranslatable`
-- `isEditable`
-- `ai.include`
-- `ai.location`
-- language columns
-
-Current special rules can be expressed by server row flags:
-
-- Sitemap: include editable node rows, skip sitemap root.
-- Dashboard: include dashboard rows.
-- Web Resources: include child key rows, skip group parent rows.
-- Global Option Set Display Text: include option child rows only.
-- Global Option Set Description: include parent description rows and option child rows.
-
-This makes AI workspace generic too. The workspace should not need to know `Sitemap`, `Dashboards`, `Web Resources`, or `Global Option Set`.
-
-## Migration Plan
-
-### Phase 0 - Freeze Current Reference Behavior
-
-Before rewriting, write down current expected behavior for 15-18:
-
-- which rows show
-- which rows are editable
-- which rows AI includes
-- what publish targets are needed
-- how empty values and base language validation behave
-
-Use this document as the new direction. Existing docs that say 15-18 are "completed reference types" are now historical transition docs, not final architecture.
-
-Do not update those old docs in this phase. They are allowed to stay out of date while this file is being reviewed.
-
-### Phase 1 - Add Shared Server DTOs
-
-Add common DTO classes:
-
-- `EasyTranslatorLoadInput`
-- `EasyTranslatorLoadOutput`
-- `EasyTranslatorGridOutput`
-- `EasyTranslatorGridRowOutput`
-- `EasyTranslatorSaveInput`
-- `EasyTranslatorChangedRowInput`
-- `EasyTranslatorSaveOutput`
-- `EasyTranslatorPublishTarget`
-
-Acceptance:
-
-- DTO names are generic.
-- DTOs contain no `sitemapUpdates`, `dashboardUpdates`, `resourceChanges`, or `optionValueUpdates`.
-- DTOs can represent tree and flat grids.
-
-### Phase 2 - Add Server Adapter Interface
-
-Create an adapter interface like:
-
-```csharp
-public interface IEasyTranslatorTypeAdapter
+```json
 {
-    EasyTranslatorLoadOutput Load(EasyTranslatorLoadInput input);
-    EasyTranslatorSaveOutput Save(EasyTranslatorSaveInput input);
-    EasyTranslatorSaveOutput Publish(EasyTranslatorPublishInput input);
-    EasyTranslatorSaveOutput Published(EasyTranslatorPublishInput input);
+  "translatorType": "views",
+  "solutionId": "GUID-or-all",
+  "entityName": "account",
+  "entityId": "GUID",
+  "component": "DisplayText",
+  "baseLanguage": "1033",
+  "changedRows": [
+    {
+      "gridKey": "views|00000000-0000-0000-0000-000000000000|name|account",
+      "recid": "views:00000000-0000-0000-0000-000000000000",
+      "rowType": "views.row",
+      "changes": {
+        "1041": "Translated text"
+      }
+    }
+  ]
 }
 ```
 
-Then implement adapters for 15-18 by reusing existing server logic.
+Save output:
 
-Acceptance:
-
-- Existing `SiteMap.cs`, `Dashboard.cs`, `WebResource.cs`, and `GlobalOptionSet.cs` logic is moved or delegated without changing behavior unexpectedly.
-- Server adapters return normalized rows.
-- Server adapters accept normalized changed rows.
-
-### Phase 3 - Add Generic Server Action
-
-Add action name:
-
-```csharp
-public const string EasyTranslator = "EasyTranslator";
+```json
+{
+  "changed": true,
+  "changedRowCount": 1,
+  "publishTargets": [
+    {
+      "kind": "entity",
+      "id": "account"
+    }
+  ]
+}
 ```
 
-Wire it in `PostDataverseLabelTranslatorCustomActionSynchronous`.
+Publishing input reuses `publishTargets`:
 
-`EasyTranslator.cs` should:
+```json
+{
+  "translatorType": "views",
+  "publishTargets": [
+    {
+      "kind": "entity",
+      "id": "account"
+    }
+  ]
+}
+```
 
-- deserialize generic input
-- resolve `translatorType`
-- delegate to the matching adapter
-- preserve existing phase names: `Loading`, `Saving`, `Publishing`, `Published`, `Other`
-- return the normal custom action envelope
+## Contract Rules
 
-Acceptance:
+- `recid` is UI identity for w2ui only.
+- `gridKey` is server identity and must be stable enough for save.
+- `gridKey` parts are URI-encoded by `BuildGridKey()` and decoded by `ParseGridKey()`.
+- `schemaName` is display text only.
+- `rowType` helps diagnostics and save validation.
+- `isEditable=false` means client skips save and renders readonly placeholders.
+- `isTranslatable=false` and `ai.include=false` mean AI workspace skips the row.
+- `children` is optional. If present, client maps it to `w2ui.children`.
+- Server must not send placeholders as real values.
+- Save sends only changed LCID fields. Non-LCID fields are ignored.
+- `EasyTranslatorHandler.NormalizeSaveValue()` strips display text, base display text, description, and readonly placeholders before save.
 
-- One action can load/save all migrated types.
-- Unknown `translatorType` fails clearly.
-- Old type-specific custom actions must not remain as compatibility fallback after the matching type is migrated.
-- Do not commit a finished migration where old custom actions are still wired as fallback.
+## Type Matrix
 
-### Phase 4 - Add `EasyTranslatorHandler.js`
+| Toolbar Type | translatorType | Adapter | Load Shape | Publish Kind |
+| --- | --- | --- | --- | --- |
+| Views | `views` | `ViewAdapter` | tree for all, flat for entity | `entity` |
+| Form Metadata | `formMeta` | `FormMetaAdapter` | tree for all, flat for entity | `entity`, `dashboard` |
+| Entity Metadata | `entityMeta` | `EntityMetadataAdapter` | tree | `entity` |
+| Relationships | `relationships` | `RelationshipAdapter` | tree for all, flat for entity | `entity` |
+| Charts | `charts` | `ChartAdapter` | tree for all, flat for entity | `entity` |
+| Entity Messages | `entityMessages` | `EntityMessageAdapter` | flat | `entity` |
+| Sitemap | `sitemap` | `SitemapAdapter` | tree | `sitemap`, `appmodule` |
+| Dashboards | `dashboards` | `DashboardAdapter` | flat | `dashboard` |
+| Web Resources | `webresources` | `WebResourceAdapter` | tree for Display Text, flat for Description | `webresource` |
+| Global Option Sets | `globalOptionSet` | `GlobalOptionSetAdapter` | tree | `globalOptionSet` |
 
-Create the generic client handler.
+## Type-Specific Notes
 
-Update script load order in `DataverseLabelTranslator.WebResource/html/App.html`.
+### Views
 
-Update `XrmTranslator.SetHandler()` so these types route to the same handler:
+- Reads `savedquery`.
+- `name` or `description` is selected by `component`.
+- For all entities, parent rows group by entity and are not editable.
+- For one entity, rows are flat.
+- Save updates loc labels on `savedquery`.
+- Publish targets are entity logical names.
+
+### Form Metadata
+
+- Reads `systemform`.
+- `name` or `description` is selected by `component`.
+- For all entities, parent rows group by `objecttypecode`.
+- For one entity, rows are flat.
+- Dashboard-like forms use dashboard publish targets.
+- Entity forms use entity publish targets.
+- `systemform.type` must be read through `GetOptionValue(form, "type")` because Dataverse returns `OptionSetValue`. Do not cast it directly to `int`.
+- `formid` is preferred, but code falls back to `form.Id` when `formid` is not present.
+
+### Entity Metadata
+
+- Reads entity metadata.
+- Returns parent entity rows with child rows for description, display name, and collection name.
+- Save maps grid keys back to entity metadata labels.
+- Publish targets are entity logical names.
+
+### Relationships
+
+- Reads one-to-many, many-to-one, and many-to-many relationship metadata.
+- Returns relationship rows for associated menu labels.
+- For all entities, parent rows group by entity.
+- For one entity, rows are flat.
+- Save updates relationship menu configuration labels.
+- Publish targets are entity logical names.
+
+### Charts
+
+- Reads `savedqueryvisualization`.
+- For all entities, parent rows group by entity.
+- For one entity, rows are flat.
+- Save updates loc labels on chart `name`.
+- Publish targets are entity logical names.
+
+### Entity Messages
+
+- Reads Dataverse translation package data from `CrmTranslations.xml`.
+- Requires a selected solution and selected non-custom entity.
+- Filters Display Strings worksheet rows to the selected entity via `displaystringmap` identity data.
+- Grid is flat.
+- Load exports the selected solution translation ZIP on the server, reads `CrmTranslations.xml`, and returns normalized rows.
+- Save re-exports a fresh translation package on the server, applies `changedRows`, writes `CrmTranslations.xml` back into the ZIP, imports translations, then returns an entity publish target.
+- Server ZIP processing is intentionally traced because Dataverse sandbox support for framework compression APIs must be verified in the target environment.
+- The browser stays generic and does not parse Display Strings rows, write translation ZIPs, or apply entity-message domain changes.
+
+### Sitemap
+
+- Reads sitemap records and sitemap XML.
+- Root row is readonly sitemap name.
+- Child rows are Area, Group, and SubArea nodes.
+- Save updates `sitemapxml`.
+- If a sitemap belongs to app modules, save returns `appmodule` publish targets.
+- If no app module is found, save returns `sitemap` publish target.
+
+### Dashboards
+
+- Reads dashboard `systemform` rows.
+- Grid is flat.
+- Type 16 intentionally shows only parent dashboard rows.
+- It does not load dashboard tabs, sections, or cells.
+- Save updates loc labels on `systemform.name`.
+- Publish targets are dashboard form ids.
+
+### Web Resources
+
+- Reads localizable JavaScript and RESX web resources.
+- Display Text mode returns group parent rows plus child key rows.
+- Description mode returns flat web resource description rows.
+- Save can update an existing localized web resource or create a localized resource from the base resource.
+- Publish targets are web resource ids.
+
+### Global Option Sets
+
+- Reads global option set metadata from solution membership.
+- Parent rows represent option sets.
+- Child rows represent option values.
+- Display Text mode edits option value labels.
+- Description mode can edit option set descriptions and option value descriptions.
+- Publish targets are option set names.
+
+## EasyTranslatorHandler Responsibilities
+
+Current implemented responsibilities:
+
+- Build operation payload from `translatorType`, `solutionId`, `entityName`, `entityId`, and `component`.
+- Call `Helper.RunServerLoad()` with action `EasyTranslator`.
+- Store server grid output in app metadata through `app.SetMetadata(output.grid || {})`.
+- Recursively map server `children` to `w2ui.children`.
+- Default missing `recid` to `gridKey` or `schemaName`.
+- Set row editability from `isEditable`.
+- Mark group nodes from `isTranslatable=false` or `ai.include=false`.
+- Apply generic placeholders.
+- Collect changed rows from `app.GetAllRecords()`.
+- Skip summary rows, readonly rows, rows without `gridKey`, and rows without `w2ui.changes`.
+- Validate base language using `Helper.ValidateBaseLanguageNotEmpty()`.
+- Send `changedRows` with `gridKey`, `recid`, `rowType`, and LCID changes.
+- Show a generic no-change dialog.
+- Call `Helper.RunServerSaveFlow()`.
+- Publish/reload only when save output has `publishTargets`.
+
+It must stay generic and must not:
+
+- Parse sitemap XML.
+- Parse RESX or JSON web resource content.
+- Know option set DTO names.
+- Know dashboard systemform update details.
+- Build legacy payloads such as `sitemapUpdates`, `dashboardUpdates`, `resourceChanges`, or `optionValueUpdates`.
+- Call `WebApiClient` directly.
+- Expose `SaveOnly`.
+
+## AI Translate
+
+`EasyTranslator.BuildAiTranslateDataSource()` is generic for unified rows. It builds AI rows from:
+
+- language columns
+- current cell values
+- `gridKey`
+- `isEditable`
+- `isTranslatable`
+- `ai.include`
+- `ai.location`
+- child rows
+
+`EasyTranslator.ShowAITranslate()` uses the generic AI datasource when it has translatable rows. If there are no generic rows, it falls back to the legacy AI prompt path.
+
+## Remaining Gaps
+
+### All-In-One
+
+`AllInOneHandler.js` is not fully synced with unified adapters.
+
+It still references these handler globals:
 
 ```text
-sitemap          -> EasyTranslatorHandler
-dashboards       -> EasyTranslatorHandler
-webresources     -> EasyTranslatorHandler
-globalOptionSet  -> EasyTranslatorHandler
+ViewHandler
+FormMetaHandler
+EntityHandler
+RelationshipHandler
+ChartHandler
 ```
 
-Acceptance:
+Those files are not loaded by `App.html`, and several do not exist under `js/Handler`. Before All-In-One can be considered supported for unified types, it must call the unified server flow or a dedicated all-in-one server flow instead of these old globals.
 
-- Type 15-18 all load through one JS handler.
-- Save payload for all four types has `changedRows`.
-- There is exactly one client save extraction path.
+### Legacy Files
 
-### Phase 5 - Move AI Row Collection To Generic Flags
+Legacy client files for migrated unified types have been removed from `js/Handler`:
 
-Update `EasyTranslator.BuildAiTranslateDataSource()` so it does not use type-specific collection functions for 15-18.
+```text
+EntityMessageHandler.js
+SiteMapHandler.js
+DashboardHandler.js
+WebResourceHandler.js
+GlobalOptionSetHandler.js
+```
 
-Acceptance:
+`TranslationPackageService.js` was also removed because ZIP handling for Entity Messages moved to the server adapter path.
 
-- AI row collection reads generic row flags.
-- No switch on type display names is needed for row shape.
-- The AI workspace remains unaware of domain types.
+Legacy server action classes also still exist:
 
-### Phase 6 - Retire Old Type-Specific Client Handlers
+```text
+SiteMap.cs
+Dashboard.cs
+WebResource.cs
+GlobalOptionSet.cs
+```
 
-After generic type 15-18 flow is implemented and manually accepted:
+The current toolbar path uses `EasyTranslator` for the unified types. Keep the legacy classes only while tests or migration safety still need them.
 
-- Stop loading `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, and `GlobalOptionSetHandler.js`.
-- Remove old files and references. Do not keep fallback dispatch to the old handlers.
-- Remove or stop wiring old type-specific server actions once the generic server action covers those types.
-- Do not update `AGENTS.md` or other `.md` files in this phase. If they are out of date, leave them out of date until aP separately asks for doc sync.
+### Tests
 
-Acceptance:
+Old JS tests still cover legacy handler files for web resources, global option sets, and sitemap. That is historical coverage, not proof that the unified handler path is fully covered.
 
-- No dead script references.
-- No duplicate handler dispatch.
-- No compatibility fallback to old JS handlers.
-- No compatibility fallback to old server actions.
-- No `.md` churn outside this plan file.
+Server tests cover several legacy custom actions and at least one current unified Form Metadata regression path. Unified adapters should get targeted tests as they stabilize:
 
-### Phase 7 - Migrate Types 1-14 Incrementally
+- load row shape
+- save `gridKey` parsing
+- publish target output
+- invalid key failures
+- option set and systemform `OptionSetValue` handling
 
-For each remaining type:
+## Implementation Rules Going Forward
 
-1. Add server adapter.
-2. Return normalized grid rows.
-3. Accept `changedRows`.
-4. Route the type to `EasyTranslatorHandler`.
-5. Remove old client save/load logic for that type.
+When migrating a new toolbar type to the unified architecture:
 
-Do not migrate all remaining types in one huge change. The server domain rules differ, but the client contract should remain unchanged.
+1. Add or update a server adapter.
+2. Return normalized `EasyTranslatorGridRowOutput` rows.
+3. Use `BuildGridKey()` for all server-stable keys.
+4. Accept `changedRows`.
+5. Route the type in `XrmTranslator.SetHandler()` to `EasyTranslatorHandler`.
+6. Add the type to `EasyTranslatorHandler.IsUnifiedType()` when AI should use generic row collection.
+7. Keep domain-specific Dataverse names out of client save payloads.
+8. Add targeted tests when behavior is stable enough to protect.
 
-## Testing Strategy
+Do not add another browser JavaScript handler just to support a new Dataverse metadata type. The default path is:
 
-Important: this section is for the later test pass, not for the first rewrite implementation. Do not implement JS/C# unit tests until aP has manually tested the new flow and confirmed it is OK.
+```text
+new server adapter + existing EasyTranslatorHandler
+```
 
-Server tests:
+## Acceptance Criteria
 
-- Load adapter returns expected rows, keys, editability, and publish target metadata.
-- Save adapter maps `gridKey` to the correct Dataverse update.
-- Invalid or stale `gridKey` fails clearly.
-- Save output includes publish target only when data changed.
+The architecture is in good shape when:
 
-Client tests:
-
-- `EasyTranslatorHandler.Load()` sends generic load payload.
-- `EasyTranslatorHandler.Load()` renders flat and tree rows.
-- `EasyTranslatorHandler.Save()` sends only changed rows.
-- Readonly rows are not sent.
-- Base language Display Text cannot be cleared.
-- Non-base Display Text clears are preserved as empty strings.
-- Description clears are preserved as empty strings.
-- Placeholders are not sent as values.
-- AI datasource includes only rows with `isTranslatable` / `ai.include`.
-
-Manual validation:
-
-- Type 15 sitemap tree row editability matches product decision.
-- Type 16 dashboard flat grid still saves.
-- Type 17 web resource child key save creates/updates localized resources.
-- Type 18 Display Text excludes parent rows from editing/AI.
-- Type 18 Description includes parent rows when editable.
-- Publish/reload occurs only when server reports changed publish targets.
-
-## Acceptance Criteria For The New Architecture
-
-- There is one client handler for 15-18.
-- Client save payload shape is identical for 15-18.
-- Client load path is identical for 15-18.
-- No client handler parses Dataverse XML, RESX, JSON resource content, option metadata, or dashboard metadata.
-- Server owns every Read/Update domain operation.
-- Every grid row has a stable hidden `gridKey`.
-- `recid` is treated as UI-only.
-- Row editability and AI eligibility come from server flags.
-- Publish targets come from server save output.
-- Old handler files are deleted or no longer loaded after parity.
-- Future type migration adds a server adapter, not a new client handler.
+- All unified toolbar types route through `EasyTranslatorHandler`.
+- Server adapter registry and client `IsUnifiedType()` stay in sync.
+- Every editable row has a stable `gridKey`.
+- Client save payload shape is identical across unified types.
+- Client does not parse Dataverse XML, RESX, JSON resource content, option metadata, chart metadata, relationship metadata, view metadata, or dashboard metadata.
+- Server returns publish targets in generic `{ kind, id }` form.
+- AI row collection uses row flags instead of type-specific row builders.
+- All-In-One no longer references missing legacy handler globals.
+- Legacy handler files are removed or clearly isolated from runtime.
 
 ## Bottom Line
 
-The target architecture is not "one file controls everything everywhere".
-
-The target architecture is:
+The target architecture remains:
 
 ```text
-one generic client handler
-one generic client grid contract
-one generic save payload
-server adapter per Dataverse domain
+Client = generic grid and interaction shell
+Server = Dataverse domain adapters
 ```
 
-That is the clean boundary. Client becomes a professional grid/app shell. Server becomes the only place that knows how Dataverse objects are read, changed, merged, and published.
+Keep the client contract small and boring. Put Dataverse-specific read, merge, save, and publish logic in server adapters.

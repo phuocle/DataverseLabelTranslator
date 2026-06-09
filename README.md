@@ -168,22 +168,15 @@ DataverseLabelTranslator.WebResource/
   js/
     XrmTranslator.js
     AllInOneHandler.js
+    EasyTranslatorHandler.js
     AttributeHandler.js
     OptionSetHandler.js
-    GlobalOptionSetHandler.js
     FormHandler.js
-    FormMetaHandler.js
-    ViewHandler.js
-    EntityHandler.js
-    ChartHandler.js
     BpfHandler.js
     BusinessRuleHandler.js
-    RelationshipHandler.js
     RibbonHandler.js
     ModernCommandHandler.js
-    SiteMapHandler.js
     ContentSnippetHandler.js
-    WebResourceHandler.js
     TranslationHandler.js
     TranslationDictionaryService.js
     DialogHelper.js
@@ -192,9 +185,6 @@ DataverseLabelTranslator.WebResource/
     style.css
   img/
     app-icon.svg
-  tests/
-    GlobalOptionSetHandler.test.js
-    WebResourceHandler.test.js
 DataverseLabelTranslator.Scripts/
   release-appsource.ps1
   deploy-azure.ps1

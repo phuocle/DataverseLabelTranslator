@@ -294,14 +294,14 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             string attributeName,
             string entityName)
         {
-            var id = form.GetAttributeValue<Guid>("formid");
+            var id = form.Contains("formid") ? form.GetAttributeValue<Guid>("formid") : form.Id;
             if (id == Guid.Empty)
             {
                 return null;
             }
 
             var rawName = form.GetAttributeValue<string>("name") ?? string.Empty;
-            var formType = form.GetAttributeValue<int>("type");
+            var formType = GetOptionValue(form, "type") ?? 0;
             var typeName = GetFormTypeName(formType);
             var schemaName = string.IsNullOrWhiteSpace(rawName)
                 ? typeName

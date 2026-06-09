@@ -1025,9 +1025,18 @@
             }
 
             if (
-                ["content", "webresources", "dashboards", "sitemap", "globalOptionSet", "entityMeta", "views", "formMeta", "relationships", "charts"].indexOf(
-                    GetToolbar().get("type").selected
-                ) !== -1
+                [
+                    "content",
+                    "webresources",
+                    "dashboards",
+                    "sitemap",
+                    "globalOptionSet",
+                    "entityMeta",
+                    "views",
+                    "formMeta",
+                    "relationships",
+                    "charts"
+                ].indexOf(GetToolbar().get("type").selected) !== -1
             ) {
                 GetToolbar().get("type").selected = "attributes";
                 UpdateComponentDropdown("attributes");
@@ -1271,7 +1280,7 @@
         } else if (XrmTranslator.GetType() === "commands") {
             currentHandler = ModernCommandHandler;
         } else if (XrmTranslator.GetType() === "entityMessages") {
-            currentHandler = EntityMessageHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "content") {
             w2ui.grid.show.selectColumn = true;
             currentHandler = ContentSnippetHandler;
@@ -3692,8 +3701,8 @@
             SetHandler();
 
             XrmTranslator.LockGrid(
-                XrmTranslator.GetType() === "globalOptionSet"
-                    ? "Loading ..."
+                window.EasyTranslatorHandler && EasyTranslatorHandler.IsUnifiedType(XrmTranslator.GetType())
+                    ? Helper.GetOperationLoading()
                     : "Loading " + XrmTranslator.GetCurrentToolbarTypeText()
             );
 

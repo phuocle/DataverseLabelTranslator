@@ -32,6 +32,7 @@
     <NoWarn>CS8032</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="System.IO.Compression" />
     <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.60" />
     <PackageReference Include="Microsoft.CrmSdk.Workflow" Version="9.0.2.60" />
     <PackageReference Include="DynamicsCrm.DevKit.Analyzers" Version="4.0.0">
