@@ -41,7 +41,14 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
     {
         public string mode { get; set; }
         public string title { get; set; }
+        public List<EasyTranslatorLanguageColumnOutput> languageColumns { get; set; } = new List<EasyTranslatorLanguageColumnOutput>();
         public List<EasyTranslatorGridRowOutput> rows { get; set; } = new List<EasyTranslatorGridRowOutput>();
+    }
+
+    public class EasyTranslatorLanguageColumnOutput
+    {
+        public string field { get; set; }
+        public string text { get; set; }
     }
 
     public class EasyTranslatorGridRowOutput : Dictionary<string, object>

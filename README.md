@@ -38,7 +38,7 @@ There is also a special **14. Content Snippets** type for legacy Dynamics 365 Po
 
 The app still includes legacy content snippet support from the original translator. This is not a general Dataverse label type. It is available only when the environment has the old portal tables and the selected entity is `Adx_contentsnippet`.
 
-When available, **14. Content Snippets** loads `adx_contentsnippet` records grouped by website, uses `adx_websitelanguage` to map portal languages to LCIDs, and saves translated snippet values back to `adx_contentsnippet`. Environments without those portal tables should ignore this type.
+When available, **14. Content Snippets** loads `adx_contentsnippet` records through the server-side unified handler, grouped by website, uses `adx_websitelanguage` to map portal languages to LCIDs, and saves translated snippet values back to `adx_contentsnippet`. Environments without those portal tables should ignore this type.
 
 ### Ribbon Labels
 
@@ -169,7 +169,6 @@ DataverseLabelTranslator.WebResource/
     EasyTranslatorHandler.js
     FormHandler.js
     RibbonHandler.js
-    ContentSnippetHandler.js
     TranslationHandler.js
     TranslationDictionaryService.js
     DialogHelper.js

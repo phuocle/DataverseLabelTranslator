@@ -1017,7 +1017,11 @@
             SetToolbarItemsVisible(GLOBAL_TYPE_ITEMS, false);
             SetToolbarItemsVisible(["type:content"], false);
 
-            if (entityTarget === "entitySelect:Adx_contentsnippet" || entityTarget === "Adx_contentsnippet") {
+            var normalizedEntityTarget = String(entityTarget || "")
+                .replace(/^entitySelect:/i, "")
+                .toLowerCase();
+
+            if (normalizedEntityTarget === "adx_contentsnippet") {
                 SetToolbarItemsVisible(["type:content"], true);
             }
 
@@ -1239,7 +1243,7 @@
     };
 
     function SetHandler() {
-        // Deactivate selectColumn on each change, only ContentSnippetHandler supports this right now
+        // Deactivate selectColumn on each change, only Content Snippets supports this right now
         w2ui.grid.show.selectColumn = false;
 
         w2ui["grid_toolbar"].hide("removeOverriddenAttributeLabels");
@@ -1278,7 +1282,7 @@
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "content") {
             w2ui.grid.show.selectColumn = true;
-            currentHandler = ContentSnippetHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "webresources") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "globalOptionSet") {
@@ -4323,8 +4327,9 @@
             schemaName: '<span style="float: right;">Of ' + count + " labels in total</span>"
         };
 
-        for (var i = 0; i < XrmTranslator.installedLanguages.LocaleIds.length; i++) {
-            var language = XrmTranslator.installedLanguages.LocaleIds[i].toString();
+        var languages = XrmTranslator.GetColumns(false);
+        for (var i = 0; i < languages.length; i++) {
+            var language = languages[i].toString();
 
             var translatedParents = records.filter(function (r) {
                 return !!r[language];

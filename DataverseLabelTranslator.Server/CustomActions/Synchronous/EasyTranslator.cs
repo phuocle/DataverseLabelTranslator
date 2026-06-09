@@ -24,7 +24,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 { "bpf", () => new BpfAdapter() },
                 { "entityMessages", () => new EntityMessageAdapter() },
                 { "commands", () => new CommandAdapter() },
-                { "businessRules", () => new BusinessRuleAdapter() }
+                { "businessRules", () => new BusinessRuleAdapter() },
+                { "content", () => new ContentSnippetAdapter() }
             };
 
         public object Loading(IPluginExecutionContext context, IOrganizationService serviceAdmin, IOrganizationService service, ITracingService tracing, string json)

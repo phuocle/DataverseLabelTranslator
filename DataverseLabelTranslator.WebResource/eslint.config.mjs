@@ -6,7 +6,6 @@ const appGlobals = {
   $: "readonly",
   AppSettingsService: "readonly",
   ChartHandler: "readonly",
-  ContentSnippetHandler: "readonly",
   DataverseDataWebResourceService: "readonly",
   DialogHelper: "readonly",
   EasyTranslator: "readonly",

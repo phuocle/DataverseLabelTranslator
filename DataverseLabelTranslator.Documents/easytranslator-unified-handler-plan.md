@@ -28,6 +28,7 @@ Doc nay da duoc sync theo code hien tai. No khong con la plan ban dau cho type 1
 - `commands`
 - `businessRules`
 - `bpf`
+- `content`
 
 Client toolbar load/save cua cac type tren di qua:
 
@@ -91,6 +92,7 @@ one server adapter per Dataverse domain
 | Commands | `commands` | `EasyTranslatorHandler` |
 | Business Rules | `businessRules` | `EasyTranslatorHandler` |
 | Business Process Flows | `bpf` | `EasyTranslatorHandler` |
+| Content Snippets | `content` | `EasyTranslatorHandler` |
 | Sitemap | `sitemap` | `EasyTranslatorHandler` |
 | Dashboards | `dashboards` | `EasyTranslatorHandler` |
 | Web Resources | `webresources` | `EasyTranslatorHandler` |
@@ -100,7 +102,7 @@ one server adapter per Dataverse domain
 
 `EasyTranslatorHandler.IsUnifiedType()` phai stay in sync voi danh sach tren. Hien tai no dung chinh danh sach nay de AI toolbar path biet day la unified type.
 
-`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `AttributeHandler.js`, `OptionSetHandler.js`, `BpfHandler.js`, `EntityMessageHandler.js`, `ModernCommandHandler.js`, `BusinessRuleHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
+`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `AttributeHandler.js`, `OptionSetHandler.js`, `BpfHandler.js`, `ContentSnippetHandler.js`, `EntityMessageHandler.js`, `ModernCommandHandler.js`, `BusinessRuleHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
 
 ## Server Adapter Registry
 
@@ -123,6 +125,7 @@ one server adapter per Dataverse domain
 | `commands` | `CommandAdapter` |
 | `businessRules` | `BusinessRuleAdapter` |
 | `bpf` | `BpfAdapter` |
+| `content` | `ContentSnippetAdapter` |
 
 Unknown or blank `translatorType` fails in `EasyTranslator.ResolveAdapter()`.
 
@@ -252,6 +255,7 @@ Publishing input reuses `publishTargets`:
 | Commands | `commands` | `CommandAdapter` | tree | `entity` |
 | Business Rules | `businessRules` | `BusinessRuleAdapter` | tree | `entity` |
 | Business Process Flows | `bpf` | `BpfAdapter` | tree | `entity` |
+| Content Snippets | `content` | `ContentSnippetAdapter` | tree | none |
 | Sitemap | `sitemap` | `SitemapAdapter` | tree | `sitemap`, `appmodule` |
 | Dashboards | `dashboards` | `DashboardAdapter` | flat | `dashboard` |
 | Web Resources | `webresources` | `WebResourceAdapter` | tree for Display Text, flat for Description | `webresource` |
@@ -344,6 +348,16 @@ Publishing input reuses `publishTargets`:
 - Active BPFs are temporarily deactivated before XAML update, then reactivated.
 - Server keeps original XAML in memory for rollback during the same save operation.
 - Publish targets are entity logical names.
+
+### Content Snippets
+
+- Reads legacy Power Pages `adx_contentsnippet` rows.
+- Reads `adx_websitelanguage` and `adx_portallanguage` on the server to build portal language columns.
+- Parent rows group snippets by `adx_website`.
+- Child rows represent snippet names and are editable across portal LCID columns.
+- Save updates existing `adx_contentsnippet` rows or creates missing localized rows for enabled website languages.
+- No Dataverse metadata publish is required.
+- If the legacy `adx_*` portal tables are not installed, server load returns an empty grid instead of crashing.
 
 ### Sitemap
 
@@ -458,6 +472,7 @@ ModernCommandHandler.js
 BusinessRuleHandler.js
 OptionSetHandler.js
 BpfHandler.js
+ContentSnippetHandler.js
 SiteMapHandler.js
 DashboardHandler.js
 WebResourceHandler.js

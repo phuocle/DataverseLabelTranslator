@@ -130,6 +130,40 @@
         return record;
     }
 
+    function ApplyLanguageColumns(gridOutput, app) {
+        var columns = gridOutput && Array.isArray(gridOutput.languageColumns) ? gridOutput.languageColumns : [];
+        var translator = window.XrmTranslator || app;
+        var grid = app.GetGrid();
+
+        if (columns.length === 0) {
+            return;
+        }
+
+        translator.columnRestoreNeeded = true;
+        translator.ClearColumns();
+
+        var schemaSize = translator.defaultSchemaNameSize || "30%";
+        var schemaSizeNumber = parseInt(schemaSize.replace("%"), 10);
+        var columnWidth = (100 - (isNaN(schemaSizeNumber) ? 30 : schemaSizeNumber)) / columns.length;
+
+        for (var i = 0; i < columns.length; i++) {
+            var field = String(columns[i].field || "");
+            if (!field) {
+                continue;
+            }
+
+            grid.addColumn({
+                field: field,
+                text: columns[i].text || field,
+                size: columnWidth + "%",
+                sortable: true,
+                editable: { type: "text" },
+                render: translator.CreateTranslationCellRenderer(field)
+            });
+            grid.addSearch({ field: field, text: columns[i].text || field, type: "text" });
+        }
+    }
+
     function FillTable(gridOutput) {
         var app = GetApp();
         var grid = app.GetGrid();
@@ -137,6 +171,7 @@
         var rows = gridOutput && Array.isArray(gridOutput.rows) ? gridOutput.rows : [];
 
         grid.clear();
+        ApplyLanguageColumns(gridOutput, app);
 
         for (var i = 0; i < rows.length; i++) {
             records.push(BuildGridRow(rows[i], app));
@@ -213,7 +248,8 @@
                 "bpf",
                 "entityMessages",
                 "commands",
-                "businessRules"
+                "businessRules",
+                "content"
             ].indexOf(type) !== -1
         );
     };
@@ -258,7 +294,9 @@
             },
             getPublishPayload: GetPublishPayload,
             getPublishedPayload: GetPublishPayload,
-            shouldReload: HasPublishTargets,
+            shouldReload: function (output) {
+                return HasPublishTargets(output) || (output && output.changed === true);
+            },
             reloadAction: function () {
                 return EasyTranslatorHandler.Load(Helper.GetOperationReLoading());
             }
