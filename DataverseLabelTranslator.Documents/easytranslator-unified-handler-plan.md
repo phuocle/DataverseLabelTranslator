@@ -314,6 +314,7 @@ Publishing input reuses `publishTargets`:
 - Active rules are temporarily deactivated before XAML update, then reactivated.
 - Server keeps original XAML in memory for rollback during the same save operation.
 - Publish targets are entity logical names.
+
 ### Sitemap
 
 - Reads sitemap records and sitemap XML.
@@ -396,22 +397,6 @@ It must stay generic and must not:
 
 ## Remaining Gaps
 
-### All-In-One
-
-`AllInOneHandler.js` is not fully synced with unified adapters.
-
-It still references these handler globals:
-
-```text
-ViewHandler
-FormMetaHandler
-EntityHandler
-RelationshipHandler
-ChartHandler
-```
-
-Those files are not loaded by `App.html`, and several do not exist under `js/Handler`. Before All-In-One can be considered supported for unified types, it must call the unified server flow or a dedicated all-in-one server flow instead of these old globals.
-
 ### Legacy Files
 
 Legacy client files for migrated unified types have been removed from `js/Handler`:
@@ -481,7 +466,6 @@ The architecture is in good shape when:
 - Client does not parse Dataverse XML, RESX, JSON resource content, option metadata, chart metadata, relationship metadata, view metadata, or dashboard metadata.
 - Server returns publish targets in generic `{ kind, id }` form.
 - AI row collection uses row flags instead of type-specific row builders.
-- All-In-One no longer references missing legacy handler globals.
 - Legacy handler files are removed or clearly isolated from runtime.
 
 ## Bottom Line

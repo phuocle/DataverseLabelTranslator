@@ -237,7 +237,6 @@ def build_document():
     
     add_body_text(doc, "Key highlights of Dataverse Label Translator:")
     add_body_text(doc, "Allows translation of forms, views, fields, entity names, sitemaps, global option sets, and more in one unified grid.", bold_prefix="Comprehensive UI Coverage: ", bullet=True)
-    add_body_text(doc, "Allows translation of all entity-dependent metadata items without switching tabs.", bold_prefix="All-In-One Translation Mode: ", bullet=True)
     add_body_text(doc, "Speeds up workflows using Google Gemini, OpenAI, or Azure OpenAI APIs to automatically generate translations.", bold_prefix="AI-Assisted Automated Translations: ", bullet=True)
     add_body_text(doc, "Stores a persistent glossary of corporate terms directly inside Dataverse, letting users run matching translations locally in bulk.", bold_prefix="Translation Dictionary: ", bullet=True)
     add_body_text(doc, "Simplifies workflow by grouping components belonging to specific custom solutions.", bold_prefix="Solution Filtering: ", bullet=True)
@@ -280,7 +279,7 @@ def build_document():
     add_callout(doc, "Anh PhÆ°á»›c hÃ£y má»Ÿ app, load má»™t entity báº¥t ká»³ (vÃ­ dá»¥ Account), chá»¥p toÃ n bá»™ mÃ n hÃ¬nh giao diá»‡n chÃ­nh vá»›i Ä‘áº§y Ä‘á»§ control panel vÃ  báº£ng lÆ°á»›i (Grid) hiá»ƒn thá»‹ dá»¯ liá»‡u Ä‘á»ƒ paste vÃ o Ä‘Ã¢y.", "ðŸ“· HÃŒNH áº¢NH: Tá»”NG QUAN GIAO DIá»†N CHÃNH Cá»¦A á»¨NG Dá»¤NG", COLOR_SCREENSHOT_BG, is_screenshot=True)
     
     add_heading_1(doc, "4. Translation Scope & Component Types")
-    add_body_text(doc, "Dataverse Label Translator supports translation of 13 main component types, including an All-In-One mode. Below is the list of supported types and what each translates:")
+    add_body_text(doc, "Dataverse Label Translator supports translation of Dataverse component types. Below is the list of supported types and what each translates:")
     
     table = doc.add_table(rows=1, cols=3)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -301,7 +300,6 @@ def build_document():
                 r.font.color.rgb = RGBColor(255, 255, 255)
                 
     types_data = [
-        ("0. All-In-One", "Entity", "Combines all entity-dependent types into one grid for bulk operations."),
         ("1. Attributes", "Entity", "Display Names and Descriptions of fields."),
         ("2. Option Sets", "Entity", "Local option set text labels, including state/status code values."),
         ("3. Forms", "Entity", "Labels of tabs, sections, fields, header, and footer controls inside entity forms."),
@@ -352,10 +350,7 @@ def build_document():
     
     add_callout(doc, "Anh PhÆ°á»›c hÃ£y chá»¥p áº£nh cáº­n cáº£nh má»™t dÃ²ng trong grid Ä‘ang Ä‘Æ°á»£c double-click edit, hiá»ƒn thá»‹ Ã´ nháº­p chá»¯ vÃ  nÃºt Save á»Ÿ trÃªn toolbar Ä‘á»ƒ ngÆ°á»i dÃ¹ng dá»… lÃ m theo.", "ðŸ“· HÃŒNH áº¢NH: HÆ¯á»šNG DáºªN EDIT CELL INLINE VÃ€ SAVE", COLOR_SCREENSHOT_BG, is_screenshot=True)
     
-    add_heading_2(doc, "5.2 All-In-One Mode (Bulk Translation)")
-    add_body_text(doc, "Instead of loading and saving individual component types (Attributes, Forms, Views, etc.) separately, you can select the 0. All-In-One option. This loads all entity-specific labels into a single grid, making it much faster to translate a new custom entity end-to-end and submit the updates in a single batch.")
-    
-    add_heading_2(doc, "5.3 Grid Filters & Search Helpers")
+    add_heading_2(doc, "5.2 Grid Filters & Search Helpers")
     add_body_text(doc, "To handle large entities with thousands of fields and labels, the app provides tools to focus on what matters:")
     add_body_text(doc, "Type search terms into the toolbar's search box. The grid filters instantly to match your search text in either the unique CRM key or the source language column.", bold_prefix="Instant Search: ", bullet=True)
     add_body_text(doc, "Check this checkbox to hide all rows that already have complete translations across all language columns. This is highly useful for locating untranslated gaps.", bold_prefix="Show Untranslated Records Only: ", bullet=True)

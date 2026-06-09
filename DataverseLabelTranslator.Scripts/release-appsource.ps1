@@ -337,7 +337,7 @@ function New-GeneratedImages {
         Draw-TextBox $g "Existing managed solution" 80 140 300 100 "#EAF6FF" "#6AA9D8" 21 $true
         Draw-TextBox $g "Package Deployer package" 460 140 340 100 "#FFF8E2" "#E8C14A" 21 $true
         Draw-TextBox $g "Marketplace root" 880 140 290 100 "#ECF8EF" "#71B982" 21 $true
-        Draw-TextBox $g "Final all-in-one ZIP" 1250 140 290 100 "#F4EDFF" "#9B7BCE" 21 $true
+        Draw-TextBox $g "Final Marketplace ZIP" 1250 140 290 100 "#F4EDFF" "#9B7BCE" 21 $true
         Draw-TextBox $g "Managed solution ZIP" 80 430 300 92 "#F7FAFD" "#B9CBE0" 18 $false
         Draw-TextBox $g "DataverseLabelTranslatorPackage.zip" 460 430 340 92 "#F7FAFD" "#B9CBE0" 18 $false
         Draw-TextBox $g "input.xml + TermsOfUse.html + logo32x32.png" 880 430 290 110 "#F7FAFD" "#B9CBE0" 17 $false

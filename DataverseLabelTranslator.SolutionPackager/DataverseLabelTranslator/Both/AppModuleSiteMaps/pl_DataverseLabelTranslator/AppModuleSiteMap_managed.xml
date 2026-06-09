@@ -9,6 +9,7 @@
     <Area Id="area_bac4aed3" ResourceId="SitemapDesigner.NewTitle" DescriptionResourceId="SitemapDesigner.NewTitle" ShowGroups="true" IntroducedVersion="7.0.0.0">
       <Titles>
         <Title LCID="1033" Title="Area1" />
+        <Title LCID="1066" Title="" />
       </Titles>
       <Group Id="group_DataverseLabelTranslator" ResourceId="SitemapDesigner.NewGroup" DescriptionResourceId="SitemapDesigner.NewGroup" IntroducedVersion="7.0.0.0" IsProfile="false" ToolTipResourseId="SitemapDesigner.Unknown">
         <Titles>

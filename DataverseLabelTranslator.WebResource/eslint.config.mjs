@@ -4,7 +4,6 @@ import globals from "globals";
 const appGlobals = {
   ...globals.browser,
   $: "readonly",
-  AllInOneHandler: "readonly",
   AppSettingsService: "readonly",
   AttributeHandler: "readonly",
   BpfHandler: "readonly",

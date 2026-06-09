@@ -18,8 +18,6 @@
 
     XrmTranslator.defaultSchemaNameSize = "20%";
 
-    XrmTranslator.showAllInOneType = true;
-
     XrmTranslator.LockGridProgress = function (label, current, total) {
         total = total || 0;
         current = Math.min(current || 0, total);
@@ -75,7 +73,6 @@
         "type:charts"
     ];
     var TYPE_STATE_LABELS = {
-        allInOne: "All-In-One",
         attributes: "Attributes",
         options: "Option Sets",
         forms: "Forms",
@@ -1248,9 +1245,7 @@
         w2ui["grid_toolbar"].hide("removeOverriddenAttributeLabels");
         currentHandler = null;
 
-        if (XrmTranslator.GetType() === "allInOne") {
-            currentHandler = AllInOneHandler;
-        } else if (XrmTranslator.GetType() === "attributes") {
+        if (XrmTranslator.GetType() === "attributes") {
             currentHandler = AttributeHandler;
         } else if (XrmTranslator.GetType() === "options") {
             currentHandler = OptionSetHandler;
@@ -2677,7 +2672,7 @@
             return false;
         }
 
-        // Skip top-level All-In-One buckets such as "Forms"; keep actual form names.
+        // Skip top-level grouped buckets such as "Forms"; keep actual form names.
         return !record._isGroupNode || !/^\d+\.\s/.test(label);
     }
 
@@ -3584,8 +3579,7 @@
             '<hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">' +
             '<p style="text-align: justify; text-align-last: center; font-size: 15px; margin: 0; color: #444;">Developed by ' +
             '<a href="https://github.com/phuocle" target="_blank" rel="noopener noreferrer" style="font-weight: 500; text-decoration: none;">Phuoc Le</a>, ' +
-            "featuring AI-powered translation, intelligent dictionary management, All-In-One bulk translation mode, " +
-            "and a beautifully optimized workflow.</p>" +
+            "featuring AI-powered translation, intelligent dictionary management, and a beautifully optimized workflow.</p>" +
             "</div>";
 
         w2popup.open({
@@ -3614,7 +3608,6 @@
             '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
             "<b>Entity-based types</b> (select an Entity first):" +
             '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>All-In-One</b> — Loads the current bulk-supported entity types into one grid for translation, including Business Rules.</li>" +
             "<li><b>Attributes</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Attributes &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "<li><b>Options</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Options &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "<li><b>Forms</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Forms &rarr; Load &rarr; Translate &rarr; Save</li>" +

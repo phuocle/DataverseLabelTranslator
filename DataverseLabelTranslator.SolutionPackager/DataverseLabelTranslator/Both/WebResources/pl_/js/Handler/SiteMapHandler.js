@@ -203,11 +203,11 @@
                 sitemapId = record.recid || "";
             }
 
-            if (!compositeId) {
+            if (compositeId == null) {
                 compositeId = record.recid || "";
             }
 
-            if (!sitemapId || !compositeId) {
+            if (!sitemapId || compositeId == null) {
                 continue;
             }
 
@@ -217,7 +217,15 @@
                 getRowPath: GetDisplayTextRowPath
             });
 
-            var labels = Helper.GetChangedLabels(changes, app.IsDescriptionComponent() || app.IsDisplayTextComponent());
+            var labels = Helper.GetChangedLabels(
+                changes,
+                app.IsDescriptionComponent() || app.IsDisplayTextComponent(),
+                {
+                    app: app,
+                    includeBaseDisplayText: true,
+                    record: record
+                }
+            );
             if (labels.length === 0) {
                 continue;
             }

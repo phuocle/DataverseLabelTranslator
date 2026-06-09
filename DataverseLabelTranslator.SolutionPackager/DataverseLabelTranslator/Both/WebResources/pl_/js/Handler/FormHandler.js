@@ -312,7 +312,7 @@
         FillTable();
     }
 
-    // Expose ProcessSelection for AllInOneHandler
+    // Expose ProcessSelection for form-wide loaders.
     FormHandler.ProcessSelection = ProcessSelection;
 
     function GetCleanText(value) {
@@ -404,7 +404,7 @@
         return name + " [" + formTypeName + "]";
     }
 
-    // Load all forms without showing picker dialog — used by AllInOneHandler
+    // Load all forms without showing picker dialog.
     FormHandler.LoadAllForms = function () {
         var entityName = XrmTranslator.GetEntity();
         var query = GetFormQuery(entityName);

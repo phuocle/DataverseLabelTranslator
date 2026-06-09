@@ -18,8 +18,6 @@
 
     XrmTranslator.defaultSchemaNameSize = "20%";
 
-    XrmTranslator.showAllInOneType = true;
-
     XrmTranslator.LockGridProgress = function (label, current, total) {
         total = total || 0;
         current = Math.min(current || 0, total);
@@ -53,16 +51,9 @@
     var appLoadingActive = false;
     var appLoadingToolbarState = null;
     var ENTITY_DEPENDENT_TYPE_ITEMS = [
-        "type:allInOne",
-        "type:entitySeparator",
         "type:attributes",
         "type:options",
         "type:forms",
-        "type:views",
-        "type:formMeta",
-        "type:entityMeta",
-        "type:relationships",
-        "type:charts",
         "type:content",
         "type:bpf",
         "type:businessRules",
@@ -70,9 +61,18 @@
         "type:commands",
         "type:entityMessages"
     ];
-    var GLOBAL_TYPE_ITEMS = ["type:sitemap", "type:dashboards", "type:webresources", "type:globalOptionSet"];
+    var GLOBAL_TYPE_ITEMS = [
+        "type:sitemap",
+        "type:dashboards",
+        "type:webresources",
+        "type:globalOptionSet",
+        "type:entityMeta",
+        "type:views",
+        "type:formMeta",
+        "type:relationships",
+        "type:charts"
+    ];
     var TYPE_STATE_LABELS = {
-        allInOne: "All-In-One",
         attributes: "Attributes",
         options: "Option Sets",
         forms: "Forms",
@@ -998,15 +998,9 @@
 
             if (
                 [
-                    "allInOne",
                     "attributes",
                     "options",
                     "forms",
-                    "views",
-                    "formMeta",
-                    "entityMeta",
-                    "relationships",
-                    "charts",
                     "bpf",
                     "content",
                     "businessRules",
@@ -1028,9 +1022,18 @@
             }
 
             if (
-                ["content", "webresources", "dashboards", "sitemap", "globalOptionSet"].indexOf(
-                    GetToolbar().get("type").selected
-                ) !== -1
+                [
+                    "content",
+                    "webresources",
+                    "dashboards",
+                    "sitemap",
+                    "globalOptionSet",
+                    "entityMeta",
+                    "views",
+                    "formMeta",
+                    "relationships",
+                    "charts"
+                ].indexOf(GetToolbar().get("type").selected) !== -1
             ) {
                 GetToolbar().get("type").selected = "attributes";
                 UpdateComponentDropdown("attributes");
@@ -1242,9 +1245,7 @@
         w2ui["grid_toolbar"].hide("removeOverriddenAttributeLabels");
         currentHandler = null;
 
-        if (XrmTranslator.GetType() === "allInOne") {
-            currentHandler = AllInOneHandler;
-        } else if (XrmTranslator.GetType() === "attributes") {
+        if (XrmTranslator.GetType() === "attributes") {
             currentHandler = AttributeHandler;
         } else if (XrmTranslator.GetType() === "options") {
             currentHandler = OptionSetHandler;
@@ -1252,36 +1253,36 @@
             w2ui["grid_toolbar"].show("removeOverriddenAttributeLabels");
             currentHandler = FormHandler;
         } else if (XrmTranslator.GetType() === "dashboards") {
-            currentHandler = DashboardHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "views") {
-            currentHandler = ViewHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "formMeta") {
-            currentHandler = FormMetaHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "entityMeta") {
-            currentHandler = EntityHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "relationships") {
-            currentHandler = RelationshipHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "sitemap") {
-            currentHandler = SiteMapHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "charts") {
-            currentHandler = ChartHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "bpf") {
             currentHandler = BpfHandler;
         } else if (XrmTranslator.GetType() === "businessRules") {
-            currentHandler = BusinessRuleHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "ribbons") {
             currentHandler = RibbonHandler;
         } else if (XrmTranslator.GetType() === "commands") {
-            currentHandler = ModernCommandHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "entityMessages") {
-            currentHandler = EntityMessageHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "content") {
             w2ui.grid.show.selectColumn = true;
             currentHandler = ContentSnippetHandler;
         } else if (XrmTranslator.GetType() === "webresources") {
-            currentHandler = WebResourceHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "globalOptionSet") {
-            currentHandler = GlobalOptionSetHandler;
+            currentHandler = EasyTranslatorHandler;
         }
 
         w2ui.grid.refresh();
@@ -2671,7 +2672,7 @@
             return false;
         }
 
-        // Skip top-level All-In-One buckets such as "Forms"; keep actual form names.
+        // Skip top-level grouped buckets such as "Forms"; keep actual form names.
         return !record._isGroupNode || !/^\d+\.\s/.test(label);
     }
 
@@ -2986,7 +2987,8 @@
         "formMeta",
         "entityMeta",
         "globalOptionSet",
-        "sitemap"
+        "sitemap",
+        "webresources"
     ];
 
     function UpdateComponentDropdown(selectedType) {
@@ -3577,8 +3579,7 @@
             '<hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">' +
             '<p style="text-align: justify; text-align-last: center; font-size: 15px; margin: 0; color: #444;">Developed by ' +
             '<a href="https://github.com/phuocle" target="_blank" rel="noopener noreferrer" style="font-weight: 500; text-decoration: none;">Phuoc Le</a>, ' +
-            "featuring AI-powered translation, intelligent dictionary management, All-In-One bulk translation mode, " +
-            "and a beautifully optimized workflow.</p>" +
+            "featuring AI-powered translation, intelligent dictionary management, and a beautifully optimized workflow.</p>" +
             "</div>";
 
         w2popup.open({
@@ -3607,7 +3608,6 @@
             '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
             "<b>Entity-based types</b> (select an Entity first):" +
             '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>All-In-One</b> — Loads the current bulk-supported entity types into one grid for translation, including Business Rules.</li>" +
             "<li><b>Attributes</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Attributes &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "<li><b>Options</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Options &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "<li><b>Forms</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Forms &rarr; Load &rarr; Translate &rarr; Save</li>" +
@@ -3694,8 +3694,8 @@
             SetHandler();
 
             XrmTranslator.LockGrid(
-                XrmTranslator.GetType() === "globalOptionSet"
-                    ? "Loading ..."
+                window.EasyTranslatorHandler && EasyTranslatorHandler.IsUnifiedType(XrmTranslator.GetType())
+                    ? Helper.GetOperationLoading()
                     : "Loading " + XrmTranslator.GetCurrentToolbarTypeText()
             );
 
@@ -3791,7 +3791,7 @@
 
         switch (target) {
             case "autoTranslate":
-                TranslationHandler.ShowTranslationPrompt();
+                EasyTranslator.ShowAITranslate();
                 break;
             case "aiSettings":
                 TranslationHandler.ShowAppSettings();
@@ -3837,13 +3837,7 @@
                     return el ? CompactToolbarText(el.text, 18, true) : "Type";
                 },
                 selected: "sitemap",
-                items: (XrmTranslator.showAllInOneType
-                    ? [
-                          { id: "allInOne", text: "All-In-One", icon: "icon-grid" },
-                          { id: "entitySeparator", text: "--" }
-                      ]
-                    : []
-                ).concat([
+                items: [
                     { id: "attributes", text: "Attributes", icon: "icon-attribute" },
                     { id: "options", text: "Option Sets", icon: "icon-options" },
                     { id: "forms", text: "Forms", icon: "icon-form" },
@@ -3862,7 +3856,7 @@
                     { id: "dashboards", text: "Dashboards", icon: "icon-dashboard" },
                     { id: "webresources", text: "Web Resources", icon: "icon-file-code" },
                     { id: "globalOptionSet", text: "Global Option Set", icon: "icon-global-options" }
-                ])
+                ]
             },
             {
                 type: "menu-radio",
@@ -4038,7 +4032,10 @@
                         }
 
                         if (!XrmTranslator.HasPendingChanges()) {
-                            if (XrmTranslator.GetType() === "globalOptionSet") {
+                            if (
+                                window.EasyTranslatorHandler &&
+                                EasyTranslatorHandler.IsUnifiedType(XrmTranslator.GetType())
+                            ) {
                                 grid.refresh();
                                 return currentHandler.Save().then(function (result) {
                                     XrmTranslator.EnableLoadAndSave();

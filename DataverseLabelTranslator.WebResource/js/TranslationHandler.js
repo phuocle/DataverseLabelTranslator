@@ -1141,7 +1141,7 @@
                                 XrmTranslator.IsDescriptionComponent &&
                                 XrmTranslator.IsDescriptionComponent();
                             var includeBranchRecords =
-                                ["bpf", "forms", "dashboards", "allInOne"].indexOf(XrmTranslator.GetType()) !== -1 ||
+                                ["bpf", "forms", "dashboards"].indexOf(XrmTranslator.GetType()) !== -1 ||
                                 includeGlobalOptionSetDescriptionParent;
 
                             XrmTranslator.ShowRecordSelector(

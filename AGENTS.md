@@ -152,7 +152,7 @@ Do not use raw `Solutions-Extract` ZIPs as release output.
 
 ### /pl-release-2-prepare-appsource
 
-Build the final AppSource all-in-one Marketplace ZIP from the existing managed release solution.
+Build the final AppSource Marketplace ZIP from the existing managed release solution.
 If the user mentions a version, pass it as `-SolutionVersion <version>`.
 If the user does not mention a version, infer latest from `DataverseLabelTranslator.Release/<version>/dataverse/solutions/DataverseLabelTranslator_managed.zip`; if none exists, default to `1.0.0.0`.
 Always trust the selected `DataverseLabelTranslator.Release/<version>/dataverse/solutions/DataverseLabelTranslator_managed.zip` as the latest user-controlled source.
@@ -171,7 +171,7 @@ After the script succeeds, tell the user to run `pac tool pd`.
 
 ### /pl-release-4-deploy-azure
 
-Upload the final AppSource all-in-one ZIP to Azure Blob Storage and generate the Partner Center SAS details.
+Upload the final AppSource Marketplace ZIP to Azure Blob Storage and generate the Partner Center SAS details.
 Run `DataverseLabelTranslator.Scripts/deploy-azure.ps1`; if the user mentions a version, pass `-SolutionVersion <version>`.
 The script must verify Azure CLI is logged in as `sales@d365iconsandtooltips.com`, verify storage account `ple` exists in resource group `SHARED`, create private container `dataverselabeltranslator` if missing, upload only `DataverseLabelTranslator.Release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`, and write sensitive Partner Center details to `DataverseLabelTranslator.Release/<version>/appsource/zip/release.md`.
 Do not export the Dataverse solution.

@@ -14,7 +14,6 @@ Translate UI labels for Dataverse components using the same type menu shown in t
 
 | Type | Scope | What is translated |
 |------|-------|-------------------|
-| **0. All-In-One** | Entity | Loads the entity-dependent types below into one grid for bulk translation |
 | **1. Attributes** | Entity | Display names and descriptions |
 | **2. Option Sets** | Entity | Local option set values, including state/status labels and descriptions |
 | **3. Forms** | Entity | Form tabs, sections, field labels, and related form labels |
@@ -35,10 +34,6 @@ Translate UI labels for Dataverse components using the same type menu shown in t
 
 There is also a special **14. Content Snippets** type for legacy Dynamics 365 Portals / Power Pages content snippets. It appears only when the selected entity is `Adx_contentsnippet`.
 
-### All-In-One Mode
-
-Loads all entity-dependent translation types into one grid for bulk translation. Use it to translate attributes, option sets, forms, views, form metadata, entity metadata, relationships, charts, business process flows, and business rules without switching between types.
-
 ### Power Pages Content Snippets
 
 The app still includes legacy content snippet support from the original translator. This is not a general Dataverse label type. It is available only when the environment has the old portal tables and the selected entity is `Adx_contentsnippet`.
@@ -55,11 +50,11 @@ When available, **14. Content Snippets** loads `adx_contentsnippet` records grou
 
 ### Modern Command Labels
 
-**12. Commands** loads modern command designer records from `appaction` components in the selected solution and selected entity. Each command is shown as a parent node with `Text`, `Title`, `Description`, `Accessibility Text`, and `Group Title` child rows. Save writes changed labels with Dataverse `SetLocLabels` and publishes the selected entity once; it does not publish a model-driven app or add Commands to All-In-One.
+**12. Commands** loads modern command designer records from `appaction` components in the selected solution and selected entity. Each command is shown as a parent node with `Text`, `Title`, `Description`, `Accessibility Text`, and `Group Title` child rows. Save writes changed labels with Dataverse `SetLocLabels` and publishes the selected entity once; it does not publish a model-driven app.
 
 ### Entity Messages
 
-**13. Entity Messages** loads Dataverse table messages/display strings from the selected solution translation package, filtered to the selected entity. This uses the official translation export/import flow rather than directly patching `displaystring` records. Save re-exports a fresh translation package, applies only changed message rows, imports translations, and publishes the selected entity so the imported messages become visible. Entity Messages is intentionally not included in All-In-One.
+**13. Entity Messages** loads Dataverse table messages/display strings from the selected solution translation package, filtered to the selected entity. This uses the official translation export/import flow rather than directly patching `displaystring` records. Save re-exports a fresh translation package, applies only changed message rows, imports translations, and publishes the selected entity so the imported messages become visible.
 
 ### AI Translation
 
@@ -167,13 +162,11 @@ DataverseLabelTranslator.WebResource/
     App.html
   js/
     XrmTranslator.js
-    AllInOneHandler.js
     EasyTranslatorHandler.js
     AttributeHandler.js
     OptionSetHandler.js
     FormHandler.js
     BpfHandler.js
-    BusinessRuleHandler.js
     RibbonHandler.js
     ContentSnippetHandler.js
     TranslationHandler.js

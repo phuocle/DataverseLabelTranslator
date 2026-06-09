@@ -337,10 +337,9 @@ def build_e2e_document():
     add_heading_2(doc, "Test Cases Overview")
     add_body_text(doc, "TEST00: Regular User / Non-Admin User - Verify Security Role Requirements (Fail/Pass)", bullet=True)
     add_body_text(doc, "TEST01: Customizer/System Administrator - Translate Entity Attribute Labels (Manual Inline Translation)", bullet=True)
-    add_body_text(doc, "TEST02: Customizer/System Administrator - All-In-One Translation for Custom Entity", bullet=True)
-    add_body_text(doc, "TEST03: Customizer/System Administrator - AI-Assisted Bulk Translation", bullet=True)
-    add_body_text(doc, "TEST04: Customizer/System Administrator - Manage and Apply Translation Dictionary (Glossary)", bullet=True)
-    add_body_text(doc, "TEST05: Customizer/System Administrator - Translate Form Labels with Automatic User Language Switching", bullet=True)
+    add_body_text(doc, "TEST02: Customizer/System Administrator - AI-Assisted Bulk Translation", bullet=True)
+    add_body_text(doc, "TEST03: Customizer/System Administrator - Manage and Apply Translation Dictionary (Glossary)", bullet=True)
+    add_body_text(doc, "TEST04: Customizer/System Administrator - Translate Form Labels with Automatic User Language Switching", bullet=True)
     
     doc.add_page_break()
     
@@ -395,29 +394,6 @@ def build_e2e_document():
     doc.add_page_break()
     
     # TEST02 (Page 5)
-    persona_2 = "Customizer/System Administrator - All-In-One Bulk Translation"
-    problem_2 = "+ You are a Customizer/System Administrator and\n+ You have just created a new custom entity and\n+ You need to translate all related metadata (attributes, options, forms, views, etc.) without switching between individual type menus."
-    pain_points_2 = "+ Switching back and forth between different components (Forms, Views, Fields) to load and save them separately is extremely tedious."
-    user_goals_2 = "+ Load all entity-dependent labels into a single grid for fast bulk translations."
-    business_goals_2 = "+ Accelerate localization of newly developed custom solutions."
-    steps_2 = (
-        "+ Select the Solution containing your custom entity.\n"
-        "+ Select the newly created custom Entity.\n"
-        "+ Select Type as '0. All-In-One'.\n"
-        "+ Click the Load button to fetch all metadata.\n"
-        "+ Verify that the grid displays rows representing different types (Attributes, Forms, Views, Option Sets, Relationships, etc.).\n"
-        "+ [ðŸ“· HÃŒNH áº¢NH HÆ¯á»šNG DáºªN: Anh PhÆ°á»›c hÃ£y chá»¥p báº£ng Grid sau khi load cháº¿ Ä‘á»™ All-In-One hiá»ƒn thá»‹ nhiá»u loáº¡i component khÃ¡c nhau rá»“i paste vÃ o Ä‘Ã¢y.]\n"
-        "+ Enter translations for multiple components across different types.\n"
-        "+ Click Save in the toolbar.\n"
-        "+ Verify all component labels are saved and published in Dataverse.\n"
-        "+ You passed this test."
-    )
-    metrics_2 = "+ All entity-related labels are loaded, edited, and saved in a single unified operation."
-    
-    create_test_table(doc, "TEST02", persona_2, problem_2, pain_points_2, user_goals_2, business_goals_2, steps_2, metrics_2)
-    doc.add_page_break()
-    
-    # TEST03 (Page 6)
     persona_3 = "Customizer/System Administrator - AI-Assisted Bulk Translation"
     problem_3 = "+ You are a Customizer/System Administrator and\n+ You need to translate hundreds of metadata labels for an entity, and doing it manually is too slow."
     pain_points_3 = "+ Translating massive lists of fields manually requires translation services, copy-pasting, and is extremely slow."
@@ -439,10 +415,10 @@ def build_e2e_document():
     )
     metrics_3 = "+ The tool successfully calls the AI provider, returns translation suggestions, populates the grid, and saves the values to Dataverse."
     
-    create_test_table(doc, "TEST03", persona_3, problem_3, pain_points_3, user_goals_3, business_goals_3, steps_3, metrics_3)
+    create_test_table(doc, "TEST02", persona_3, problem_3, pain_points_3, user_goals_3, business_goals_3, steps_3, metrics_3)
     doc.add_page_break()
     
-    # TEST04 (Page 7)
+    # TEST03 (Page 6)
     persona_4 = "Customizer/System Administrator - Term Consistency via Glossary"
     problem_4 = "+ You are a Customizer/System Administrator and\n+ You want certain corporate terms, product names, or acronyms to be translated consistently, avoiding AI hallucinations or generic terms."
     pain_points_4 = "+ Manual and AI translations can be inconsistent across fields, forms, and views, causing user confusion."
@@ -462,10 +438,10 @@ def build_e2e_document():
     )
     metrics_4 = "+ The dictionary entries are saved to Dataverse XML storage, and applying the dictionary updates matching cell values correctly."
     
-    create_test_table(doc, "TEST04", persona_4, problem_4, pain_points_4, user_goals_4, business_goals_4, steps_4, metrics_4)
+    create_test_table(doc, "TEST03", persona_4, problem_4, pain_points_4, user_goals_4, business_goals_4, steps_4, metrics_4)
     doc.add_page_break()
     
-    # TEST05 (Page 8)
+    # TEST04 (Page 7)
     persona_5 = "Customizer/System Administrator - Multi-Language Form Label Translation"
     problem_5 = "+ You are a Customizer/System Administrator and\n+ You need to translate form labels (tabs, sections, fields) across multiple installed languages, but Dataverse API only returns labels for the currently active user language."
     pain_points_5 = "+ Changing the user language in personal settings, loading/saving forms, and repeating this for every single language is extremely slow and tedious."
@@ -485,7 +461,7 @@ def build_e2e_document():
     )
     metrics_5 = "+ Form labels for all active languages are fetched, edited, successfully saved, and the administrator's UI language is restored."
     
-    create_test_table(doc, "TEST05", persona_5, problem_5, pain_points_5, user_goals_5, business_goals_5, steps_5, metrics_5)
+    create_test_table(doc, "TEST04", persona_5, problem_5, pain_points_5, user_goals_5, business_goals_5, steps_5, metrics_5)
     
     # Save E2E Document
     version = "1.0.0.0"
