@@ -83,6 +83,7 @@ one server adapter per Dataverse domain
 
 | Toolbar Type | translatorType | Client Handler |
 | --- | --- | --- |
+| Forms | `forms` | `EasyTranslatorHandler` |
 | Views | `views` | `EasyTranslatorHandler` |
 | Form Metadata | `formMeta` | `EasyTranslatorHandler` |
 | Entity Metadata | `entityMeta` | `EasyTranslatorHandler` |
@@ -102,7 +103,7 @@ one server adapter per Dataverse domain
 
 `EasyTranslatorHandler.IsUnifiedType()` phai stay in sync voi danh sach tren. Hien tai no dung chinh danh sach nay de AI toolbar path biet day la unified type.
 
-`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `AttributeHandler.js`, `OptionSetHandler.js`, `BpfHandler.js`, `ContentSnippetHandler.js`, `EntityMessageHandler.js`, `ModernCommandHandler.js`, `BusinessRuleHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
+`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `AttributeHandler.js`, `OptionSetHandler.js`, `FormHandler.js`, `BpfHandler.js`, `ContentSnippetHandler.js`, `EntityMessageHandler.js`, `ModernCommandHandler.js`, `BusinessRuleHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
 
 ## Server Adapter Registry
 
@@ -116,6 +117,7 @@ one server adapter per Dataverse domain
 | `globalOptionSet` | `GlobalOptionSetAdapter` |
 | `attributes` | `AttributeAdapter` |
 | `options` | `OptionSetAdapter` |
+| `forms` | `FormAdapter` |
 | `entityMeta` | `EntityMetadataAdapter` |
 | `views` | `ViewAdapter` |
 | `formMeta` | `FormMetaAdapter` |
@@ -262,6 +264,7 @@ Publishing input reuses `publishTargets`:
 | Global Option Sets | `globalOptionSet` | `GlobalOptionSetAdapter` | tree | `globalOptionSet` |
 | Attributes | `attributes` | `AttributeAdapter` | flat | `entity` |
 | Option Sets | `options` | `OptionSetAdapter` | tree | `entity`, `globalOptionSet` |
+| Forms | `forms` | `FormAdapter` | tree | `entity` |
 
 ## Type-Specific Notes
 
@@ -405,6 +408,16 @@ Publishing input reuses `publishTargets`:
 - Save updates option values on the server with `UpdateOptionValueRequest`.
 - Publish targets include the selected entity and any reused global option sets.
 
+### Forms
+
+- Reads `systemform.formxml` for the selected entity.
+- Server temporarily switches the calling user's UI language per installed LCID to retrieve localized form XML, then restores the original user language.
+- Parent rows represent forms and are readonly.
+- Child rows represent form XML nodes with `labels` and `control` descendants.
+- Save updates `label` descriptions in `formxml` by XML node id and LCID on the server.
+- The remove overridden attribute labels toolbar command is handled by `FormAdapter` and updates the selected form on the server.
+- Publish targets are entity logical names.
+
 ### Attributes
 
 - Reads attribute metadata from the selected entity.
@@ -471,6 +484,7 @@ EntityMessageHandler.js
 ModernCommandHandler.js
 BusinessRuleHandler.js
 OptionSetHandler.js
+FormHandler.js
 BpfHandler.js
 ContentSnippetHandler.js
 SiteMapHandler.js

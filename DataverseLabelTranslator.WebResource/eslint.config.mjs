@@ -11,7 +11,6 @@ const appGlobals = {
   EasyTranslator: "readonly",
   EasyTranslatorHandler: "readonly",
   EntityHandler: "readonly",
-  FormHandler: "readonly",
   FormMetaHandler: "readonly",
   GetGlobalContext: "readonly",
   Helper: "readonly",

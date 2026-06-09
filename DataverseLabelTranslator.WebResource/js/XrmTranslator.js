@@ -1255,7 +1255,7 @@
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "forms") {
             w2ui["grid_toolbar"].show("removeOverriddenAttributeLabels");
-            currentHandler = FormHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "dashboards") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "views") {
@@ -3897,7 +3897,7 @@
             tooltip: "Remove overridden attribute labels",
             icon: "icon-eraser",
             onClick: function (event) {
-                FormHandler.RemoveOverriddenCellLabels();
+                EasyTranslatorHandler.RemoveOverriddenCellLabels();
             }
         });
 

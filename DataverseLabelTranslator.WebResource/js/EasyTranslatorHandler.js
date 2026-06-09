@@ -89,6 +89,44 @@
         };
     }
 
+    function FindFormRecord(record) {
+        var current = record;
+        var app = GetApp();
+
+        while (current) {
+            if (current.gridKey && /^forms\|/i.test(current.gridKey)) {
+                return current;
+            }
+
+            if (!current.w2ui || !current.w2ui.parent_recid) {
+                return null;
+            }
+
+            current = app.GetByRecId(app.GetAllRecords(), current.w2ui.parent_recid);
+        }
+
+        return null;
+    }
+
+    function GetSelectedFormId() {
+        var app = GetApp();
+        var grid = app.GetGrid();
+        var selection = typeof grid.getSelection === "function" ? grid.getSelection() : [];
+
+        if (!selection || selection.length === 0) {
+            return null;
+        }
+
+        var record = app.GetByRecId(app.GetAllRecords(), selection[0]);
+        var formRecord = FindFormRecord(record);
+        if (!formRecord || !formRecord.gridKey) {
+            return null;
+        }
+
+        var parts = formRecord.gridKey.split("|");
+        return parts.length > 1 ? decodeURIComponent(parts[1]) : null;
+    }
+
     function CopyServerRowFields(source, target) {
         for (var key in source) {
             if (!Object.prototype.hasOwnProperty.call(source, key) || key === "children") {
@@ -240,6 +278,7 @@
                 "globalOptionSet",
                 "attributes",
                 "options",
+                "forms",
                 "entityMeta",
                 "views",
                 "formMeta",
@@ -300,6 +339,51 @@
             reloadAction: function () {
                 return EasyTranslatorHandler.Load(Helper.GetOperationReLoading());
             }
+        });
+    };
+
+    EasyTranslatorHandler.RemoveOverriddenCellLabels = function () {
+        var app = GetApp();
+        var formId = GetSelectedFormId();
+
+        if (!formId) {
+            return DialogHelper.alert("Select a form row before removing overridden labels.", {
+                title: "Remove Overridden Labels"
+            });
+        }
+
+        return DialogHelper.confirm(
+            "This will remove ALL overridden attribute labels on the selected form and reset them to the default attribute labels. This action cannot be undone.\n\nDo you want to continue?",
+            {
+                title: "Remove Overridden Labels",
+                width: 620,
+                height: 270,
+                popupClass: "xqt-remove-overridden-confirm"
+            }
+        ).then(function (confirmed) {
+            if (!confirmed) {
+                return null;
+            }
+
+            var payload = BuildOperationPayload();
+            payload.operation = "RemoveOverriddenCellLabels";
+            payload.formId = formId;
+
+            return Helper.RunServerSaveFlow({
+                app: app,
+                actionName: actionName,
+                getSavePayload: function () {
+                    return payload;
+                },
+                getPublishPayload: GetPublishPayload,
+                getPublishedPayload: GetPublishPayload,
+                shouldReload: function (output) {
+                    return HasPublishTargets(output) || (output && output.changed === true);
+                },
+                reloadAction: function () {
+                    return EasyTranslatorHandler.Load(Helper.GetOperationReLoading());
+                }
+            });
         });
     };
 })((window.EasyTranslatorHandler = window.EasyTranslatorHandler || {}));

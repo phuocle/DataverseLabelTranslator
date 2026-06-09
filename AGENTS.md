@@ -52,7 +52,7 @@ These numbers are stable shorthand for humans and AI agents; do not reorder, ren
 | --- | ---------------------- | ------------------------------ | -------------------------------------- |
 | 1   | Attributes             | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/AttributeAdapter.cs` | None yet                                                           |
 | 2   | Option Sets            | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/OptionSetAdapter.cs` | None yet                                                           |
-| 3   | Forms                  | `DataverseLabelTranslator.WebResource/js/Handler/FormHandler.js`            | None yet                                                           |
+| 3   | Forms                  | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/FormAdapter.cs` | None yet                                                           |
 | 4   | Views                  | `DataverseLabelTranslator.WebResource/js/Handler/ViewHandler.js`            | None yet                                                           |
 | 5   | Form Metadata          | `DataverseLabelTranslator.WebResource/js/Handler/FormMetaHandler.js`        | None yet                                                           |
 | 6   | Entity Metadata        | `DataverseLabelTranslator.WebResource/js/Handler/EntityHandler.js`          | None yet                                                           |
@@ -69,7 +69,7 @@ These numbers are stable shorthand for humans and AI agents; do not reorder, ren
 | 17  | Web Resources          | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/WebResourceAdapter.cs` | None yet |
 | 18  | Global Option Sets     | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/GlobalOptionSetAdapter.cs` | None yet |
 
-Dashboards use `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` with `DashboardAdapter.cs`. Dashboard grids intentionally show only the dashboard parent rows; do not load dashboard tabs, sections, or cells into type 16. Parent dashboard rows are editable directly across language columns. `DataverseLabelTranslator.WebResource/js/Handler/FormHandler.js` is only for type 3 Forms.
+Dashboards use `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` with `DashboardAdapter.cs`. Dashboard grids intentionally show only the dashboard parent rows; do not load dashboard tabs, sections, or cells into type 16. Parent dashboard rows are editable directly across language columns. Forms use `EasyTranslatorHandler.js` with `FormAdapter.cs`.
 
 ## Layout
 

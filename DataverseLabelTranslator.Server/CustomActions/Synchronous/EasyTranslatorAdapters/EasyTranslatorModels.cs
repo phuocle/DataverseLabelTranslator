@@ -129,6 +129,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         public string solutionId { get; set; }
         public string entityName { get; set; }
         public string entityId { get; set; }
+        public string formId { get; set; }
         public string component { get; set; }
         public string baseLanguage { get; set; }
         public List<EasyTranslatorChangedRowInput> changedRows { get; set; } = new List<EasyTranslatorChangedRowInput>();
