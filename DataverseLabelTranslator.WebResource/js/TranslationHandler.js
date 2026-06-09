@@ -82,8 +82,8 @@
     }
 
     function NormalizeProviderId(providerId) {
-        if (window.AppSettingsService && AppSettingsService.NormalizeProviderKey) {
-            return AppSettingsService.NormalizeProviderKey(providerId);
+        if (window.AppService && AppService.NormalizeProviderKey) {
+            return AppService.NormalizeProviderKey(providerId);
         }
 
         var normalized = String(providerId || "")
@@ -98,19 +98,19 @@
     function GetProviderConfig(providerId, forceRefresh) {
         var normalizedProviderId = NormalizeProviderId(providerId);
 
-        if (!window.AppSettingsService || !AppSettingsService.GetProviderConfig) {
+        if (!window.AppService || !AppService.GetProviderConfig) {
             return Promise.resolve(CreateEmptyAIConfig());
         }
 
-        return AppSettingsService.GetProviderConfig(normalizedProviderId, !!forceRefresh).then(function (config) {
+        return AppService.GetProviderConfig(normalizedProviderId, !!forceRefresh).then(function (config) {
             return Object.assign(CreateEmptyAIConfig(), config || {});
         });
     }
 
     function GetTranslationProviderContext(forceRefresh) {
         var settingsPromise =
-            window.AppSettingsService && AppSettingsService.GetAISettings
-                ? AppSettingsService.GetAISettings(!!forceRefresh)
+            window.AppService && AppService.GetAISettings
+                ? AppService.GetAISettings(!!forceRefresh)
                 : Promise.resolve({
                       selectedProvider: "google",
                       providers: {}
@@ -912,10 +912,8 @@
                 }
 
                 var splitPromise =
-                    useDictionaryEnabled &&
-                    window.TranslationDictionaryService &&
-                    TranslationDictionaryService.SplitRecordsByDictionary
-                        ? TranslationDictionaryService.SplitRecordsByDictionary(fromLcid, destLcid, updateRecords)
+                    useDictionaryEnabled && window.DictionaryService && DictionaryService.SplitRecordsByDictionary
+                        ? DictionaryService.SplitRecordsByDictionary(fromLcid, destLcid, updateRecords)
                         : Promise.resolve({ matchedResults: [], unmatchedRecords: updateRecords });
 
                 return splitPromise.then(function (split) {
@@ -1523,7 +1521,7 @@
     }
 
     function InitializeAppSettingsForm() {
-        return AppSettingsService.GetAISettings(true).then(function (aiSettings) {
+        return AppService.GetAISettings(true).then(function (aiSettings) {
             var googleConfig = GetProviderSettings(aiSettings, "google");
             var openaiConfig = GetProviderSettings(aiSettings, "openai");
             var azureConfig = GetProviderSettings(aiSettings, "azure");
@@ -1632,10 +1630,10 @@
 
                         w2popup.lock("Saving...", true);
 
-                        AppSettingsService.GetAISettings(true)
+                        AppService.GetAISettings(true)
                             .then(function (latestAISettings) {
                                 var settingsToSave = BuildAISettingsFromRecord(form.record, latestAISettings);
-                                return AppSettingsService.SaveAISettings(settingsToSave);
+                                return AppService.SaveAISettings(settingsToSave);
                             })
                             .then(function () {
                                 w2popup.unlock();
@@ -1773,7 +1771,7 @@
     };
 
     function ApplyDictionaryToGrid(mode) {
-        if (!window.TranslationDictionaryService || !TranslationDictionaryService.SplitRecordsByDictionary) {
+        if (!window.DictionaryService || !DictionaryService.SplitRecordsByDictionary) {
             w2alert("Dictionary service is not available.");
             return;
         }
@@ -1821,13 +1819,11 @@
                         return Promise.resolve([]);
                     }
 
-                    return TranslationDictionaryService.SplitRecordsByDictionary(
-                        baseLcid,
-                        targetLcid,
-                        filteredRecords
-                    ).then(function (split) {
-                        return split.matchedResults || [];
-                    });
+                    return DictionaryService.SplitRecordsByDictionary(baseLcid, targetLcid, filteredRecords).then(
+                        function (split) {
+                            return split.matchedResults || [];
+                        }
+                    );
                 });
 
                 return Promise.all(promises).then(function (resultsPerLang) {

@@ -1,4 +1,4 @@
-(function (EasyTranslator, undefined) {
+(function (AIService, undefined) {
     "use strict";
 
     var actionName = "Other";
@@ -1125,7 +1125,7 @@
         });
     }
 
-    EasyTranslator.OpenAiTranslateWorkspace = function (dataSource) {
+    AIService.OpenWorkspace = function (dataSource) {
         return openWorkspace(dataSource);
     };
-})((window.EasyTranslator = window.EasyTranslator || {}));
+})((window.AIService = window.AIService || {}));

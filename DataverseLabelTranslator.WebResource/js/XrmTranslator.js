@@ -3516,7 +3516,7 @@
     }
 
     function ShowAddSelectedTranslationToDictionary() {
-        if (!window.TranslationDictionaryService || !TranslationDictionaryService.UpsertEntries) {
+        if (!window.DictionaryService || !DictionaryService.UpsertEntries) {
             return DialogHelper.alert("Dictionary service is not available.", { title: "Dictionary" });
         }
 
@@ -3609,7 +3609,7 @@
 
                     XrmTranslator.LockGrid("Updating dictionary...");
 
-                    return TranslationDictionaryService.UpsertEntries([
+                    return DictionaryService.UpsertEntries([
                         {
                             sourceText: sourceText,
                             targets: targets
@@ -3909,8 +3909,8 @@
             tooltip: "Manage dictionary",
             icon: "icon-book",
             onClick: function () {
-                if (window.TranslationDictionaryService && TranslationDictionaryService.ShowDictionaryPrompt) {
-                    TranslationDictionaryService.ShowDictionaryPrompt();
+                if (window.DictionaryService && DictionaryService.ShowDictionaryPrompt) {
+                    DictionaryService.ShowDictionaryPrompt();
                 }
             }
         });
@@ -4359,10 +4359,10 @@
                 return TranslationHandler.FillLanguageCodes(languages.LocaleIds, XrmTranslator.userSettings);
             })
             .then(function () {
-                if (window.TranslationDictionaryService && TranslationDictionaryService.EnsureInitialized) {
+                if (window.DictionaryService && DictionaryService.EnsureInitialized) {
                     XrmTranslator.LockGrid("Preparing dictionary storage...");
 
-                    return TranslationDictionaryService.EnsureInitialized().catch(function (error) {
+                    return DictionaryService.EnsureInitialized().catch(function (error) {
                         if (window.console && window.console.warn) {
                             window.console.warn("Dictionary bootstrap failed.", error);
                         }

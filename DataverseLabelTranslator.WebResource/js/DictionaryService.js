@@ -1,4 +1,4 @@
-(function (TranslationDictionaryService, undefined) {
+(function (DictionaryService, undefined) {
     "use strict";
 
     var actionName = "Other";
@@ -511,7 +511,7 @@
 
         return askConfirm("You have unsaved dictionary changes. Save before closing?").then(function (saveBeforeClose) {
             if (saveBeforeClose) {
-                return TranslationDictionaryService.SaveFromGrid();
+                return DictionaryService.SaveFromGrid();
             }
 
             return askConfirm("Discard unsaved dictionary changes and close?").then(function (discardChanges) {
@@ -774,7 +774,7 @@
                     }
 
                     if (event.target === "save") {
-                        TranslationDictionaryService.SaveFromGrid();
+                        DictionaryService.SaveFromGrid();
                     }
 
                     if (event.target === "close") {
@@ -834,15 +834,15 @@
         return normalizeLookupText(sourceText);
     }
 
-    TranslationDictionaryService.EnsureInitialized = function (forceRefresh) {
+    DictionaryService.EnsureInitialized = function (forceRefresh) {
         return ensureInitialized(!!forceRefresh);
     };
 
-    TranslationDictionaryService.GetStorageInfo = function () {
+    DictionaryService.GetStorageInfo = function () {
         return null;
     };
 
-    TranslationDictionaryService.UpsertEntries = function (entries) {
+    DictionaryService.UpsertEntries = function (entries) {
         entries = entries || [];
 
         return buildDictionaryGridContext().then(function (context) {
@@ -947,7 +947,7 @@
         });
     };
 
-    TranslationDictionaryService.ShowDictionaryPrompt = function () {
+    DictionaryService.ShowDictionaryPrompt = function () {
         XrmTranslator.LockGrid("Loading dictionary ...");
         logDebug("ShowDictionaryPrompt:start", null);
 
@@ -1059,7 +1059,7 @@
             });
     };
 
-    TranslationDictionaryService.SaveFromGrid = function () {
+    DictionaryService.SaveFromGrid = function () {
         if (!w2ui.translationDictionaryGrid || !dictionaryGridContext) {
             return;
         }
@@ -1110,7 +1110,7 @@
             });
     };
 
-    TranslationDictionaryService.SplitRecordsByDictionary = function (fromLcid, targetLcid, records) {
+    DictionaryService.SplitRecordsByDictionary = function (fromLcid, targetLcid, records) {
         return buildDictionaryGridContext()
             .then(function (context) {
                 return loadDictionaryModel(false, context).then(function (model) {
@@ -1182,4 +1182,4 @@
                 };
             });
     };
-})((window.TranslationDictionaryService = window.TranslationDictionaryService || {}));
+})((window.DictionaryService = window.DictionaryService || {}));

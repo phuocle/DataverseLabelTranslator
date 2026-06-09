@@ -399,7 +399,7 @@
     };
 
     EasyTranslator.ShowAITranslate = function () {
-        if (typeof EasyTranslator.OpenAiTranslateWorkspace !== "function") {
+        if (!window.AIService || typeof AIService.OpenWorkspace !== "function") {
             return ShowLegacyAiTranslate();
         }
 
@@ -408,7 +408,7 @@
             return ShowLegacyAiTranslate();
         }
 
-        return EasyTranslator.OpenAiTranslateWorkspace(dataSource);
+        return AIService.OpenWorkspace(dataSource);
     };
 
     EasyTranslator.AiTranslateDataSource = {

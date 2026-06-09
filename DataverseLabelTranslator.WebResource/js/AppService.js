@@ -1,4 +1,4 @@
-(function (AppSettingsService, undefined) {
+(function (AppService, undefined) {
     "use strict";
 
     var actionName = "Other";
@@ -217,27 +217,27 @@
         });
     }
 
-    AppSettingsService.EnsureInitialized = function (forceRefresh) {
+    AppService.EnsureInitialized = function (forceRefresh) {
         return ensureInitialized(!!forceRefresh);
     };
 
-    AppSettingsService.GetSettings = function (forceRefresh) {
+    AppService.GetSettings = function (forceRefresh) {
         return readSettings(!!forceRefresh);
     };
 
-    AppSettingsService.SaveSettings = function (settings) {
+    AppService.SaveSettings = function (settings) {
         return readSettings(true).then(function (latest) {
             return writeSettings(mergeObjects(latest, settings || {}));
         });
     };
 
-    AppSettingsService.GetAISettings = function (forceRefresh) {
+    AppService.GetAISettings = function (forceRefresh) {
         return readSettings(!!forceRefresh).then(function (settings) {
             return clone(settings.ai);
         });
     };
 
-    AppSettingsService.SaveAISettings = function (aiSettings) {
+    AppService.SaveAISettings = function (aiSettings) {
         return readSettings(true)
             .then(function (latest) {
                 latest.ai = mergeObjects(latest.ai || getDefaultSettings().ai, aiSettings || {});
@@ -248,8 +248,8 @@
             });
     };
 
-    AppSettingsService.GetProviderConfig = function (providerKey, forceRefresh) {
-        return AppSettingsService.GetAISettings(!!forceRefresh).then(function (aiSettings) {
+    AppService.GetProviderConfig = function (providerKey, forceRefresh) {
+        return AppService.GetAISettings(!!forceRefresh).then(function (aiSettings) {
             var normalizedProviderKey = normalizeProviderKey(providerKey);
             var providers = aiSettings.providers || {};
 
@@ -257,7 +257,7 @@
         });
     };
 
-    AppSettingsService.NormalizeProviderKey = function (providerKey) {
+    AppService.NormalizeProviderKey = function (providerKey) {
         return normalizeProviderKey(providerKey);
     };
-})((window.AppSettingsService = window.AppSettingsService || {}));
+})((window.AppService = window.AppService || {}));
