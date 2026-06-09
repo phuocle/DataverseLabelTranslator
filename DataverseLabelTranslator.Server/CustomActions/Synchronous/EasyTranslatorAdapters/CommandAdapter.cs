@@ -65,8 +65,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             var commandById = BuildCommandMap(commands);
 
             commands.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(
-                GetCommandSortPath(a, commandById),
-                GetCommandSortPath(b, commandById)));
+                GetCommandSortPathSafe(a, commandById),
+                GetCommandSortPathSafe(b, commandById)));
 
             var rows = new List<EasyTranslatorGridRowOutput>();
 
@@ -361,6 +361,19 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             return string.Join(">", parts);
         }
 
+        private static string GetCommandSortPathSafe(Entity command, Dictionary<Guid, Entity> commandById)
+        {
+            try
+            {
+                return GetCommandSortPath(command, commandById);
+            }
+            catch
+            {
+                var commandId = command?.GetAttributeValue<Guid>("appactionid") ?? Guid.Empty;
+                return commandId.ToString("D");
+            }
+        }
+
         private static Label RetrieveLocLabel(IOrganizationService serviceAdmin, Guid commandId, string attributeName)
         {
             var response = (RetrieveLocLabelsResponse)serviceAdmin.Execute(new RetrieveLocLabelsRequest
@@ -376,11 +389,11 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         private static string GetPrimaryCommandText(Entity command)
         {
             return FirstNonEmpty(
-                command.GetAttributeValue<string>("buttonlabeltext"),
-                command.GetAttributeValue<string>("grouptitle"),
-                command.GetAttributeValue<string>("buttontooltiptitle"),
-                command.GetAttributeValue<string>("name"),
-                command.GetAttributeValue<string>("uniquename"),
+                GetAttributeText(command, "buttonlabeltext"),
+                GetAttributeText(command, "grouptitle"),
+                GetAttributeText(command, "buttontooltiptitle"),
+                GetAttributeText(command, "name"),
+                GetAttributeText(command, "uniquename"),
                 command.GetAttributeValue<Guid>("appactionid").ToString("D"));
         }
 
@@ -407,6 +420,43 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             return string.Empty;
+        }
+
+        private static string GetAttributeText(Entity entity, string attributeName)
+        {
+            if (entity == null ||
+                string.IsNullOrWhiteSpace(attributeName) ||
+                !entity.Contains(attributeName) ||
+                entity[attributeName] == null)
+            {
+                return string.Empty;
+            }
+
+            var value = entity[attributeName];
+            var aliased = value as AliasedValue;
+            if (aliased != null)
+            {
+                value = aliased.Value;
+            }
+
+            var text = value as string;
+            if (text != null)
+            {
+                return text;
+            }
+
+            var label = value as Label;
+            if (label?.UserLocalizedLabel != null)
+            {
+                return label.UserLocalizedLabel.Label ?? string.Empty;
+            }
+
+            if (label?.LocalizedLabels != null && label.LocalizedLabels.Count > 0)
+            {
+                return label.LocalizedLabels[0].Label ?? string.Empty;
+            }
+
+            return Convert.ToString(value) ?? string.Empty;
         }
 
         private static decimal GetDecimalValue(Entity entity, string attributeName)
