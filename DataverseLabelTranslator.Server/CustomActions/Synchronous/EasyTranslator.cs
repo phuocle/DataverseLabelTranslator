@@ -14,6 +14,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 { "dashboards", () => new DashboardAdapter() },
                 { "webresources", () => new WebResourceAdapter() },
                 { "globalOptionSet", () => new GlobalOptionSetAdapter() },
+                { "options", () => new OptionSetAdapter() },
                 { "entityMeta", () => new EntityMetadataAdapter() },
                 { "views", () => new ViewAdapter() },
                 { "formMeta", () => new FormMetaAdapter() },

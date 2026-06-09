@@ -164,7 +164,6 @@ DataverseLabelTranslator.WebResource/
     XrmTranslator.js
     EasyTranslatorHandler.js
     AttributeHandler.js
-    OptionSetHandler.js
     FormHandler.js
     BpfHandler.js
     RibbonHandler.js

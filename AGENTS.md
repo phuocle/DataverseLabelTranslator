@@ -51,7 +51,7 @@ These numbers are stable shorthand for humans and AI agents; do not reorder, ren
 | #   | Toolbar Type           | Handler JS                     | Test File                              |
 | --- | ---------------------- | ------------------------------ | -------------------------------------- |
 | 1   | Attributes             | `DataverseLabelTranslator.WebResource/js/Handler/AttributeHandler.js`       | None yet                                                           |
-| 2   | Option Sets            | `DataverseLabelTranslator.WebResource/js/Handler/OptionSetHandler.js`       | None yet                                                           |
+| 2   | Option Sets            | `DataverseLabelTranslator.WebResource/js/EasyTranslatorHandler.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/OptionSetAdapter.cs` | None yet                                                           |
 | 3   | Forms                  | `DataverseLabelTranslator.WebResource/js/Handler/FormHandler.js`            | None yet                                                           |
 | 4   | Views                  | `DataverseLabelTranslator.WebResource/js/Handler/ViewHandler.js`            | None yet                                                           |
 | 5   | Form Metadata          | `DataverseLabelTranslator.WebResource/js/Handler/FormMetaHandler.js`        | None yet                                                           |

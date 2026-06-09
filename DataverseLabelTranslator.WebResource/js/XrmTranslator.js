@@ -1248,7 +1248,7 @@
         if (XrmTranslator.GetType() === "attributes") {
             currentHandler = AttributeHandler;
         } else if (XrmTranslator.GetType() === "options") {
-            currentHandler = OptionSetHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "forms") {
             w2ui["grid_toolbar"].show("removeOverriddenAttributeLabels");
             currentHandler = FormHandler;
