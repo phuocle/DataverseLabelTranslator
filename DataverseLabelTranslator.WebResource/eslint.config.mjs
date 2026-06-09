@@ -21,7 +21,6 @@ const appGlobals = {
   GetGlobalContext: "readonly",
   Helper: "readonly",
   JSZip: "readonly",
-  ModernCommandHandler: "readonly",
   OptionSetHandler: "readonly",
   RelationshipHandler: "readonly",
   RibbonHandler: "readonly",

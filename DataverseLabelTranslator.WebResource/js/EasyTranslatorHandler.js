@@ -208,7 +208,8 @@
                 "formMeta",
                 "relationships",
                 "charts",
-                "entityMessages"
+                "entityMessages",
+                "commands"
             ].indexOf(type) !== -1
         );
     };

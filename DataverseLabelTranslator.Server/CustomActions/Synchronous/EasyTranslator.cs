@@ -19,7 +19,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 { "formMeta", () => new FormMetaAdapter() },
                 { "relationships", () => new RelationshipAdapter() },
                 { "charts", () => new ChartAdapter() },
-                { "entityMessages", () => new EntityMessageAdapter() }
+                { "entityMessages", () => new EntityMessageAdapter() },
+                { "commands", () => new CommandAdapter() }
             };
 
         public object Loading(IPluginExecutionContext context, IOrganizationService serviceAdmin, IOrganizationService service, ITracingService tracing, string json)

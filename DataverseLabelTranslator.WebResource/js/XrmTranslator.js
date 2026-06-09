@@ -1278,7 +1278,7 @@
         } else if (XrmTranslator.GetType() === "ribbons") {
             currentHandler = RibbonHandler;
         } else if (XrmTranslator.GetType() === "commands") {
-            currentHandler = ModernCommandHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "entityMessages") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "content") {

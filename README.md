@@ -175,7 +175,6 @@ DataverseLabelTranslator.WebResource/
     BpfHandler.js
     BusinessRuleHandler.js
     RibbonHandler.js
-    ModernCommandHandler.js
     ContentSnippetHandler.js
     TranslationHandler.js
     TranslationDictionaryService.js

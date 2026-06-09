@@ -16,6 +16,7 @@ Doc nay da duoc sync theo code hien tai. No khong con la plan ban dau cho type 1
 - `relationships`
 - `charts`
 - `entityMessages`
+- `commands`
 
 Client toolbar load/save cua cac type tren di qua:
 
@@ -76,6 +77,7 @@ one server adapter per Dataverse domain
 | Relationships | `relationships` | `EasyTranslatorHandler` |
 | Charts | `charts` | `EasyTranslatorHandler` |
 | Entity Messages | `entityMessages` | `EasyTranslatorHandler` |
+| Commands | `commands` | `EasyTranslatorHandler` |
 | Sitemap | `sitemap` | `EasyTranslatorHandler` |
 | Dashboards | `dashboards` | `EasyTranslatorHandler` |
 | Web Resources | `webresources` | `EasyTranslatorHandler` |
@@ -83,7 +85,7 @@ one server adapter per Dataverse domain
 
 `EasyTranslatorHandler.IsUnifiedType()` phai stay in sync voi danh sach tren. Hien tai no dung chinh danh sach nay de AI toolbar path biet day la unified type.
 
-`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `EntityMessageHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
+`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `EntityMessageHandler.js`, `ModernCommandHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
 
 ## Server Adapter Registry
 
@@ -101,6 +103,7 @@ one server adapter per Dataverse domain
 | `relationships` | `RelationshipAdapter` |
 | `charts` | `ChartAdapter` |
 | `entityMessages` | `EntityMessageAdapter` |
+| `commands` | `CommandAdapter` |
 
 Unknown or blank `translatorType` fails in `EasyTranslator.ResolveAdapter()`.
 
@@ -227,6 +230,7 @@ Publishing input reuses `publishTargets`:
 | Relationships | `relationships` | `RelationshipAdapter` | tree for all, flat for entity | `entity` |
 | Charts | `charts` | `ChartAdapter` | tree for all, flat for entity | `entity` |
 | Entity Messages | `entityMessages` | `EntityMessageAdapter` | flat | `entity` |
+| Commands | `commands` | `CommandAdapter` | tree | `entity` |
 | Sitemap | `sitemap` | `SitemapAdapter` | tree | `sitemap`, `appmodule` |
 | Dashboards | `dashboards` | `DashboardAdapter` | flat | `dashboard` |
 | Web Resources | `webresources` | `WebResourceAdapter` | tree for Display Text, flat for Description | `webresource` |
@@ -288,6 +292,14 @@ Publishing input reuses `publishTargets`:
 - Save re-exports a fresh translation package on the server, applies `changedRows`, writes `CrmTranslations.xml` back into the ZIP, imports translations, then returns an entity publish target.
 - Server ZIP processing is intentionally traced because Dataverse sandbox support for framework compression APIs must be verified in the target environment.
 - The browser stays generic and does not parse Display Strings rows, write translation ZIPs, or apply entity-message domain changes.
+
+### Commands
+
+- Reads `appaction` rows from the selected solution and selected entity.
+- Parent rows represent the modern command path by location and command hierarchy.
+- Child rows represent `Text`, `Title`, `Description`, `Accessibility Text`, and `Group Title`.
+- Save updates loc labels on `appaction` with `SetLocLabelsRequest`.
+- Publish targets are entity logical names.
 
 ### Sitemap
 
@@ -393,6 +405,7 @@ Legacy client files for migrated unified types have been removed from `js/Handle
 
 ```text
 EntityMessageHandler.js
+ModernCommandHandler.js
 SiteMapHandler.js
 DashboardHandler.js
 WebResourceHandler.js
