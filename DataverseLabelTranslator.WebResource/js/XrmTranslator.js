@@ -41,6 +41,8 @@
     var PUBLISH_XML_JOB_POLL_INTERVAL_MS = 30000;
     var IMPORT_JOB_POLL_INTERVAL_MS = 5000;
     var OPERATION_STATE_MAX_AGE_MS = 10 * 60 * 1000;
+    var OPERATION_STATE_STORAGE_KEY = "DataverseLabelTranslator.operationState";
+    var PUBLISH_XML_JOB_STORAGE_KEY = "DataverseLabelTranslator.publishXmlJob";
     var statusBannerAutoHideTimer = null;
     var publishXmlJobPollTimer = null;
     var publishXmlJobPollInFlight = false;
@@ -206,11 +208,16 @@
 
     function getStoredPublishXmlJob() {
         if (!publishXmlJobState) {
+            publishXmlJobState = readStoredObject(PUBLISH_XML_JOB_STORAGE_KEY);
+        }
+
+        if (!publishXmlJobState) {
             return null;
         }
 
         if (publishXmlJobState.source !== "DataverseLabelTranslator" || !publishXmlJobState.jobId) {
             publishXmlJobState = null;
+            writeStoredObject(PUBLISH_XML_JOB_STORAGE_KEY, null);
             return null;
         }
 
@@ -220,6 +227,45 @@
     function isNotFoundError(error) {
         var message = String((error && (error.message || error.statusText || error)) || "");
         return /not\s+found|does\s+not\s+exist|0x80040217/i.test(message);
+    }
+
+    function getStorageKey(key) {
+        var clientUrl = "";
+        try {
+            clientUrl = GetGlobalContext && GetGlobalContext().getClientUrl ? GetGlobalContext().getClientUrl() : "";
+        } catch (_error) {
+            clientUrl = "";
+        }
+
+        return key + ":" + clientUrl;
+    }
+
+    function readStoredObject(key) {
+        if (!window.localStorage) {
+            return null;
+        }
+
+        try {
+            var value = window.localStorage.getItem(getStorageKey(key));
+            return value ? JSON.parse(value) : null;
+        } catch (_error) {
+            return null;
+        }
+    }
+
+    function writeStoredObject(key, value) {
+        if (!window.localStorage) {
+            return;
+        }
+
+        try {
+            var storageKey = getStorageKey(key);
+            if (value) {
+                window.localStorage.setItem(storageKey, JSON.stringify(value));
+            } else {
+                window.localStorage.removeItem(storageKey);
+            }
+        } catch (_error) {}
     }
 
     function retrievePublishJob(jobId) {
@@ -242,6 +288,7 @@
 
     function persistPublishXmlJob(job) {
         publishXmlJobState = job ? Object.assign({}, job) : null;
+        writeStoredObject(PUBLISH_XML_JOB_STORAGE_KEY, publishXmlJobState);
     }
 
     function extractAsyncOperationId(response) {
@@ -269,16 +316,22 @@
 
     function getStoredOperationState() {
         if (!operationState) {
+            operationState = readStoredObject(OPERATION_STATE_STORAGE_KEY);
+        }
+
+        if (!operationState) {
             return null;
         }
 
         if (operationState.source !== "DataverseLabelTranslator" || !operationState.phase) {
             operationState = null;
+            writeStoredObject(OPERATION_STATE_STORAGE_KEY, null);
             return null;
         }
 
         if (isOperationStateStale(operationState)) {
             operationState = null;
+            writeStoredObject(OPERATION_STATE_STORAGE_KEY, null);
             return null;
         }
 
@@ -287,14 +340,21 @@
 
     function persistOperationState(state) {
         operationState = state ? Object.assign({}, state) : null;
+        writeStoredObject(OPERATION_STATE_STORAGE_KEY, operationState);
     }
 
     function clearStoredOperationState() {
         operationState = null;
+        writeStoredObject(OPERATION_STATE_STORAGE_KEY, null);
     }
 
     function isOperationStateStale(state) {
-        if (!state || state.phase === "publishing") {
+        if (
+            !state ||
+            state.phase === "importing" ||
+            state.phase === "startingPublish" ||
+            state.phase === "publishing"
+        ) {
             return false;
         }
 
@@ -530,6 +590,29 @@
         publishXmlJobPollTimer = setInterval(pollPublishXmlJobOnce, PUBLISH_XML_JOB_POLL_INTERVAL_MS);
     }
 
+    function reloadRibbonGridAfterPublishIfNeeded(job) {
+        if (!job || job.type !== "ribbons" || XrmTranslator.GetType() !== "ribbons") {
+            return Promise.resolve(false);
+        }
+
+        var jobEntity = String(job.entityLogicalName || "").toLowerCase();
+        var currentEntity = String(XrmTranslator.GetEntity() || "").toLowerCase();
+        if (jobEntity && currentEntity && jobEntity !== currentEntity) {
+            return Promise.resolve(false);
+        }
+
+        if (!currentHandler || typeof currentHandler.Load !== "function") {
+            return Promise.resolve(false);
+        }
+
+        var toolbarType = getOperationToolbarType(job) || "Ribbons";
+        XrmTranslator.LockGrid("Reloading " + toolbarType);
+        return currentHandler.Load(Helper.GetOperationReLoading()).then(function () {
+            XrmTranslator.UnlockGrid();
+            return true;
+        });
+    }
+
     function clearImportJobPoll() {
         if (importJobPollTimer) {
             clearTimeout(importJobPollTimer);
@@ -545,6 +628,17 @@
 
         var progress = parseFloat(importJob.progress);
         return !!importJob.completedon || (!isNaN(progress) && progress >= 100);
+    }
+
+    function isAsyncOperationSucceeded(asyncOperation) {
+        var stateCode = parseAsyncOperationCode(asyncOperation && asyncOperation.statecode);
+        var statusCode = parseAsyncOperationCode(asyncOperation && asyncOperation.statuscode);
+        return stateCode === 3 && statusCode === 30;
+    }
+
+    function isAsyncOperationFailedOrCanceled(asyncOperation) {
+        var statusCode = parseAsyncOperationCode(asyncOperation && asyncOperation.statuscode);
+        return statusCode === 31 || statusCode === 32;
     }
 
     function startPublishAllXmlFromOperationState(state) {
@@ -568,14 +662,14 @@
             blockLoad: true
         });
 
-        return XrmTranslator.RunAsBaseLanguage(function () {
-            return WebApiClient.SendRequest(
-                "POST",
-                WebApiClient.GetApiUrl({ apiVersion: "9.2" }) + "PublishAllXmlAsync()",
-                null
-            );
+        return Helper.ExecuteTypedCustomAction("EasyTranslator", Helper.CustomActionTypes.Publishing, {
+            translatorType: state.type || "ribbons",
+            importJobId: state.importJobId || null,
+            entityName: state.entityLogicalName || null,
+            publishTargets: [{ kind: "publishAllXml", id: state.entityLogicalName || "all" }]
         }).then(function (response) {
-            var jobId = extractAsyncOperationId(response);
+            var output = Helper.GetCustomActionObject(response);
+            var jobId = output && output.publish ? output.publish.operationId : extractAsyncOperationId(output);
             if (!jobId) {
                 throw new Error("PublishAllXmlAsync did not return AsyncOperationId.");
             }
@@ -605,11 +699,31 @@
             }
 
             importJobPollInFlight = true;
-            retrieveImportJob(currentState.importJobId)
+            var importStatus = currentState.operationId
+                ? retrievePublishJob(currentState.operationId)
+                : retrieveImportJob(currentState.importJobId);
+
+            importStatus
                 .then(function (importJob) {
                     importJobPollInFlight = false;
 
-                    if (!isImportJobCompleted(importJob)) {
+                    if (currentState.operationId && isAsyncOperationFailedOrCanceled(importJob)) {
+                        XrmTranslator.ClearOperationStatus({
+                            status: {
+                                tone: "error",
+                                message: "Ribbon solution import failed. Save and Load are available.",
+                                autoHideMs: 8000
+                            }
+                        });
+                        XrmTranslator.UnlockGrid();
+                        return null;
+                    }
+
+                    if (
+                        currentState.operationId
+                            ? !isAsyncOperationSucceeded(importJob)
+                            : !isImportJobCompleted(importJob)
+                    ) {
                         scheduleImportJobPoll(currentState);
                         return null;
                     }
@@ -1275,7 +1389,7 @@
         } else if (XrmTranslator.GetType() === "businessRules") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "ribbons") {
-            currentHandler = RibbonHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "commands") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "entityMessages") {
@@ -1976,7 +2090,9 @@
             clearStoredOperationState();
         }
 
-        if (options.showCompleted) {
+        if (options.status) {
+            showStatusBanner(options.status);
+        } else if (options.showCompleted) {
             showStatusBanner({
                 tone: "success",
                 message: toolbarType
@@ -2015,15 +2131,37 @@
         return retrievePublishJob(job.jobId)
             .then(function (asyncOperation) {
                 if (isPublishXmlJobTerminal(asyncOperation)) {
+                    if (!isAsyncOperationSucceeded(asyncOperation)) {
+                        XrmTranslator.ClearPublishXmlJob({
+                            status: {
+                                tone: "error",
+                                message: "Publish XML failed or was canceled. Save and Load are available.",
+                                autoHideMs: 8000
+                            },
+                            enableSaveAfterClear: true
+                        });
+                        XrmTranslator.UnlockGrid();
+                        return {
+                            hasRunningJob: false,
+                            job: job,
+                            cleared: true,
+                            failed: true,
+                            asyncOperation: asyncOperation
+                        };
+                    }
+
                     XrmTranslator.ClearPublishXmlJob({ showCompleted: true, enableSaveAfterClear: true });
-                    XrmTranslator.UnlockGrid();
-                    return {
-                        hasRunningJob: false,
-                        job: job,
-                        cleared: true,
-                        completed: true,
-                        asyncOperation: asyncOperation
-                    };
+                    return reloadRibbonGridAfterPublishIfNeeded(job).then(function (reloaded) {
+                        XrmTranslator.UnlockGrid();
+                        return {
+                            hasRunningJob: false,
+                            job: job,
+                            cleared: true,
+                            completed: true,
+                            reloaded: reloaded,
+                            asyncOperation: asyncOperation
+                        };
+                    });
                 }
 
                 if (options.countAttempt) {
@@ -3622,7 +3760,7 @@
             "<li><b>Charts</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Charts &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "<li><b>Business Process Flows</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Process Flows &rarr; Load &rarr; Translate &rarr; Save</li>" +
             "<li><b>Business Rules</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Business Rules &rarr; Load &rarr; Translate &rarr; Save. Save temporarily deactivates each changed rule, patches workflow XAML, then reactivates it.</li>" +
-            "<li><b>Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load &rarr; Translate &rarr; Save. Save downloads a backup first, then starts Publish XML asynchronously.</li>" +
+            "<li><b>Ribbons</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Ribbons &rarr; Load &rarr; Translate &rarr; Save. Save imports the updated solution asynchronously, then starts Publish XML asynchronously.</li>" +
             "<li><b>Commands</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Commands &rarr; Load &rarr; Translate &rarr; Save. Loads modern command designer appaction labels and publishes the selected entity.</li>" +
             "<li><b>Entity Messages</b> — Solution &rarr; Entity &rarr; <i>[entity]</i> &rarr; Type &rarr; Entity Messages &rarr; Load &rarr; Translate &rarr; Save. Loads table messages/display strings from the selected solution translation package, imports changed translations, then publishes the selected entity.</li>" +
             "<li><b>Content Snippets</b> — Solution &rarr; Entity &rarr; Adx_contentsnippet &rarr; Type &rarr; Content Snippets &rarr; Load &rarr; Translate &rarr; Save</li>" +

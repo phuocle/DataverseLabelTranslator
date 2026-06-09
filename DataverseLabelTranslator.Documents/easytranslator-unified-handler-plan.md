@@ -29,6 +29,7 @@ Doc nay da duoc sync theo code hien tai. No khong con la plan ban dau cho type 1
 - `businessRules`
 - `bpf`
 - `content`
+- `ribbons`
 
 Client toolbar load/save cua cac type tren di qua:
 
@@ -94,6 +95,7 @@ one server adapter per Dataverse domain
 | Business Rules | `businessRules` | `EasyTranslatorHandler` |
 | Business Process Flows | `bpf` | `EasyTranslatorHandler` |
 | Content Snippets | `content` | `EasyTranslatorHandler` |
+| Ribbons | `ribbons` | `EasyTranslatorHandler` |
 | Sitemap | `sitemap` | `EasyTranslatorHandler` |
 | Dashboards | `dashboards` | `EasyTranslatorHandler` |
 | Web Resources | `webresources` | `EasyTranslatorHandler` |
@@ -103,7 +105,7 @@ one server adapter per Dataverse domain
 
 `EasyTranslatorHandler.IsUnifiedType()` phai stay in sync voi danh sach tren. Hien tai no dung chinh danh sach nay de AI toolbar path biet day la unified type.
 
-`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `AttributeHandler.js`, `OptionSetHandler.js`, `FormHandler.js`, `BpfHandler.js`, `ContentSnippetHandler.js`, `EntityMessageHandler.js`, `ModernCommandHandler.js`, `BusinessRuleHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
+`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `AttributeHandler.js`, `OptionSetHandler.js`, `FormHandler.js`, `BpfHandler.js`, `ContentSnippetHandler.js`, `EntityMessageHandler.js`, `ModernCommandHandler.js`, `BusinessRuleHandler.js`, `RibbonHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
 
 ## Server Adapter Registry
 
@@ -128,6 +130,7 @@ one server adapter per Dataverse domain
 | `businessRules` | `BusinessRuleAdapter` |
 | `bpf` | `BpfAdapter` |
 | `content` | `ContentSnippetAdapter` |
+| `ribbons` | `RibbonAdapter` |
 
 Unknown or blank `translatorType` fails in `EasyTranslator.ResolveAdapter()`.
 
@@ -265,6 +268,7 @@ Publishing input reuses `publishTargets`:
 | Attributes | `attributes` | `AttributeAdapter` | flat | `entity` |
 | Option Sets | `options` | `OptionSetAdapter` | tree | `entity`, `globalOptionSet` |
 | Forms | `forms` | `FormAdapter` | tree | `entity` |
+| Ribbons | `ribbons` | `RibbonAdapter` | tree | `publishAllXml` |
 
 ## Type-Specific Notes
 
@@ -427,6 +431,19 @@ Publishing input reuses `publishTargets`:
 - Save updates attribute metadata labels on the server with `UpdateAttributeRequest`.
 - Publish targets are entity logical names.
 
+### Ribbons
+
+- Reads selected solution ZIP on the server.
+- Reads `customizations.xml` and selected entity `RibbonDiffXml`.
+- Parent rows represent `Button`, `SplitButton`, and `FlyoutAnchor` controls.
+- Child rows represent `LabelText`, `ToolTipTitle`, and `ToolTipDescription`.
+- Save re-exports the selected solution ZIP on the server, applies generic `changedRows` to fresh `customizations.xml`, writes it back into the ZIP, and starts `ImportSolutionAsync`.
+- Client persists the returned import job id, shows `Importing...`, and polls until import succeeds.
+- After import succeeds, client calls `EasyTranslator` Publishing; `RibbonAdapter` starts `PublishAllXmlAsync` and returns the publish async operation id.
+- Client persists the publish job id, shows `Publishing...`, and polls until publish reaches a terminal state.
+- When publish succeeds and the user is still on the same ribbon grid, client shows `Published`, then `Reloading...`, then reloads the grid. If the user refreshed back to another context, client only shows `Published`.
+- Publish kind is `publishAllXml`; ribbon does not use entity-scoped `PublishXml`.
+
 ## EasyTranslatorHandler Responsibilities
 
 Current implemented responsibilities:
@@ -491,6 +508,7 @@ SiteMapHandler.js
 DashboardHandler.js
 WebResourceHandler.js
 GlobalOptionSetHandler.js
+RibbonHandler.js
 ```
 
 `TranslationPackageService.js` was also removed because ZIP handling for Entity Messages moved to the server adapter path.

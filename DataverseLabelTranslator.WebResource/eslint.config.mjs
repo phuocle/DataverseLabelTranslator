@@ -16,7 +16,6 @@ const appGlobals = {
   Helper: "readonly",
   JSZip: "readonly",
   RelationshipHandler: "readonly",
-  RibbonHandler: "readonly",
   TranslationDictionaryService: "readonly",
   TranslationHandler: "readonly",
   ViewHandler: "readonly",

@@ -42,7 +42,7 @@ When available, **14. Content Snippets** loads `adx_contentsnippet` records thro
 
 ### Ribbon Labels
 
-**11. Ribbons** loads classic `RibbonDiffXml` labels for the selected entity only. Each ribbon button is shown as a parent row with `Text`, `Title`, and `Description` child rows, even when a tooltip value is currently blank. Save imports the updated ribbon solution XML and starts Dataverse Publish XML, so the app shows a status banner and temporarily blocks Save/Load until the server job finishes.
+**11. Ribbons** loads classic `RibbonDiffXml` labels for the selected entity only through the server-side unified handler. Each ribbon button is shown as a parent row with `Text`, `Title`, and `Description` child rows, even when a tooltip value is currently blank. Save starts `ImportSolutionAsync`, waits for the import job, then starts `PublishAllXmlAsync`, so the app shows status banners and temporarily blocks Save/Load until the server jobs finish.
 
 ### Business Rule Labels
 
@@ -167,8 +167,6 @@ DataverseLabelTranslator.WebResource/
   js/
     XrmTranslator.js
     EasyTranslatorHandler.js
-    FormHandler.js
-    RibbonHandler.js
     TranslationHandler.js
     TranslationDictionaryService.js
     DialogHelper.js

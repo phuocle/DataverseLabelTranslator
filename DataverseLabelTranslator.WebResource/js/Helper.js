@@ -408,6 +408,13 @@
         return Helper.ExecuteTypedCustomAction(options.actionName, Helper.CustomActionTypes.Saving, savePayload)
             .then(function (saveResult) {
                 var saveOutput = Helper.GetCustomActionObject(saveResult);
+                if (typeof options.afterSave === "function" && options.afterSave(saveOutput, saveResult) === true) {
+                    return {
+                        skipPostSaveFlow: true,
+                        result: saveResult
+                    };
+                }
+
                 var publishPayload =
                     typeof options.getPublishPayload === "function"
                         ? options.getPublishPayload(saveOutput, saveResult)
@@ -444,6 +451,10 @@
                 });
             })
             .then(function (result) {
+                if (result && result.skipPostSaveFlow) {
+                    return result.result;
+                }
+
                 var output = Helper.GetCustomActionObject(result);
                 var shouldReload =
                     typeof options.shouldReload === "function" ? options.shouldReload(output, result) : false;

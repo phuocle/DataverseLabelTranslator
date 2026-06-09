@@ -146,6 +146,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
     public class EasyTranslatorPublishInput : CustomActionInput
     {
         public string translatorType { get; set; }
+        public string importJobId { get; set; }
+        public string entityName { get; set; }
         public List<EasyTranslatorPublishTarget> publishTargets { get; set; } = new List<EasyTranslatorPublishTarget>();
     }
 
@@ -153,7 +155,23 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
     {
         public bool changed { get; set; }
         public int changedRowCount { get; set; }
+        public bool needsPublish { get; set; }
+        public string publishKind { get; set; }
+        public EasyTranslatorAsyncOperationOutput import { get; set; }
+        public EasyTranslatorAsyncOperationOutput publish { get; set; }
         public List<EasyTranslatorPublishTarget> publishTargets { get; set; } = new List<EasyTranslatorPublishTarget>();
+    }
+
+    public class EasyTranslatorAsyncOperationOutput
+    {
+        public string mode { get; set; }
+        public string kind { get; set; }
+        public string operationId { get; set; }
+        public string importJobId { get; set; }
+        public string translatorType { get; set; }
+        public string entityName { get; set; }
+        public string startedOn { get; set; }
+        public string lastKnownRunningOn { get; set; }
     }
 
     public class EasyTranslatorPublishTarget

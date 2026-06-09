@@ -284,6 +284,7 @@
                 "formMeta",
                 "relationships",
                 "charts",
+                "ribbons",
                 "bpf",
                 "entityMessages",
                 "commands",
@@ -333,6 +334,30 @@
             },
             getPublishPayload: GetPublishPayload,
             getPublishedPayload: GetPublishPayload,
+            afterSave: function (output) {
+                if (!output || app.GetType() !== "ribbons" || !output.import || !output.import.importJobId) {
+                    return false;
+                }
+
+                var toolbarType = app.GetTypeStateLabel("ribbons");
+                app.StartOperationStatus({
+                    phase: "importing",
+                    tone: "info",
+                    icon: "...",
+                    message: "Importing " + toolbarType,
+                    type: "ribbons",
+                    toolbarType: toolbarType,
+                    entityLogicalName: app.GetEntity(),
+                    importJobId: output.import.importJobId,
+                    operationId: output.import.operationId || output.import.importJobId,
+                    blockSave: true,
+                    blockLoad: true
+                });
+                app.ApplyStoredOperationStatus();
+                app.LockGrid("Importing " + toolbarType);
+
+                return true;
+            },
             shouldReload: function (output) {
                 return HasPublishTargets(output) || (output && output.changed === true);
             },
