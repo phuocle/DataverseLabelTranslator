@@ -1267,7 +1267,7 @@
         } else if (XrmTranslator.GetType() === "charts") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "bpf") {
-            currentHandler = BpfHandler;
+            currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "businessRules") {
             currentHandler = EasyTranslatorHandler;
         } else if (XrmTranslator.GetType() === "ribbons") {

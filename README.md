@@ -48,6 +48,10 @@ When available, **14. Content Snippets** loads `adx_contentsnippet` records grou
 
 **10. Business Rules** loads Dataverse business rule labels from `workflow.xaml` through the server-side unified handler, including error messages, recommendation titles, and recommendation details. Save temporarily deactivates each changed rule, patches only its `mcwo:StepLabel` entries by `LabelId` and LCID, then reactivates the rule. The runtime flow does not download or persist a backup file; it keeps the original XAML in memory for best-effort rollback during the same save operation.
 
+### Business Process Flow Labels
+
+**9. Business Process Flows** loads BPF stages and field steps from `workflow.clientdata` through the server-side unified handler. Save temporarily deactivates each changed BPF, patches the matching `mcwo:StepLabel` entries in `workflow.xaml` by stage or field id and LCID, then reactivates the BPF.
+
 ### Modern Command Labels
 
 **12. Commands** loads modern command designer records from `appaction` components in the selected solution and selected entity. Each command is shown as a parent node with `Text`, `Title`, `Description`, `Accessibility Text`, and `Group Title` child rows. Save writes changed labels with Dataverse `SetLocLabels` and publishes the selected entity once; it does not publish a model-driven app.
@@ -164,7 +168,6 @@ DataverseLabelTranslator.WebResource/
     XrmTranslator.js
     EasyTranslatorHandler.js
     FormHandler.js
-    BpfHandler.js
     RibbonHandler.js
     ContentSnippetHandler.js
     TranslationHandler.js

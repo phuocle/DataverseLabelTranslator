@@ -21,6 +21,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 { "formMeta", () => new FormMetaAdapter() },
                 { "relationships", () => new RelationshipAdapter() },
                 { "charts", () => new ChartAdapter() },
+                { "bpf", () => new BpfAdapter() },
                 { "entityMessages", () => new EntityMessageAdapter() },
                 { "commands", () => new CommandAdapter() },
                 { "businessRules", () => new BusinessRuleAdapter() }

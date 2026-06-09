@@ -210,6 +210,7 @@
                 "formMeta",
                 "relationships",
                 "charts",
+                "bpf",
                 "entityMessages",
                 "commands",
                 "businessRules"

@@ -27,6 +27,7 @@ Doc nay da duoc sync theo code hien tai. No khong con la plan ban dau cho type 1
 - `entityMessages`
 - `commands`
 - `businessRules`
+- `bpf`
 
 Client toolbar load/save cua cac type tren di qua:
 
@@ -89,6 +90,7 @@ one server adapter per Dataverse domain
 | Entity Messages | `entityMessages` | `EasyTranslatorHandler` |
 | Commands | `commands` | `EasyTranslatorHandler` |
 | Business Rules | `businessRules` | `EasyTranslatorHandler` |
+| Business Process Flows | `bpf` | `EasyTranslatorHandler` |
 | Sitemap | `sitemap` | `EasyTranslatorHandler` |
 | Dashboards | `dashboards` | `EasyTranslatorHandler` |
 | Web Resources | `webresources` | `EasyTranslatorHandler` |
@@ -98,7 +100,7 @@ one server adapter per Dataverse domain
 
 `EasyTranslatorHandler.IsUnifiedType()` phai stay in sync voi danh sach tren. Hien tai no dung chinh danh sach nay de AI toolbar path biet day la unified type.
 
-`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `AttributeHandler.js`, `OptionSetHandler.js`, `EntityMessageHandler.js`, `ModernCommandHandler.js`, `BusinessRuleHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
+`App.html` load `EasyTranslatorHandler.js` truc tiep. Cac old handler files cho `AttributeHandler.js`, `OptionSetHandler.js`, `BpfHandler.js`, `EntityMessageHandler.js`, `ModernCommandHandler.js`, `BusinessRuleHandler.js`, `SiteMapHandler.js`, `DashboardHandler.js`, `WebResourceHandler.js`, va `GlobalOptionSetHandler.js` da bi xoa khoi source web resource de `deploy.debug.bat` khong deploy chung nua.
 
 ## Server Adapter Registry
 
@@ -120,6 +122,7 @@ one server adapter per Dataverse domain
 | `entityMessages` | `EntityMessageAdapter` |
 | `commands` | `CommandAdapter` |
 | `businessRules` | `BusinessRuleAdapter` |
+| `bpf` | `BpfAdapter` |
 
 Unknown or blank `translatorType` fails in `EasyTranslator.ResolveAdapter()`.
 
@@ -248,6 +251,7 @@ Publishing input reuses `publishTargets`:
 | Entity Messages | `entityMessages` | `EntityMessageAdapter` | flat | `entity` |
 | Commands | `commands` | `CommandAdapter` | tree | `entity` |
 | Business Rules | `businessRules` | `BusinessRuleAdapter` | tree | `entity` |
+| Business Process Flows | `bpf` | `BpfAdapter` | tree | `entity` |
 | Sitemap | `sitemap` | `SitemapAdapter` | tree | `sitemap`, `appmodule` |
 | Dashboards | `dashboards` | `DashboardAdapter` | flat | `dashboard` |
 | Web Resources | `webresources` | `WebResourceAdapter` | tree for Display Text, flat for Description | `webresource` |
@@ -327,6 +331,17 @@ Publishing input reuses `publishTargets`:
 - Child rows represent `mcwo:StepLabel` entries from `workflow.xaml`.
 - Save updates XAML by `LabelId` and LCID on the server.
 - Active rules are temporarily deactivated before XAML update, then reactivated.
+- Server keeps original XAML in memory for rollback during the same save operation.
+- Publish targets are entity logical names.
+
+### Business Process Flows
+
+- Reads `workflow` rows where `category = 4` for the selected entity.
+- Parses `workflow.clientdata` on the server to return BPF parent rows, stage rows, and field rows.
+- Parent BPF rows are readonly.
+- Stage and field rows are editable and use generic `changedRows`.
+- Save updates `mcwo:StepLabel` entries in `workflow.xaml` by `StageId` or `ProcessStepId` and LCID.
+- Active BPFs are temporarily deactivated before XAML update, then reactivated.
 - Server keeps original XAML in memory for rollback during the same save operation.
 - Publish targets are entity logical names.
 
@@ -442,6 +457,7 @@ EntityMessageHandler.js
 ModernCommandHandler.js
 BusinessRuleHandler.js
 OptionSetHandler.js
+BpfHandler.js
 SiteMapHandler.js
 DashboardHandler.js
 WebResourceHandler.js
