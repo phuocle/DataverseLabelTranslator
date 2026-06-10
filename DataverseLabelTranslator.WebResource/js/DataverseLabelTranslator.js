@@ -1,4 +1,4 @@
-(function (DataverseLabelTranslatorHandler, undefined) {
+﻿(function (DataverseLabelTranslatorHandler, undefined) {
     "use strict";
 
     var actionName = "EasyTranslator";
@@ -1203,7 +1203,7 @@
 
         DataverseLabelTranslator.LockGrid(Helper.GetOperationLoading());
 
-        return XrmService.GetEntities(solutionId)
+        return Helper.GetEntities(solutionId)
             .then(function (solutionEntities) {
                 FillEntitySelector(solutionEntities);
                 DataverseLabelTranslator.UnlockGrid();
@@ -2000,11 +2000,11 @@
     };
 
     DataverseLabelTranslator.Initialize = function () {
-        XrmService.GetBaseLanguage()
+        Helper.GetBaseLanguage()
             .then(function (baseLanguage) {
                 DataverseLabelTranslator.SetBaseLanguage(baseLanguage);
                 InitializeGrid();
-                return XrmService.GetSolutions();
+                return Helper.GetSolutions();
             })
             .then(function (solutions) {
                 FillSolutionSelector(solutions || []);

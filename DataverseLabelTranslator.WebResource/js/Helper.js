@@ -1,6 +1,9 @@
 (function (Helper, undefined) {
     "use strict";
 
+    var otherActionName = "Other";
+    var baseLanguage = null;
+
     function GetXrm() {
         if (typeof Xrm !== "undefined") {
             return Xrm;
@@ -80,6 +83,47 @@
 
     Helper.GetOperationReLoading = function () {
         return Helper.UiText.Operations.ReLoading;
+    };
+
+    function ExecuteOther(operation, payload) {
+        var input = Object.assign({ operation: operation }, payload || {});
+
+        return Helper.ExecuteTypedCustomAction(otherActionName, Helper.CustomActionTypes.Other, input).then(
+            function (result) {
+                return Helper.GetCustomActionObject(result);
+            }
+        );
+    }
+
+    Helper.GetSolutions = function () {
+        return ExecuteOther("GetSolutions").then(function (output) {
+            return (output && output.solutions) || [];
+        });
+    };
+
+    Helper.GetEntities = function (solutionId) {
+        return ExecuteOther("GetEntities", { solutionId: solutionId || "all" }).then(function (output) {
+            return (output && output.entities) || [];
+        });
+    };
+
+    Helper.GetBaseLanguage = function () {
+        if (baseLanguage) {
+            return Promise.resolve(baseLanguage);
+        }
+
+        return ExecuteOther("GetBaseLanguage").then(function (output) {
+            baseLanguage = output && output.languageCode;
+            return baseLanguage;
+        });
+    };
+
+    Helper.GetAllNoneBaseLanguageCodes = function () {
+        return ExecuteOther("GetAllNoneBaseLanguageCodes").then(function (output) {
+            return {
+                LocaleIds: (output && output.LocaleIds) || []
+            };
+        });
     };
 
     Helper.GetTranslator = function () {

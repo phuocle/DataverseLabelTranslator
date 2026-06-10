@@ -32,42 +32,44 @@ The HTML dashboard loads JavaScript through `<script>` tags. There is no build s
 
 ## Architecture
 
-Handler-based IIFE modules orchestrated by `XrmTranslator.js`:
+Single-dashboard IIFE modules orchestrated by `DataverseLabelTranslator.js`:
 
 ```text
 User picks Entity -> Type -> Component -> Load
-XrmTranslator.SetHandler(type) -> handler.Load()
+DataverseLabelTranslator.SetHandler(type) -> DataverseLabelTranslatorHandler.Load()
 Grid populated per installed language columns
-User edits -> Save -> handler.Save() -> Web API PUT with MergeLabels
+User edits -> Save -> DataverseLabelTranslatorHandler.Save() -> Dataverse custom action -> C# EasyTranslator adapter
 ```
 
-Every handler: `Load()` fetches metadata and fills the w2ui grid, `Save()` extracts changes and writes them to Dataverse. Handlers read shared state from the `XrmTranslator` global. Key shared modules: `DialogHelper.js`, `TranslationDictionaryService.js`, `TranslationHandler.js`.
+`DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` is the main dashboard file and contains toolbar orchestration plus the unified JS handler formerly split into `EasyTranslatorHandler.js`. `Helper.js` contains shared helpers and the former `XrmService.js` custom-action wrappers. `DialogHelper.js`, `AIService.js`, `AppService.js`, and `DictionaryService.js` remain separate support modules.
+
+Legacy `XrmTranslator.js` and `TranslationHandler.js` were moved to `DataverseLabelTranslator.WebResource/backup/js/` for code lookup only. They are not loaded by `App.html` and are not part of the active dashboard.
 
 ## Toolbar Type Files
 
-Use this table first when mapping a numbered toolbar type to code and tests. Type selection and handler dispatch live in `DataverseLabelTranslator.WebResource/js/XrmTranslator.js`.
+Use this table first when mapping a numbered toolbar type to code and tests. Type selection and handler dispatch live in `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js`.
 These numbers are stable shorthand for humans and AI agents; do not reorder, renumber, or reuse them when editing the toolbar.
 
-| #   | Toolbar Type           | Handler JS                     | Test File                              |
-| --- | ---------------------- | ------------------------------ | -------------------------------------- |
-| 1   | Attributes             | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/AttributeAdapter.cs` | None yet                                                           |
-| 2   | Option Sets            | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/OptionSetAdapter.cs` | None yet                                                           |
-| 3   | Forms                  | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/FormAdapter.cs` | None yet                                                           |
-| 4   | Views                  | `DataverseLabelTranslator.WebResource/js/Handler/ViewHandler.js`            | None yet                                                           |
-| 5   | Form Metadata          | `DataverseLabelTranslator.WebResource/js/Handler/FormMetaHandler.js`        | None yet                                                           |
-| 6   | Entity Metadata        | `DataverseLabelTranslator.WebResource/js/Handler/EntityHandler.js`          | None yet                                                           |
-| 7   | Relationships          | `DataverseLabelTranslator.WebResource/js/Handler/RelationshipHandler.js`    | None yet                                                           |
-| 8   | Charts                 | `DataverseLabelTranslator.WebResource/js/Handler/ChartHandler.js`           | None yet                                                           |
-| 9   | Business Process Flows | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/BpfAdapter.cs` | None yet                                                           |
-| 10  | Business Rules         | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/BusinessRuleAdapter.cs` | None yet                                                           |
-| 11  | Ribbons                | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/RibbonAdapter.cs` | None yet                                                           |
-| 12  | Commands               | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/CommandAdapter.cs` | None yet                                                           |
-| 13  | Entity Messages        | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/EntityMessageAdapter.cs` | None yet                                                           |
-| 14  | Content Snippets       | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/ContentSnippetAdapter.cs` | None yet                                                           |
-| 15  | Sitemap                | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/SitemapAdapter.cs` | None yet                                                           |
-| 16  | Dashboards             | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/DashboardAdapter.cs` | None yet                                                           |
-| 17  | Web Resources          | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/WebResourceAdapter.cs` | None yet |
-| 18  | Global Option Sets     | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` + `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/GlobalOptionSetAdapter.cs` | None yet |
+| STT | Name                   | JS Handler                                                        | CS Handler                                                                                      | JS Unit Test | CS Unit Test |
+| --- | ---------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------ | ------------ |
+| 1   | Attributes             | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/AttributeAdapter.cs` | none         | none         |
+| 2   | Option Sets            | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/OptionSetAdapter.cs` | none         | none         |
+| 3   | Forms                  | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/FormAdapter.cs` | none         | none         |
+| 4   | Views                  | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/ViewAdapter.cs` | none         | none         |
+| 5   | Form Metadata          | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/FormMetaAdapter.cs` | none         | none         |
+| 6   | Entity Metadata        | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/EntityMetadataAdapter.cs` | none         | none         |
+| 7   | Relationships          | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/RelationshipAdapter.cs` | none         | none         |
+| 8   | Charts                 | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/ChartAdapter.cs` | none         | none         |
+| 9   | Business Process Flows | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/BpfAdapter.cs` | none         | none         |
+| 10  | Business Rules         | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/BusinessRuleAdapter.cs` | none         | none         |
+| 11  | Ribbons                | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/RibbonAdapter.cs` | none         | none         |
+| 12  | Commands               | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/CommandAdapter.cs` | none         | none         |
+| 13  | Entity Messages        | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/EntityMessageAdapter.cs` | none         | none         |
+| 14  | Content Snippets       | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/ContentSnippetAdapter.cs` | none         | none         |
+| 15  | Sitemap                | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/SitemapAdapter.cs` | none         | none         |
+| 16  | Dashboards             | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/DashboardAdapter.cs` | none         | none         |
+| 17  | Web Resources          | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/WebResourceAdapter.cs` | none         | none         |
+| 18  | Global Option Sets     | `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` | `DataverseLabelTranslator.Server/CustomActions/Synchronous/EasyTranslatorAdapters/GlobalOptionSetAdapter.cs` | none         | none         |
 
 Dashboards use `DataverseLabelTranslator.WebResource/js/DataverseLabelTranslator.js` with `DashboardAdapter.cs`. Dashboard grids intentionally show only the dashboard parent rows; do not load dashboard tabs, sections, or cells into type 16. Parent dashboard rows are editable directly across language columns. Forms use `DataverseLabelTranslator.js` with `FormAdapter.cs`.
 
@@ -78,7 +80,7 @@ DataverseLabelTranslator.WebResource/html/  Dataverse HTML web resources
 DataverseLabelTranslator.WebResource/js/    Dashboard and library JavaScript web resources
 DataverseLabelTranslator.WebResource/css/   CSS web resources
 DataverseLabelTranslator.WebResource/img/   Image web resources
-DataverseLabelTranslator.WebResource/tests/ Vitest unit tests
+DataverseLabelTranslator.WebResource/tests/ Reserved for future Vitest tests; currently empty
 DataverseLabelTranslator.Scripts/           Release, packaging, and AI config scripts
 DataverseLabelTranslator.Documents/         Repository docs
 ```
@@ -112,7 +114,12 @@ Run quality gates after code edits:
 
 - Run `npm --prefix DataverseLabelTranslator.WebResource run lint` after JavaScript or test changes.
 - Run `npm --prefix DataverseLabelTranslator.WebResource run format -- <changed-files>` for files edited in the current task. Paths passed to this command should be relative to `DataverseLabelTranslator.WebResource`. Do not run repo-wide formatting unless the user explicitly asks for it.
-- Run `npm --prefix DataverseLabelTranslator.WebResource test` for unit test verification, and `npm --prefix DataverseLabelTranslator.WebResource run test:coverage` when coverage is part of the requested work.
+
+### Unit Test Status
+
+There are currently no active JavaScript or C# unit tests in this repository. Test folders may exist as placeholders only.
+
+Important AI-agent rule: ignore unit-test work for normal tasks. Do not write new JavaScript or C# unit tests, do not add coverage requirements, and do not run unit-test commands unless the user explicitly asks to reintroduce tests. Use lint, formatting, build/deploy checks, and direct code inspection as the normal verification path.
 
 ### /pl-ai-sync
 
@@ -120,11 +127,11 @@ Regenerate and validate AI tool adapters from canonical `.agents/skills/pl-*/SKI
 
 ### /pl-unit-tests-webresource
 
-Run Vitest unit tests and optional coverage for Dataverse Label Translator. Use `npm --prefix DataverseLabelTranslator.WebResource test` for tests and `npm --prefix DataverseLabelTranslator.WebResource run test:coverage` for coverage. Unit tests must fake Dataverse/Xrm/browser APIs instead of calling live services. Do not deploy, commit, or push automatically.
+Deprecated while the project has no active JavaScript unit tests. Do not run this for normal work unless the user explicitly asks to reintroduce webresource tests.
 
 ### /pl-unit-tests-server
 
-Regenerate early-bound proxy classes with `DataverseLabelTranslator.ProxyTypes\run.bat`, then run server-side MSTest/FakeXrmEasy tests with `dotnet test DataverseLabelTranslator.Test\DataverseLabelTranslator.Test.csproj --configuration Debug`. Tests target `DataverseLabelTranslator.Server`, use `DataverseLabelTranslator.Shared.Test` helpers, and reference `DataverseLabelTranslator.ProxyTypes` for FakeXrmEasy early-bound types. Do not deploy, commit, or push automatically.
+Deprecated while the project has no active C# unit tests. Do not run this for normal work unless the user explicitly asks to reintroduce server tests.
 
 ### /pl-commit
 
@@ -140,8 +147,8 @@ When server code is edited under `DataverseLabelTranslator.Server`, run `Dataver
 
 ### /pl-release-0-preflight-deploy
 
-Run the release preflight gate before exporting solutions: run `pl-unit-tests-webresource`, run `pl-unit-tests-server`, require 100% coverage for both, build `DataverseLabelTranslator.Server`, run `pl-deploy-server`, then run `pl-deploy-webresource`.
-If tests, coverage, build, or deploy fails, stop and report the failure.
+Run the release preflight gate before exporting solutions: skip unit tests/coverage while the project has no active test suites, build `DataverseLabelTranslator.Server`, run `pl-deploy-server`, then run `pl-deploy-webresource`.
+If build or deploy fails, stop and report the failure.
 Do not export solutions, prepare AppSource, upload to Azure, stage, commit, or push.
 
 ### /pl-release-1-export-solutions

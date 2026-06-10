@@ -21,7 +21,6 @@ const appGlobals = {
   ViewHandler: "readonly",
   WebApiClient: "readonly",
   Xrm: "readonly",
-  XrmService: "readonly",
   XrmTranslator: "readonly",
   w2tabs: "readonly",
   w2utils: "readonly",
