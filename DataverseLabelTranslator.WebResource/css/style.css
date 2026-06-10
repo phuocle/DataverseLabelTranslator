@@ -300,6 +300,55 @@
   padding: 14px 0 16px !important;
 }
 
+.xqt-add-dictionary-body {
+  box-sizing: border-box;
+  color: #2f2f2f;
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 22px 28px 18px;
+}
+
+.xqt-add-dictionary-heading {
+  color: #1f1f1f;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 18px;
+}
+
+.xqt-add-dictionary-field {
+  margin: 0 0 14px;
+}
+
+.xqt-add-dictionary-label {
+  color: #4b5563;
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.xqt-add-dictionary-input {
+  background: #fff;
+  border: 1px solid #cfd8e3;
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #1f2937;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  height: 38px;
+  line-height: 20px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.xqt-add-dictionary-input:focus {
+  background: #fff;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+  outline: none;
+}
+
 .xqt-dialog-body {
   align-items: flex-start;
   box-sizing: border-box;

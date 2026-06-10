@@ -303,6 +303,7 @@
     DataverseLabelTranslator.Load = function (lockText) {
         var app = GetApp();
 
+        SetLoadedToolbarType(null);
         app.LockGrid(lockText || Helper.GetOperationLoading());
 
         return Helper.RunServerLoad({
@@ -316,6 +317,7 @@
 
                 app.SetMetadata(output.grid || {});
                 FillTable(output.grid || {});
+                SetLoadedToolbarType(app.GetType());
             }
         });
     };
@@ -674,6 +676,7 @@
     var currentHandler = null;
     var entityMetadata = {};
     var allEntities = [];
+    var loadedToolbarType = null;
     var ENTITY_DEPENDENT_TYPE_ITEMS = [
         "type:attributes",
         "type:options",
@@ -857,6 +860,7 @@
         SetToolbarItemsEnabled(["entitySelect", "type", "component", "load"], enabled);
 
         if (!enabled) {
+            SetLoadedToolbarType(null);
             SetToolbarItemsVisible(ENTITY_DEPENDENT_TYPE_ITEMS, false);
             SetToolbarItemsVisible(GLOBAL_TYPE_ITEMS, false);
             GetToolbar().get("entitySelect").selected = "none";
@@ -873,6 +877,8 @@
         var toolbar = GetToolbar();
         var typeItem = toolbar.get("type");
         var componentItem = toolbar.get("component");
+
+        SetLoadedToolbarType(null);
 
         if (entityTarget === "entitySelect:none" || entityTarget === "none") {
             SetToolbarItemsVisible(ENTITY_DEPENDENT_TYPE_ITEMS, false);
@@ -934,6 +940,24 @@
         return item ? item.text : type || "";
     }
 
+    function UpdateRemoveOverriddenButtonVisibility() {
+        var toolbar = GetToolbar();
+        if (!toolbar || !toolbar.get("removeOverriddenAttributeLabels")) {
+            return;
+        }
+
+        if (loadedToolbarType === "forms" && DataverseLabelTranslator.GetType() === "forms") {
+            toolbar.show("removeOverriddenAttributeLabels");
+        } else {
+            toolbar.hide("removeOverriddenAttributeLabels");
+        }
+    }
+
+    function SetLoadedToolbarType(type) {
+        loadedToolbarType = type || null;
+        UpdateRemoveOverriddenButtonVisibility();
+    }
+
     function SetHandler() {
         if (w2ui.grid) {
             w2ui.grid.show.selectColumn = false;
@@ -944,14 +968,7 @@
             currentHandler = DataverseLabelTranslator;
         }
 
-        var toolbar = GetToolbar();
-        if (toolbar && toolbar.get("removeOverriddenAttributeLabels")) {
-            if (DataverseLabelTranslator.GetType() === "forms") {
-                toolbar.show("removeOverriddenAttributeLabels");
-            } else {
-                toolbar.hide("removeOverriddenAttributeLabels");
-            }
-        }
+        UpdateRemoveOverriddenButtonVisibility();
     }
 
     function IsGlobalType(type) {
@@ -1119,23 +1136,25 @@
 
     function BuildDictionaryInputBox(id, label, value) {
         return (
-            '<div style="margin: 0 0 14px 0;">' +
-            '<div style="font-weight: 600; color: #444; margin-bottom: 5px;">' +
+            '<div class="xqt-add-dictionary-field">' +
+            '<label class="xqt-add-dictionary-label" for="' +
+            EscapeHtml(id) +
+            '">' +
             EscapeHtml(label) +
-            "</div>" +
+            "</label>" +
             '<input id="' +
             EscapeHtml(id) +
-            '" type="text" value="' +
+            '" class="xqt-add-dictionary-input" type="text" value="' +
             EscapeHtml(value) +
-            '" style="border: 1px solid #d0d7de; background: #f8f9fb; border-radius: 4px; box-sizing: border-box; color: #111; font-weight: 600; height: 40px; padding: 8px 11px; width: 100%;" />' +
+            '" />' +
             "</div>"
         );
     }
 
     function ConfirmAddSelectedTranslationToDictionary(sourceLabel, sourceText, targetItems) {
         var body =
-            '<div style="padding: 22px 28px 18px 28px; font-size: 15px; line-height: 1.45;">' +
-            '<div style="font-size: 18px; font-weight: 600; margin-bottom: 18px;">Add this translation to dictionary?</div>' +
+            '<div class="xqt-add-dictionary-body">' +
+            '<div class="xqt-add-dictionary-heading">Add this translation to dictionary?</div>' +
             BuildDictionaryInputBox("xqt-add-dictionary-source", "Source (" + sourceLabel + ")", sourceText);
 
         for (var i = 0; i < targetItems.length; i++) {
@@ -1604,12 +1623,14 @@
         }
 
         if (target.startsWith("solutionSelect:")) {
+            SetLoadedToolbarType(null);
             toolbar.get("solutionSelect").selected = target.replace("solutionSelect:", "");
             RepopulateEntitySelector(DataverseLabelTranslator.GetSolution());
             return;
         }
 
         if (target.startsWith("entitySelect:")) {
+            SetLoadedToolbarType(null);
             toolbar.get("entitySelect").selected = target.replace("entitySelect:", "");
             ApplyTypeVisibilityForEntity(target);
             RefreshToolbar();
@@ -1617,6 +1638,7 @@
         }
 
         if (target.startsWith("type:")) {
+            SetLoadedToolbarType(null);
             toolbar.get("type").selected = target.replace("type:", "");
             UpdateComponentDropdown(DataverseLabelTranslator.GetType());
             SetHandler();

@@ -227,7 +227,6 @@
             body: html,
             width: 580,
             height: 310,
-            buttons: '<button class="w2ui-btn" onclick="w2popup.close();">Close</button>',
             maximizeOnOpen: true
         });
     };
