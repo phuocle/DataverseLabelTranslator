@@ -168,8 +168,47 @@
         return record;
     }
 
-    function ApplyLanguageColumns(gridOutput, app) {
+    function CollectLanguageColumnFields(rows, fields) {
+        rows = Array.isArray(rows) ? rows : [];
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i] || {};
+            for (var key in row) {
+                if (Object.prototype.hasOwnProperty.call(row, key) && IsLanguageField(key)) {
+                    fields[String(key)] = true;
+                }
+            }
+
+            CollectLanguageColumnFields(row.children, fields);
+        }
+    }
+
+    function GetLanguageColumns(gridOutput) {
         var columns = gridOutput && Array.isArray(gridOutput.languageColumns) ? gridOutput.languageColumns : [];
+        if (columns.length > 0) {
+            return columns;
+        }
+
+        var fields = {};
+        var inferredColumns = [];
+        CollectLanguageColumnFields(gridOutput && gridOutput.rows, fields);
+
+        Object.keys(fields)
+            .sort(function (a, b) {
+                return parseInt(a, 10) - parseInt(b, 10);
+            })
+            .forEach(function (field) {
+                inferredColumns.push({
+                    field: field,
+                    text: field
+                });
+            });
+
+        return inferredColumns;
+    }
+
+    function ApplyLanguageColumns(gridOutput, app) {
+        var columns = GetLanguageColumns(gridOutput);
         var translator = window.XrmTranslator || app;
         var grid = app.GetGrid();
 

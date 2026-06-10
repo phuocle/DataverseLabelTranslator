@@ -34,7 +34,7 @@
             Readonly: "-"
         },
         Operations: {
-            Loading: "Loading ...",
+            Loading: "Loading ....",
             Saving: "Saving ...",
             Publishing: "Publishing ...",
             Published: "Published",

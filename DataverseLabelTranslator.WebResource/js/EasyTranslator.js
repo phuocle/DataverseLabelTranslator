@@ -414,6 +414,28 @@
     var currentHandler = null;
     var entityMetadata = {};
     var allEntities = [];
+    var ENTITY_DEPENDENT_TYPE_ITEMS = [
+        "type:attributes",
+        "type:options",
+        "type:forms",
+        "type:content",
+        "type:bpf",
+        "type:businessRules",
+        "type:ribbons",
+        "type:commands",
+        "type:entityMessages"
+    ];
+    var GLOBAL_TYPE_ITEMS = [
+        "type:sitemap",
+        "type:dashboards",
+        "type:webresources",
+        "type:globalOptionSet",
+        "type:entityMeta",
+        "type:views",
+        "type:formMeta",
+        "type:relationships",
+        "type:charts"
+    ];
 
     EasyTranslator.defaultSchemaNameSize = "20%";
     EasyTranslator.entityMetadata = entityMetadata;
@@ -433,6 +455,188 @@
         if (toolbar && typeof toolbar.refresh === "function") {
             toolbar.refresh();
         }
+    }
+
+    function NormalizeGridSearchUiSoon() {
+        NormalizeGridSearchUi();
+        setTimeout(NormalizeGridSearchUi, 0);
+        setTimeout(NormalizeGridSearchUi, 50);
+        setTimeout(NormalizeGridSearchUi, 150);
+        setTimeout(NormalizeGridSearchUi, 300);
+    }
+
+    function NormalizeGridSearchUi() {
+        var grid = w2ui && w2ui.grid ? w2ui.grid : null;
+        var gridBox = grid && grid.box ? grid.box : null;
+        if (!grid || !gridBox || !grid.name) {
+            return;
+        }
+
+        ConfigureSimpleGridSearch(grid);
+        RemoveGridSearchPanel(gridBox);
+        EnsureSimpleGridSearchStyle(grid);
+
+        if (grid.searchSelected) {
+            grid.searchSelected = null;
+            if (typeof grid.refreshSearch === "function") {
+                grid.refreshSearch();
+            }
+        }
+
+        if (grid.last) {
+            grid.last.field = "all";
+            grid.last.label = "All Fields";
+        }
+
+        var searchName = gridBox.querySelector("#grid_" + grid.name + "_search_name");
+        var searchInput = gridBox.querySelector("#grid_" + grid.name + "_search_all");
+        var nameText = searchName ? searchName.querySelector(".name-text") : null;
+
+        if (searchName) {
+            searchName.style.display = "none";
+        }
+
+        if (nameText) {
+            nameText.textContent = "";
+        }
+
+        if (searchInput) {
+            searchInput.placeholder = "";
+            searchInput.removeAttribute("placeholder");
+
+            var searchValueText = String(searchInput.value || "")
+                .trim()
+                .toLowerCase();
+            if (searchValueText === "null" || searchValueText === "undefined") {
+                searchInput.value = "";
+            }
+        }
+    }
+
+    function EnsureSimpleGridSearchStyle(grid) {
+        var styleId = "easy-translator-simple-grid-search-style";
+        if (!grid || document.getElementById(styleId)) {
+            return;
+        }
+
+        var style = document.createElement("style");
+        style.id = styleId;
+        style.textContent =
+            "#grid_" +
+            grid.name +
+            "_search_name{display:none!important;}" +
+            "#grid_" +
+            grid.name +
+            "_search_all::placeholder{color:transparent!important;}";
+        document.head.appendChild(style);
+    }
+
+    function RemoveGridSearchPanel(gridBox) {
+        var searchPanels = gridBox.querySelectorAll(".w2ui-grid-searches");
+        for (var i = 0; i < searchPanels.length; i++) {
+            searchPanels[i].remove();
+        }
+    }
+
+    function ConfigureSimpleGridSearch(grid) {
+        if (!grid || grid._easyTranslatorSimpleSearchConfigured) {
+            return;
+        }
+
+        if (grid.defaultOperator) {
+            grid.defaultOperator.text = "contains";
+        }
+        if (grid.show) {
+            grid.show.searchLogic = false;
+            grid.show.searchSave = false;
+        }
+
+        grid.searchOpen = function () {};
+        grid.searchShowFields = function () {};
+        grid.searchSuggest = function () {};
+        grid._easyTranslatorSimpleSearchConfigured = true;
+    }
+
+    function SetToolbarItemsVisible(ids, visible) {
+        var toolbar = GetToolbar();
+        if (!toolbar) {
+            return;
+        }
+
+        for (var i = 0; i < ids.length; i++) {
+            if (toolbar.get(ids[i])) {
+                if (visible) {
+                    toolbar.show(ids[i]);
+                } else {
+                    toolbar.hide(ids[i]);
+                }
+            }
+        }
+    }
+
+    function SetToolbarItemsEnabled(ids, enabled) {
+        var toolbar = GetToolbar();
+        if (!toolbar) {
+            return;
+        }
+
+        for (var i = 0; i < ids.length; i++) {
+            if (!toolbar.get(ids[i])) {
+                continue;
+            }
+
+            if (enabled) {
+                toolbar.enable(ids[i]);
+            } else {
+                toolbar.disable(ids[i]);
+            }
+        }
+    }
+
+    function SetSolutionRequiredState(enabled) {
+        SetToolbarItemsEnabled(["entitySelect", "type", "component", "load"], enabled);
+
+        if (!enabled) {
+            SetToolbarItemsVisible(ENTITY_DEPENDENT_TYPE_ITEMS, false);
+            SetToolbarItemsVisible(GLOBAL_TYPE_ITEMS, false);
+            GetToolbar().get("entitySelect").selected = "none";
+            GetToolbar().get("type").selected = "none";
+            GetToolbar().get("component").selected = "DisplayText";
+            SetToolbarItemsEnabled(["component", "load"], false);
+        }
+
+        EasyTranslator.SetSaveButtonDisabled(true);
+        RefreshToolbar();
+    }
+
+    function ApplyTypeVisibilityForEntity(entityTarget) {
+        var toolbar = GetToolbar();
+        var typeItem = toolbar.get("type");
+        var componentItem = toolbar.get("component");
+
+        if (entityTarget === "entitySelect:none" || entityTarget === "none") {
+            SetToolbarItemsVisible(ENTITY_DEPENDENT_TYPE_ITEMS, false);
+            SetToolbarItemsVisible(GLOBAL_TYPE_ITEMS, true);
+        } else {
+            SetToolbarItemsVisible(ENTITY_DEPENDENT_TYPE_ITEMS, true);
+            SetToolbarItemsVisible(GLOBAL_TYPE_ITEMS, false);
+            SetToolbarItemsVisible(
+                ["type:content"],
+                String(entityTarget || "")
+                    .toLowerCase()
+                    .indexOf("adx_contentsnippet") !== -1
+            );
+        }
+
+        typeItem.selected = "none";
+        if (componentItem) {
+            componentItem.selected = "DisplayText";
+        }
+        SetToolbarItemsEnabled(["component", "load"], false);
+        EasyTranslator.SetSaveButtonDisabled(true);
+        UpdateComponentDropdown(typeItem.selected);
+        SetHandler();
+        RefreshToolbar();
     }
 
     function CompactToolbarText(text, maxLength, stripOrderPrefix) {
@@ -491,10 +695,28 @@
     }
 
     function IsGlobalType(type) {
-        return ["sitemap", "dashboards", "webresources", "globalOptionSet", "content"].indexOf(type) !== -1;
+        return (
+            [
+                "sitemap",
+                "dashboards",
+                "webresources",
+                "globalOptionSet",
+                "entityMeta",
+                "views",
+                "formMeta",
+                "relationships",
+                "charts"
+            ].indexOf(type) !== -1
+        );
     }
 
     function UpdateComponentDropdown(selectedType) {
+        if (!selectedType || selectedType === "none") {
+            SetToolbarItemsEnabled(["component"], false);
+            RefreshToolbar();
+            return;
+        }
+
         var hasDescription =
             [
                 "attributes",
@@ -523,6 +745,12 @@
     }
 
     function LoadHandler() {
+        if (EasyTranslator.GetType() === "none") {
+            EasyTranslator.SetLoadButtonDisabled(true);
+            EasyTranslator.SetSaveButtonDisabled(true);
+            return;
+        }
+
         SetHandler();
 
         if (!currentHandler || typeof currentHandler.Load !== "function") {
@@ -535,8 +763,14 @@
             return;
         }
 
+        EasyTranslator.SetSaveButtonDisabled(true);
         EasyTranslator.GetGrid().sort();
-        currentHandler.Load().catch(EasyTranslator.errorHandler);
+        currentHandler
+            .Load()
+            .then(function () {
+                EasyTranslator.SetSaveButtonDisabled(!EasyTranslator.HasLoadedRecords());
+            })
+            .catch(EasyTranslator.errorHandler);
     }
 
     function SaveHandler(event) {
@@ -664,12 +898,14 @@
             return Promise.resolve();
         }
 
-        EasyTranslator.LockGrid("Loading solution entities...");
+        EasyTranslator.LockGrid(Helper.GetOperationLoading());
 
         return XrmService.GetEntities(solutionId)
             .then(function (solutionEntities) {
                 FillEntitySelector(solutionEntities);
                 EasyTranslator.UnlockGrid();
+                SetToolbarItemsEnabled(["entitySelect", "type", "load"], true);
+                ApplyTypeVisibilityForEntity("entitySelect:none");
                 RefreshToolbar();
             })
             .catch(function (error) {
@@ -745,6 +981,7 @@
 
         if (target.startsWith("entitySelect:")) {
             toolbar.get("entitySelect").selected = target.replace("entitySelect:", "");
+            ApplyTypeVisibilityForEntity(target);
             RefreshToolbar();
             return;
         }
@@ -753,6 +990,8 @@
             toolbar.get("type").selected = target.replace("type:", "");
             UpdateComponentDropdown(EasyTranslator.GetType());
             SetHandler();
+            SetToolbarItemsEnabled(["load"], EasyTranslator.GetType() !== "none");
+            EasyTranslator.SetSaveButtonDisabled(true);
             RefreshToolbar();
             return;
         }
@@ -798,11 +1037,17 @@
                 icon: "icon-type",
                 tooltip: "Translation type",
                 text: function (item) {
+                    if (item.selected === "none") {
+                        return "None";
+                    }
+
                     var el = this.get("type:" + item.selected);
                     return el ? CompactToolbarText(el.text, 18, true) : "Type";
                 },
-                selected: "sitemap",
+                selected: "none",
                 items: [
+                    { id: "none", text: "None", icon: "icon-empty" },
+                    { text: "--" },
                     { id: "attributes", text: "Attributes", icon: "icon-attribute" },
                     { id: "options", text: "Option Sets", icon: "icon-options" },
                     { id: "forms", text: "Forms", icon: "icon-form" },
@@ -920,6 +1165,9 @@
             onEditField: function () {
                 EasyTranslator.SetSaveButtonDisabled(false);
             },
+            onSearch: function (event) {
+                event.onComplete = NormalizeGridSearchUiSoon;
+            },
             toolbar: {
                 items: toolbarItems,
                 onClick: HandleToolbarClick
@@ -959,7 +1207,8 @@
         }
 
         EasyTranslator.SetSaveButtonDisabled(true);
-        UpdateComponentDropdown("sitemap");
+        SetSolutionRequiredState(false);
+        NormalizeGridSearchUiSoon();
     }
 
     function GetOriginalRecordValue(record, field) {
@@ -1216,6 +1465,18 @@
             EasyTranslator.NormalizeRecordChanges(records[i]);
 
             if (records[i].w2ui && records[i].w2ui.changes && Object.keys(records[i].w2ui.changes).length > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    EasyTranslator.HasLoadedRecords = function () {
+        var records = EasyTranslator.GetAllRecords();
+
+        for (var i = 0; i < records.length; i++) {
+            if (!(records[i].w2ui && records[i].w2ui.summary)) {
                 return true;
             }
         }
