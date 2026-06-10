@@ -6,14 +6,6 @@
     var dictionaryBaselineSignature = null;
     var dictionaryAllowCloseWithoutPrompt = false;
 
-    function logWarn(message, error) {
-        return;
-    }
-
-    function logDebug(message, payload) {
-        return;
-    }
-
     function getDefaultDictionaryXml() {
         return [
             '<?xml version="1.0" encoding="utf-8"?>',
@@ -147,11 +139,6 @@
             entries: []
         };
 
-        logDebug("parseDictionaryXml:start", {
-            sourceLcid: model.sourceLcid,
-            xmlLength: (xmlContent || "").length
-        });
-
         if (!xmlContent) {
             return model;
         }
@@ -161,7 +148,6 @@
             var xml = parser.parseFromString(xmlContent, "application/xml");
 
             if (xml.getElementsByTagName("parsererror").length > 0) {
-                logDebug("parseDictionaryXml:parsererror", String(xmlContent || "").substring(0, 500));
                 throw new Error("Invalid dictionary XML format.");
             }
 
@@ -237,15 +223,8 @@
                 return entriesBySource[key];
             });
 
-            logDebug("parseDictionaryXml:done", {
-                sourceLcid: model.sourceLcid,
-                entries: model.entries.length,
-                sample: model.entries.length ? model.entries[0] : null
-            });
-
             return model;
-        } catch (e) {
-            logWarn("Failed to parse dictionary XML, starting with empty dictionary.", e);
+        } catch {
             return model;
         }
     }
@@ -478,17 +457,11 @@
     }
 
     function refreshDictionaryFromWebResource(context) {
-        return loadDictionaryModel(true, context || {})
+        return loadDictionaryModel(context || {})
             .then(function (latestModel) {
-                logDebug("refreshDictionaryFromWebResource:done", {
-                    sourceLcid: latestModel && latestModel.sourceLcid,
-                    entries: latestModel && latestModel.entries ? latestModel.entries.length : 0
-                });
-
                 return latestModel;
             })
-            .catch(function (error) {
-                logWarn("Failed to refresh dictionary from web resource on close.", error);
+            .catch(function () {
                 return null;
             });
     }
@@ -523,14 +496,9 @@
         });
     }
 
-    function loadDictionaryModel(forceRefresh, context) {
+    function loadDictionaryModel(context) {
         function tryParseWithFallbacks(content, parseContext) {
             var parsed = parseDictionaryXml(content, parseContext);
-
-            logDebug("loadDictionaryModel:parse-primary", {
-                entries: parsed.entries ? parsed.entries.length : 0,
-                sourceLcid: parsed.sourceLcid
-            });
 
             if (parsed.entries && parsed.entries.length > 0) {
                 return parsed;
@@ -545,10 +513,6 @@
 
             if (unescaped !== content) {
                 var reparsed = parseDictionaryXml(unescaped, parseContext);
-                logDebug("loadDictionaryModel:parse-unescaped", {
-                    entries: reparsed.entries ? reparsed.entries.length : 0,
-                    sourceLcid: reparsed.sourceLcid
-                });
                 if (reparsed.entries && reparsed.entries.length > 0) {
                     return reparsed;
                 }
@@ -561,21 +525,11 @@
             .then(function (content) {
                 content = content && content.content;
                 content = content || getDefaultDictionaryXml();
-                logDebug("loadDictionaryModel:content", {
-                    contentLength: content.length,
-                    contentPreview: content.substring(0, 400)
-                });
 
                 var primaryModel = tryParseWithFallbacks(content, context || {});
                 return primaryModel;
             })
             .then(function (finalModel) {
-                logDebug("loadDictionaryModel:final-model", {
-                    sourceLcid: finalModel.sourceLcid,
-                    entries: finalModel.entries ? finalModel.entries.length : 0,
-                    mode: forceRefresh ? "force-refresh-fixed-name" : "normal-fixed-name"
-                });
-
                 return finalModel;
             });
     }
@@ -583,15 +537,6 @@
     function saveDictionaryModel(records, context) {
         var model = sanitizeDictionaryModel(records, context || {});
         var xml = serializeDictionaryXml(model);
-
-        logDebug("saveDictionaryModel:input", {
-            recordCount: records ? records.length : 0,
-            sourceLcid: model.sourceLcid,
-            entries: model.entries ? model.entries.length : 0,
-            firstEntry: model.entries && model.entries.length ? model.entries[0] : null,
-            xmlLength: xml.length,
-            xmlPreview: xml.substring(0, 400)
-        });
 
         return executeOther("WriteDictionary", { content: xml }).then(function () {
             return model;
@@ -609,9 +554,7 @@
             if (active && typeof active.blur === "function" && grid.box.contains(active)) {
                 active.blur();
             }
-        } catch (e) {
-            logWarn("Could not flush active dictionary editor before save.", e);
-        }
+        } catch {}
     }
 
     function removeDictionarySearchPanel(gridBox) {
@@ -848,7 +791,7 @@
             var modelPromise =
                 w2ui.translationDictionaryGrid && dictionaryGridContext
                     ? Promise.resolve(getCurrentDictionaryGridModel())
-                    : loadDictionaryModel(true, activeContext);
+                    : loadDictionaryModel(activeContext);
 
             return modelPromise.then(function (model) {
                 model = model || {};
@@ -947,18 +890,10 @@
 
     DictionaryService.ShowDictionaryPrompt = function () {
         DataverseLabelTranslator.LockGrid("Loading dictionary ...");
-        logDebug("ShowDictionaryPrompt:start", null);
 
         return buildDictionaryGridContext()
             .then(function (context) {
-                logDebug("ShowDictionaryPrompt:context", context);
-                return loadDictionaryModel(true, context).then(function (model) {
-                    logDebug("ShowDictionaryPrompt:model", {
-                        sourceLcid: model.sourceLcid,
-                        entries: model.entries ? model.entries.length : 0,
-                        sample: model.entries && model.entries.length ? model.entries[0] : null
-                    });
-
+                return loadDictionaryModel(context).then(function (model) {
                     var modelSourceLcid = String(model.sourceLcid || context.baseLcid);
                     if (modelSourceLcid !== context.baseLcid) {
                         context.baseLcid = modelSourceLcid;
@@ -975,15 +910,6 @@
                     var grid = ensureDictionaryGrid(context);
                     grid.clear();
                     var gridRecords = toGridRecords(model, context);
-                    logDebug("ShowDictionaryPrompt:grid-bind", {
-                        columns: grid.columns
-                            ? grid.columns.map(function (c) {
-                                  return c.field;
-                              })
-                            : [],
-                        recordCount: gridRecords.length,
-                        firstRecord: gridRecords.length ? gridRecords[0] : null
-                    });
 
                     grid.add(gridRecords);
                     ensureDictionaryInputRow(grid, context);
@@ -1072,20 +998,6 @@
                 });
             })
             .then(function () {
-                logDebug("SaveFromGrid:start", {
-                    gridRecordCount: w2ui.translationDictionaryGrid.records
-                        ? w2ui.translationDictionaryGrid.records.length
-                        : 0,
-                    firstGridRecord:
-                        w2ui.translationDictionaryGrid.records && w2ui.translationDictionaryGrid.records.length
-                            ? w2ui.translationDictionaryGrid.records[0]
-                            : null,
-                    gridChanges: w2ui.translationDictionaryGrid.getChanges
-                        ? w2ui.translationDictionaryGrid.getChanges()
-                        : null,
-                    context: dictionaryGridContext
-                });
-
                 w2popup.lock("Saving ......", true);
 
                 return saveDictionaryModel(w2ui.translationDictionaryGrid.records, dictionaryGridContext);
@@ -1111,7 +1023,7 @@
     DictionaryService.SplitRecordsByDictionary = function (fromLcid, targetLcid, records) {
         return buildDictionaryGridContext()
             .then(function (context) {
-                return loadDictionaryModel(false, context).then(function (model) {
+                return loadDictionaryModel(context).then(function (model) {
                     var sourceLcid = String(model.sourceLcid || context.baseLcid || "");
                     if (String(fromLcid) !== sourceLcid) {
                         return {
@@ -1172,8 +1084,7 @@
                     };
                 });
             })
-            .catch(function (error) {
-                logWarn("Dictionary lookup failed, fallback to AI only.", error);
+            .catch(function () {
                 return {
                     matchedResults: [],
                     unmatchedRecords: records
