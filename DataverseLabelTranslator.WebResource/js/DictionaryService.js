@@ -73,7 +73,7 @@
 
     function getLanguageNameByLcid(lcid) {
         var lookup = String(lcid || "");
-        var app = window.EasyTranslator;
+        var app = window.DataverseLabelTranslator;
 
         if (app && app.GetGrid) {
             var columns = app.GetGrid().columns || [];
@@ -98,7 +98,9 @@
             var baseLcid = String(baseLanguage);
             var localeIds = [];
             var gridColumns =
-                window.EasyTranslator && EasyTranslator.GetColumns ? EasyTranslator.GetColumns(false) : [];
+                window.DataverseLabelTranslator && DataverseLabelTranslator.GetColumns
+                    ? DataverseLabelTranslator.GetColumns(false)
+                    : [];
 
             localeIds = gridColumns
                 .filter(function (field) {
@@ -944,7 +946,7 @@
     };
 
     DictionaryService.ShowDictionaryPrompt = function () {
-        EasyTranslator.LockGrid("Loading dictionary ...");
+        DataverseLabelTranslator.LockGrid("Loading dictionary ...");
         logDebug("ShowDictionaryPrompt:start", null);
 
         return buildDictionaryGridContext()
@@ -985,7 +987,7 @@
 
                     grid.add(gridRecords);
                     ensureDictionaryInputRow(grid, context);
-                    EasyTranslator.UnlockGrid();
+                    DataverseLabelTranslator.UnlockGrid();
 
                     w2popup.open({
                         title: "Dictionary",
@@ -1050,8 +1052,8 @@
                 });
             })
             .catch(function (error) {
-                EasyTranslator.UnlockGrid();
-                EasyTranslator.errorHandler(error);
+                DataverseLabelTranslator.UnlockGrid();
+                DataverseLabelTranslator.errorHandler(error);
             });
     };
 

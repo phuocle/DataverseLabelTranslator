@@ -1,24 +1,478 @@
-(function (EasyTranslator, undefined) {
+(function (DataverseLabelTranslatorHandler, undefined) {
     "use strict";
 
-    EasyTranslator.metadata = EasyTranslator.metadata || [];
-    EasyTranslator.baseLanguage = EasyTranslator.baseLanguage || null;
+    var actionName = "EasyTranslator";
 
-    EasyTranslator.GetSelectedRecordIds = function () {
-        var grid = EasyTranslator.GetGrid();
+    function GetApp() {
+        return Helper.GetTranslator();
+    }
+
+    function IsLanguageField(field) {
+        return /^\d+$/.test(String(field || ""));
+    }
+
+    function GetEditablePlaceholder(app) {
+        if (app.IsDescriptionComponent()) {
+            return Helper.GetPlaceholderDescription();
+        }
+
+        if (app.IsDisplayTextComponent()) {
+            return Helper.GetPlaceholderDisplayText();
+        }
+
+        return null;
+    }
+
+    function GetBaseEditablePlaceholder(app) {
+        return app.IsDisplayTextComponent() ? Helper.GetPlaceholderDisplayTextBase() : null;
+    }
+
+    function IsSummaryRecord(record) {
+        return !!(record && record.w2ui && record.w2ui.summary);
+    }
+
+    function IsReadonlyRecord(record) {
+        return !!(record && (record.isEditable === false || (record.w2ui && record.w2ui.editable === false)));
+    }
+
+    function NormalizeSaveValue(value) {
+        if (value == null) {
+            return "";
+        }
+
+        var text = String(value);
+        var placeholders = [
+            Helper.GetPlaceholderDisplayText(),
+            Helper.GetPlaceholderDisplayTextBase(),
+            Helper.GetPlaceholderDescription(),
+            Helper.GetPlaceholderReadonly()
+        ];
+
+        for (var i = 0; i < placeholders.length; i++) {
+            if (text === placeholders[i]) {
+                return "";
+            }
+        }
+
+        return text;
+    }
+
+    function GetPublishTargets(output) {
+        return output && Array.isArray(output.publishTargets) ? output.publishTargets : [];
+    }
+
+    function HasPublishTargets(output) {
+        return GetPublishTargets(output).length > 0;
+    }
+
+    function GetPublishPayload(output) {
+        var publishTargets = GetPublishTargets(output);
+        if (publishTargets.length === 0) {
+            return null;
+        }
+
+        return {
+            translatorType: GetApp().GetType(),
+            publishTargets: publishTargets
+        };
+    }
+
+    function BuildOperationPayload() {
+        var app = GetApp();
+
+        return {
+            translatorType: app.GetType(),
+            solutionId: app.GetSolution(),
+            entityName: app.GetEntity(),
+            entityId: app.GetEntityId(),
+            component: app.GetComponent()
+        };
+    }
+
+    function FindFormRecord(record) {
+        var current = record;
+        var app = GetApp();
+
+        while (current) {
+            if (current.gridKey && /^forms\|/i.test(current.gridKey)) {
+                return current;
+            }
+
+            if (!current.w2ui || !current.w2ui.parent_recid) {
+                return null;
+            }
+
+            current = app.GetByRecId(app.GetAllRecords(), current.w2ui.parent_recid);
+        }
+
+        return null;
+    }
+
+    function GetSelectedFormId() {
+        var app = GetApp();
+        var grid = app.GetGrid();
+        var selection = typeof grid.getSelection === "function" ? grid.getSelection() : [];
+
+        if (!selection || selection.length === 0) {
+            return null;
+        }
+
+        var record = app.GetByRecId(app.GetAllRecords(), selection[0]);
+        var formRecord = FindFormRecord(record);
+        if (!formRecord || !formRecord.gridKey) {
+            return null;
+        }
+
+        var parts = formRecord.gridKey.split("|");
+        return parts.length > 1 ? decodeURIComponent(parts[1]) : null;
+    }
+
+    function CopyServerRowFields(source, target) {
+        for (var key in source) {
+            if (!Object.prototype.hasOwnProperty.call(source, key) || key === "children") {
+                continue;
+            }
+
+            target[key] = source[key];
+        }
+    }
+
+    function BuildGridRow(serverRow, app) {
+        var record = {};
+        var editable = serverRow && serverRow.isEditable !== false;
+        var children = serverRow && Array.isArray(serverRow.children) ? serverRow.children : [];
+
+        CopyServerRowFields(serverRow || {}, record);
+
+        record.recid = record.recid || record.gridKey || record.schemaName;
+        record.schemaName = record.schemaName || record.recid;
+        record.w2ui = record.w2ui || {};
+        record.w2ui.editable = editable;
+        record._isGroupNode = record.isTranslatable === false || record.ai?.include === false;
+
+        if (editable) {
+            Helper.ApplyPlaceholder(record, GetEditablePlaceholder(app), GetBaseEditablePlaceholder(app), app);
+        } else {
+            record._emptyReadonlyPlaceholder = Helper.GetPlaceholderReadonly();
+        }
+
+        if (children.length > 0) {
+            record.w2ui.children = [];
+            for (var i = 0; i < children.length; i++) {
+                var child = BuildGridRow(children[i], app);
+                child.w2ui.parent_recid = record.recid;
+                record.w2ui.children.push(child);
+            }
+        }
+
+        return record;
+    }
+
+    function CollectLanguageColumnFields(rows, fields) {
+        rows = Array.isArray(rows) ? rows : [];
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i] || {};
+            for (var key in row) {
+                if (Object.prototype.hasOwnProperty.call(row, key) && IsLanguageField(key)) {
+                    fields[String(key)] = true;
+                }
+            }
+
+            CollectLanguageColumnFields(row.children, fields);
+        }
+    }
+
+    function GetLanguageColumns(gridOutput) {
+        var columns = gridOutput && Array.isArray(gridOutput.languageColumns) ? gridOutput.languageColumns : [];
+        if (columns.length > 0) {
+            return columns;
+        }
+
+        var fields = {};
+        var inferredColumns = [];
+        CollectLanguageColumnFields(gridOutput && gridOutput.rows, fields);
+
+        Object.keys(fields)
+            .sort(function (a, b) {
+                return parseInt(a, 10) - parseInt(b, 10);
+            })
+            .forEach(function (field) {
+                inferredColumns.push({
+                    field: field,
+                    text: field
+                });
+            });
+
+        return inferredColumns;
+    }
+
+    function ApplyLanguageColumns(gridOutput, app) {
+        var columns = GetLanguageColumns(gridOutput);
+        var translator = app;
+        var grid = app.GetGrid();
+
+        if (columns.length === 0) {
+            return;
+        }
+
+        translator.columnRestoreNeeded = true;
+        translator.ClearColumns();
+
+        var schemaSize = translator.defaultSchemaNameSize || "30%";
+        var schemaSizeNumber = parseInt(schemaSize.replace("%"), 10);
+        var columnWidth = (100 - (isNaN(schemaSizeNumber) ? 30 : schemaSizeNumber)) / columns.length;
+
+        for (var i = 0; i < columns.length; i++) {
+            var field = String(columns[i].field || "");
+            if (!field) {
+                continue;
+            }
+
+            grid.addColumn({
+                field: field,
+                text: columns[i].text || field,
+                size: columnWidth + "%",
+                sortable: true,
+                editable: { type: "text" },
+                render: translator.CreateTranslationCellRenderer(field)
+            });
+            grid.addSearch({ field: field, text: columns[i].text || field, type: "text" });
+        }
+    }
+
+    function FillTable(gridOutput) {
+        var app = GetApp();
+        var grid = app.GetGrid();
+        var records = [];
+        var rows = gridOutput && Array.isArray(gridOutput.rows) ? gridOutput.rows : [];
+
+        grid.clear();
+        ApplyLanguageColumns(gridOutput, app);
+
+        for (var i = 0; i < rows.length; i++) {
+            records.push(BuildGridRow(rows[i], app));
+        }
+
+        Helper.FinalizeGrid(records, app);
+    }
+
+    function GetRowPath(record) {
+        return record && record.schemaName != null ? String(record.schemaName) : "(unknown)";
+    }
+
+    function BuildChangedRows() {
+        var app = GetApp();
+        var records = app.GetAllRecords();
+        var changedRows = [];
+
+        for (var i = 0; i < records.length; i++) {
+            var record = records[i];
+            if (
+                !record ||
+                IsSummaryRecord(record) ||
+                IsReadonlyRecord(record) ||
+                !record.gridKey ||
+                !record.w2ui ||
+                !record.w2ui.changes
+            ) {
+                continue;
+            }
+
+            Helper.ValidateBaseLanguageNotEmpty(record, record.w2ui.changes, {
+                app: app,
+                getRowPath: GetRowPath
+            });
+
+            var changes = {};
+            for (var field in record.w2ui.changes) {
+                if (!Object.prototype.hasOwnProperty.call(record.w2ui.changes, field) || !IsLanguageField(field)) {
+                    continue;
+                }
+
+                changes[String(field)] = NormalizeSaveValue(record.w2ui.changes[field]);
+            }
+
+            if (Object.keys(changes).length === 0) {
+                continue;
+            }
+
+            changedRows.push({
+                gridKey: record.gridKey,
+                recid: record.recid,
+                rowType: record.rowType,
+                changes: changes
+            });
+        }
+
+        return changedRows;
+    }
+
+    DataverseLabelTranslatorHandler.IsUnifiedType = function (type) {
+        return (
+            [
+                "sitemap",
+                "dashboards",
+                "webresources",
+                "globalOptionSet",
+                "attributes",
+                "options",
+                "forms",
+                "entityMeta",
+                "views",
+                "formMeta",
+                "relationships",
+                "charts",
+                "ribbons",
+                "bpf",
+                "entityMessages",
+                "commands",
+                "businessRules",
+                "content"
+            ].indexOf(type) !== -1
+        );
+    };
+
+    DataverseLabelTranslatorHandler.Load = function (lockText) {
+        var app = GetApp();
+
+        app.LockGrid(lockText || Helper.GetOperationLoading());
+
+        return Helper.RunServerLoad({
+            app: app,
+            actionName: actionName,
+            getPayload: BuildOperationPayload,
+            onLoaded: function (output) {
+                if (output.baseLanguage) {
+                    app.SetBaseLanguage(output.baseLanguage);
+                }
+
+                app.SetMetadata(output.grid || {});
+                FillTable(output.grid || {});
+            }
+        });
+    };
+
+    DataverseLabelTranslatorHandler.Save = function () {
+        var app = GetApp();
+        var payload = BuildOperationPayload();
+        payload.baseLanguage = app.GetBaseLanguage();
+        payload.changedRows = BuildChangedRows();
+
+        if (payload.changedRows.length === 0) {
+            return DialogHelper.alert("There are no " + app.GetCurrentToolbarTypeText() + " changes to save.", {
+                title: app.GetCurrentToolbarTypeText()
+            });
+        }
+
+        return Helper.RunServerSaveFlow({
+            app: app,
+            actionName: actionName,
+            getSavePayload: function () {
+                return payload;
+            },
+            getPublishPayload: GetPublishPayload,
+            getPublishedPayload: GetPublishPayload,
+            afterSave: function (output) {
+                if (!output || app.GetType() !== "ribbons" || !output.import || !output.import.importJobId) {
+                    return false;
+                }
+
+                var toolbarType = app.GetTypeStateLabel("ribbons");
+                app.StartOperationStatus({
+                    phase: "importing",
+                    tone: "info",
+                    icon: "...",
+                    message: "Importing " + toolbarType,
+                    type: "ribbons",
+                    toolbarType: toolbarType,
+                    entityLogicalName: app.GetEntity(),
+                    importJobId: output.import.importJobId,
+                    operationId: output.import.operationId || output.import.importJobId,
+                    blockSave: true,
+                    blockLoad: true
+                });
+                app.ApplyStoredOperationStatus();
+                app.LockGrid("Importing " + toolbarType);
+
+                return true;
+            },
+            shouldReload: function (output) {
+                return HasPublishTargets(output) || (output && output.changed === true);
+            },
+            reloadAction: function () {
+                return DataverseLabelTranslatorHandler.Load(Helper.GetOperationReLoading());
+            }
+        });
+    };
+
+    DataverseLabelTranslatorHandler.RemoveOverriddenCellLabels = function () {
+        var app = GetApp();
+        var formId = GetSelectedFormId();
+
+        if (!formId) {
+            return DialogHelper.alert("Select a form row before removing overridden labels.", {
+                title: "Remove Overridden Labels"
+            });
+        }
+
+        return DialogHelper.confirm(
+            "This will remove ALL overridden attribute labels on the selected form and reset them to the default attribute labels. This action cannot be undone.\n\nDo you want to continue?",
+            {
+                title: "Remove Overridden Labels",
+                width: 620,
+                height: 270,
+                popupClass: "xqt-remove-overridden-confirm"
+            }
+        ).then(function (confirmed) {
+            if (!confirmed) {
+                return null;
+            }
+
+            var payload = BuildOperationPayload();
+            payload.operation = "RemoveOverriddenCellLabels";
+            payload.formId = formId;
+
+            return Helper.RunServerSaveFlow({
+                app: app,
+                actionName: actionName,
+                getSavePayload: function () {
+                    return payload;
+                },
+                getPublishPayload: GetPublishPayload,
+                getPublishedPayload: GetPublishPayload,
+                shouldReload: function (output) {
+                    return HasPublishTargets(output) || (output && output.changed === true);
+                },
+                reloadAction: function () {
+                    return DataverseLabelTranslatorHandler.Load(Helper.GetOperationReLoading());
+                }
+            });
+        });
+    };
+})((window.DataverseLabelTranslatorHandler = window.DataverseLabelTranslatorHandler || {}));
+
+(function (DataverseLabelTranslator, undefined) {
+    "use strict";
+
+    DataverseLabelTranslator.metadata = DataverseLabelTranslator.metadata || [];
+    DataverseLabelTranslator.baseLanguage = DataverseLabelTranslator.baseLanguage || null;
+
+    DataverseLabelTranslator.GetSelectedRecordIds = function () {
+        var grid = DataverseLabelTranslator.GetGrid();
 
         return grid && typeof grid.getSelection === "function" ? grid.getSelection() : [];
     };
 
-    EasyTranslator.RefreshGridRow = function (recid) {
-        var grid = EasyTranslator.GetGrid();
+    DataverseLabelTranslator.RefreshGridRow = function (recid) {
+        var grid = DataverseLabelTranslator.GetGrid();
         if (grid && typeof grid.refreshRow === "function") {
             grid.refreshRow(recid);
         }
     };
 
-    EasyTranslator.RefreshGrid = function () {
-        var grid = EasyTranslator.GetGrid();
+    DataverseLabelTranslator.RefreshGrid = function () {
+        var grid = DataverseLabelTranslator.GetGrid();
         if (grid && typeof grid.refresh === "function") {
             grid.refresh();
         }
@@ -37,7 +491,7 @@
     }
 
     function GetLanguageColumns() {
-        var grid = EasyTranslator.GetGrid();
+        var grid = DataverseLabelTranslator.GetGrid();
         var columns = grid && grid.columns ? grid.columns : [];
         var languages = [];
 
@@ -82,7 +536,7 @@
     }
 
     function GetRootGridRecords() {
-        var grid = EasyTranslator.GetGrid();
+        var grid = DataverseLabelTranslator.GetGrid();
         var records = grid && grid.records ? grid.records : [];
 
         return records.filter(function (record) {
@@ -196,18 +650,18 @@
     }
 
     function ApplyAiTranslateChanges(changes) {
-        var mainRecords = EasyTranslator.GetAllRecords();
+        var mainRecords = DataverseLabelTranslator.GetAllRecords();
         var changed = false;
         var refreshed = {};
 
         for (var i = 0; i < changes.length; i++) {
             var change = changes[i];
-            var mainRecord = EasyTranslator.GetByRecId(mainRecords, change.targetRecid);
+            var mainRecord = DataverseLabelTranslator.GetByRecId(mainRecords, change.targetRecid);
             if (!mainRecord) {
                 continue;
             }
 
-            if (EasyTranslator.ApplyGridChangeValue(mainRecord, change.field, change.value)) {
+            if (DataverseLabelTranslator.ApplyGridChangeValue(mainRecord, change.field, change.value)) {
                 changed = true;
                 refreshed[mainRecord.recid] = true;
             }
@@ -215,26 +669,28 @@
 
         for (var recid in refreshed) {
             if (Object.prototype.hasOwnProperty.call(refreshed, recid)) {
-                EasyTranslator.RefreshGridRow(recid);
+                DataverseLabelTranslator.RefreshGridRow(recid);
             }
         }
 
         if (changed) {
-            EasyTranslator.SetSaveButtonDisabled(!EasyTranslator.HasPendingChanges());
-            EasyTranslator.RefreshGrid();
+            DataverseLabelTranslator.SetSaveButtonDisabled(!DataverseLabelTranslator.HasPendingChanges());
+            DataverseLabelTranslator.RefreshGrid();
         }
 
         return changed;
     }
 
-    EasyTranslator.BuildAiTranslateDataSource = function () {
-        var typeName = EasyTranslator.GetCurrentToolbarTypeText();
+    DataverseLabelTranslator.BuildAiTranslateDataSource = function () {
+        var typeName = DataverseLabelTranslator.GetCurrentToolbarTypeText();
         var languages = GetLanguageColumns();
-        var baseLcid = EasyTranslator.GetBaseLanguage() ? String(EasyTranslator.GetBaseLanguage()) : "";
+        var baseLcid = DataverseLabelTranslator.GetBaseLanguage()
+            ? String(DataverseLabelTranslator.GetBaseLanguage())
+            : "";
 
         return {
             typeName: typeName,
-            componentText: EasyTranslator.GetCurrentComponentText(),
+            componentText: DataverseLabelTranslator.GetCurrentComponentText(),
             languages: languages,
             baseLcid: baseLcid || (languages.length ? languages[0].lcid : ""),
             rows: BuildAiTranslateRows(languages),
@@ -242,12 +698,12 @@
         };
     };
 
-    EasyTranslator.ShowAITranslate = function () {
+    DataverseLabelTranslator.ShowAITranslate = function () {
         if (!window.AIService || typeof AIService.OpenWorkspace !== "function") {
             return ShowAiTranslateUnavailable();
         }
 
-        var dataSource = EasyTranslator.BuildAiTranslateDataSource();
+        var dataSource = DataverseLabelTranslator.BuildAiTranslateDataSource();
         if (!HasTranslatableRows(dataSource.rows)) {
             return ShowAiTranslateUnavailable();
         }
@@ -281,10 +737,10 @@
         "type:charts"
     ];
 
-    EasyTranslator.defaultSchemaNameSize = "20%";
-    EasyTranslator.entityMetadata = entityMetadata;
-    EasyTranslator.allEntities = allEntities;
-    EasyTranslator.columnRestoreNeeded = false;
+    DataverseLabelTranslator.defaultSchemaNameSize = "20%";
+    DataverseLabelTranslator.entityMetadata = entityMetadata;
+    DataverseLabelTranslator.allEntities = allEntities;
+    DataverseLabelTranslator.columnRestoreNeeded = false;
 
     function HasOwnProperty(obj, prop) {
         return Object.prototype.hasOwnProperty.call(obj || {}, prop);
@@ -449,7 +905,7 @@
             SetToolbarItemsEnabled(["component", "load"], false);
         }
 
-        EasyTranslator.SetSaveButtonDisabled(true);
+        DataverseLabelTranslator.SetSaveButtonDisabled(true);
         RefreshToolbar();
     }
 
@@ -477,7 +933,7 @@
             componentItem.selected = "DisplayText";
         }
         SetToolbarItemsEnabled(["component", "load"], false);
-        EasyTranslator.SetSaveButtonDisabled(true);
+        DataverseLabelTranslator.SetSaveButtonDisabled(true);
         UpdateComponentDropdown(typeItem.selected);
         SetHandler();
         RefreshToolbar();
@@ -524,13 +980,16 @@
         }
 
         currentHandler = null;
-        if (window.EasyTranslatorHandler && EasyTranslatorHandler.IsUnifiedType(EasyTranslator.GetType())) {
-            currentHandler = EasyTranslatorHandler;
+        if (
+            window.DataverseLabelTranslatorHandler &&
+            DataverseLabelTranslatorHandler.IsUnifiedType(DataverseLabelTranslator.GetType())
+        ) {
+            currentHandler = DataverseLabelTranslatorHandler;
         }
 
         var toolbar = GetToolbar();
         if (toolbar && toolbar.get("removeOverriddenAttributeLabels")) {
-            if (EasyTranslator.GetType() === "forms") {
+            if (DataverseLabelTranslator.GetType() === "forms") {
                 toolbar.show("removeOverriddenAttributeLabels");
             } else {
                 toolbar.hide("removeOverriddenAttributeLabels");
@@ -589,9 +1048,9 @@
     }
 
     function LoadHandler() {
-        if (EasyTranslator.GetType() === "none") {
-            EasyTranslator.SetLoadButtonDisabled(true);
-            EasyTranslator.SetSaveButtonDisabled(true);
+        if (DataverseLabelTranslator.GetType() === "none") {
+            DataverseLabelTranslator.SetLoadButtonDisabled(true);
+            DataverseLabelTranslator.SetSaveButtonDisabled(true);
             return;
         }
 
@@ -602,19 +1061,19 @@
             return;
         }
 
-        if (!IsGlobalType(EasyTranslator.GetType()) && EasyTranslator.GetEntity() === "none") {
+        if (!IsGlobalType(DataverseLabelTranslator.GetType()) && DataverseLabelTranslator.GetEntity() === "none") {
             DialogHelper.alert("Select an entity before loading this type.", { title: "Load" });
             return;
         }
 
-        EasyTranslator.SetSaveButtonDisabled(true);
-        EasyTranslator.GetGrid().sort();
+        DataverseLabelTranslator.SetSaveButtonDisabled(true);
+        DataverseLabelTranslator.GetGrid().sort();
         currentHandler
             .Load()
             .then(function () {
-                EasyTranslator.SetSaveButtonDisabled(!EasyTranslator.HasLoadedRecords());
+                DataverseLabelTranslator.SetSaveButtonDisabled(!DataverseLabelTranslator.HasLoadedRecords());
             })
-            .catch(EasyTranslator.errorHandler);
+            .catch(DataverseLabelTranslator.errorHandler);
     }
 
     function SaveHandler(event) {
@@ -623,29 +1082,29 @@
         }
 
         SetHandler();
-        EasyTranslator.NormalizeGridChanges();
-        EasyTranslator.SetSaveButtonDisabled(true);
+        DataverseLabelTranslator.NormalizeGridChanges();
+        DataverseLabelTranslator.SetSaveButtonDisabled(true);
 
         if (!currentHandler || typeof currentHandler.Save !== "function") {
-            EasyTranslator.SetSaveButtonDisabled(false);
+            DataverseLabelTranslator.SetSaveButtonDisabled(false);
             DialogHelper.alert("No save handler is available for the selected type.", { title: "Save" });
             return;
         }
 
         currentHandler.Save().catch(function (error) {
-            EasyTranslator.SetSaveButtonDisabled(false);
-            EasyTranslator.errorHandler(error);
+            DataverseLabelTranslator.SetSaveButtonDisabled(false);
+            DataverseLabelTranslator.errorHandler(error);
         });
     }
 
     function TriggerUnavailable(name) {
         return function () {
-            DialogHelper.alert(name + " is not available in the EasyTranslator shell yet.", { title: name });
+            DialogHelper.alert(name + " is not available in the DataverseLabelTranslator shell yet.", { title: name });
         };
     }
 
     function ToggleExpandCollapse(expand) {
-        var grid = EasyTranslator.GetGrid();
+        var grid = DataverseLabelTranslator.GetGrid();
         var records = grid.records || [];
 
         function setExpanded(record) {
@@ -669,8 +1128,8 @@
     }
 
     function OpenFindAndReplaceDialog() {
-        DialogHelper.ShowFindAndReplaceDialog(EasyTranslator.GetGrid().columns, function (values) {
-            EasyTranslator.FindRecords(
+        DialogHelper.ShowFindAndReplaceDialog(DataverseLabelTranslator.GetGrid().columns, function (values) {
+            DataverseLabelTranslator.FindRecords(
                 undefined,
                 values.find,
                 values.replace,
@@ -706,8 +1165,8 @@
             entityMetadata[entity.SchemaName] = entity.MetadataId;
         }
 
-        EasyTranslator.allEntities = entities;
-        EasyTranslator.entityMetadata = entityMetadata;
+        DataverseLabelTranslator.allEntities = entities;
+        DataverseLabelTranslator.entityMetadata = entityMetadata;
         return entities;
     }
 
@@ -735,26 +1194,26 @@
         entitySelectItem.selected = "none";
         entitySelectItem.items = [{ id: "none", text: "None", icon: "icon-empty" }, { text: "--" }];
         entityMetadata = {};
-        EasyTranslator.entityMetadata = entityMetadata;
+        DataverseLabelTranslator.entityMetadata = entityMetadata;
 
         if (!solutionId) {
             RefreshToolbar();
             return Promise.resolve();
         }
 
-        EasyTranslator.LockGrid(Helper.GetOperationLoading());
+        DataverseLabelTranslator.LockGrid(Helper.GetOperationLoading());
 
         return XrmService.GetEntities(solutionId)
             .then(function (solutionEntities) {
                 FillEntitySelector(solutionEntities);
-                EasyTranslator.UnlockGrid();
+                DataverseLabelTranslator.UnlockGrid();
                 SetToolbarItemsEnabled(["entitySelect", "type", "load"], true);
                 ApplyTypeVisibilityForEntity("entitySelect:none");
                 RefreshToolbar();
             })
             .catch(function (error) {
-                EasyTranslator.UnlockGrid();
-                EasyTranslator.errorHandler(error);
+                DataverseLabelTranslator.UnlockGrid();
+                DataverseLabelTranslator.errorHandler(error);
             });
     }
 
@@ -773,7 +1232,7 @@
         }
 
         if (target === "autoTranslate") {
-            EasyTranslator.ShowAITranslate();
+            DataverseLabelTranslator.ShowAITranslate();
             return;
         }
 
@@ -819,7 +1278,7 @@
 
         if (target.startsWith("solutionSelect:")) {
             toolbar.get("solutionSelect").selected = target.replace("solutionSelect:", "");
-            RepopulateEntitySelector(EasyTranslator.GetSolution());
+            RepopulateEntitySelector(DataverseLabelTranslator.GetSolution());
             return;
         }
 
@@ -832,10 +1291,10 @@
 
         if (target.startsWith("type:")) {
             toolbar.get("type").selected = target.replace("type:", "");
-            UpdateComponentDropdown(EasyTranslator.GetType());
+            UpdateComponentDropdown(DataverseLabelTranslator.GetType());
             SetHandler();
-            SetToolbarItemsEnabled(["load"], EasyTranslator.GetType() !== "none");
-            EasyTranslator.SetSaveButtonDisabled(true);
+            SetToolbarItemsEnabled(["load"], DataverseLabelTranslator.GetType() !== "none");
+            DataverseLabelTranslator.SetSaveButtonDisabled(true);
             RefreshToolbar();
             return;
         }
@@ -945,7 +1404,7 @@
                 tooltip: "Remove overridden attribute labels",
                 icon: "icon-eraser",
                 onClick: function () {
-                    EasyTranslatorHandler.RemoveOverriddenCellLabels();
+                    DataverseLabelTranslatorHandler.RemoveOverriddenCellLabels();
                 }
             },
             { type: "button", id: "autoTranslate", text: "", tooltip: "Auto Translate", icon: "icon-translate" },
@@ -982,7 +1441,7 @@
                 {
                     field: "schemaName",
                     text: "Schema Name",
-                    size: EasyTranslator.defaultSchemaNameSize,
+                    size: DataverseLabelTranslator.defaultSchemaNameSize,
                     sortable: true,
                     resizable: true,
                     frozen: true
@@ -991,23 +1450,23 @@
             onSave: SaveHandler,
             onChange: function (event) {
                 event.onComplete = function () {
-                    EasyTranslator.NormalizeGridChanges();
-                    EasyTranslator.SetSaveButtonDisabled(!EasyTranslator.HasPendingChanges());
-                    EasyTranslator.UpdateChangedCellFooter(event);
+                    DataverseLabelTranslator.NormalizeGridChanges();
+                    DataverseLabelTranslator.SetSaveButtonDisabled(!DataverseLabelTranslator.HasPendingChanges());
+                    DataverseLabelTranslator.UpdateChangedCellFooter(event);
                 };
             },
             onClick: function (event) {
                 event.onComplete = function () {
-                    EasyTranslator.UpdateChangedCellFooter(event);
+                    DataverseLabelTranslator.UpdateChangedCellFooter(event);
                 };
             },
             onDblClick: function (event) {
                 event.onComplete = function () {
-                    EasyTranslator.UpdateChangedCellFooter(event);
+                    DataverseLabelTranslator.UpdateChangedCellFooter(event);
                 };
             },
             onEditField: function () {
-                EasyTranslator.SetSaveButtonDisabled(false);
+                DataverseLabelTranslator.SetSaveButtonDisabled(false);
             },
             onSearch: function (event) {
                 event.onComplete = NormalizeGridSearchUiSoon;
@@ -1050,7 +1509,7 @@
             gridToolbar.add(saveBtn);
         }
 
-        EasyTranslator.SetSaveButtonDisabled(true);
+        DataverseLabelTranslator.SetSaveButtonDisabled(true);
         SetSolutionRequiredState(false);
         NormalizeGridSearchUiSoon();
     }
@@ -1101,7 +1560,7 @@
     }
 
     function SetChangedCellFooter(html) {
-        var grid = EasyTranslator.GetGrid();
+        var grid = DataverseLabelTranslator.GetGrid();
         var footer =
             grid && grid.box ? grid.box.querySelector("#grid_" + grid.name + "_footer .w2ui-footer-center") : null;
 
@@ -1110,48 +1569,48 @@
         }
     }
 
-    EasyTranslator.GetGrid = function () {
+    DataverseLabelTranslator.GetGrid = function () {
         return w2ui.grid;
     };
 
-    EasyTranslator.GetSolution = function () {
+    DataverseLabelTranslator.GetSolution = function () {
         var toolbar = GetToolbar();
         var item = toolbar ? toolbar.get("solutionSelect") : null;
         return item ? item.selected : null;
     };
 
-    EasyTranslator.GetEntity = function () {
+    DataverseLabelTranslator.GetEntity = function () {
         var toolbar = GetToolbar();
         var item = toolbar ? toolbar.get("entitySelect") : null;
         return item ? item.selected : "none";
     };
 
-    EasyTranslator.GetEntityId = function () {
-        return entityMetadata[EasyTranslator.GetEntity()] || null;
+    DataverseLabelTranslator.GetEntityId = function () {
+        return entityMetadata[DataverseLabelTranslator.GetEntity()] || null;
     };
 
-    EasyTranslator.GetType = function () {
+    DataverseLabelTranslator.GetType = function () {
         var toolbar = GetToolbar();
         var item = toolbar ? toolbar.get("type") : null;
         return item ? item.selected : "sitemap";
     };
 
-    EasyTranslator.GetComponent = function () {
+    DataverseLabelTranslator.GetComponent = function () {
         var toolbar = GetToolbar();
         var item = toolbar ? toolbar.get("component") : null;
         return item ? item.selected : "DisplayText";
     };
 
-    EasyTranslator.IsDescriptionComponent = function () {
-        return EasyTranslator.GetComponent() === "Description";
+    DataverseLabelTranslator.IsDescriptionComponent = function () {
+        return DataverseLabelTranslator.GetComponent() === "Description";
     };
 
-    EasyTranslator.IsDisplayTextComponent = function () {
-        return EasyTranslator.GetComponent() === "DisplayText";
+    DataverseLabelTranslator.IsDisplayTextComponent = function () {
+        return DataverseLabelTranslator.GetComponent() === "DisplayText";
     };
 
-    EasyTranslator.GetCurrentComponentText = function () {
-        var component = EasyTranslator.GetComponent();
+    DataverseLabelTranslator.GetCurrentComponentText = function () {
+        var component = DataverseLabelTranslator.GetComponent();
 
         if (component === "DisplayText") {
             return "Display Text";
@@ -1164,36 +1623,36 @@
         return component || "";
     };
 
-    EasyTranslator.GetCurrentToolbarTypeText = function () {
-        return GetTypeStateLabel(EasyTranslator.GetType());
+    DataverseLabelTranslator.GetCurrentToolbarTypeText = function () {
+        return GetTypeStateLabel(DataverseLabelTranslator.GetType());
     };
 
-    EasyTranslator.GetTypeStateLabel = GetTypeStateLabel;
+    DataverseLabelTranslator.GetTypeStateLabel = GetTypeStateLabel;
 
-    EasyTranslator.SetMetadata = function (metadata) {
-        EasyTranslator.metadata = metadata || [];
-        return EasyTranslator.metadata;
+    DataverseLabelTranslator.SetMetadata = function (metadata) {
+        DataverseLabelTranslator.metadata = metadata || [];
+        return DataverseLabelTranslator.metadata;
     };
 
-    EasyTranslator.GetMetadata = function () {
-        return EasyTranslator.metadata || [];
+    DataverseLabelTranslator.GetMetadata = function () {
+        return DataverseLabelTranslator.metadata || [];
     };
 
-    EasyTranslator.GetBaseLanguage = function () {
-        return EasyTranslator.baseLanguage || null;
+    DataverseLabelTranslator.GetBaseLanguage = function () {
+        return DataverseLabelTranslator.baseLanguage || null;
     };
 
-    EasyTranslator.SetBaseLanguage = function (languageCode) {
-        EasyTranslator.baseLanguage = languageCode;
-        return EasyTranslator.baseLanguage;
+    DataverseLabelTranslator.SetBaseLanguage = function (languageCode) {
+        DataverseLabelTranslator.baseLanguage = languageCode;
+        return DataverseLabelTranslator.baseLanguage;
     };
 
-    EasyTranslator.GetAllRecords = function () {
-        return Array.from(new Set(FlattenRecords(EasyTranslator.GetGrid().records || [])));
+    DataverseLabelTranslator.GetAllRecords = function () {
+        return Array.from(new Set(FlattenRecords(DataverseLabelTranslator.GetGrid().records || [])));
     };
 
-    EasyTranslator.GetColumns = function (includeSchemaName) {
-        var columns = EasyTranslator.GetGrid().columns.map(function (column) {
+    DataverseLabelTranslator.GetColumns = function (includeSchemaName) {
+        var columns = DataverseLabelTranslator.GetGrid().columns.map(function (column) {
             return column.field;
         });
 
@@ -1204,8 +1663,8 @@
               });
     };
 
-    EasyTranslator.GetByRecId = function (records, recid) {
-        records = records || EasyTranslator.GetAllRecords();
+    DataverseLabelTranslator.GetByRecId = function (records, recid) {
+        records = records || DataverseLabelTranslator.GetAllRecords();
         for (var i = 0; i < records.length; i++) {
             if (records[i].recid === recid) {
                 return records[i];
@@ -1215,8 +1674,8 @@
         return null;
     };
 
-    EasyTranslator.GetAttributeById = function (id) {
-        var metadata = EasyTranslator.GetMetadata();
+    DataverseLabelTranslator.GetAttributeById = function (id) {
+        var metadata = DataverseLabelTranslator.GetMetadata();
         for (var i = 0; i < metadata.length; i++) {
             if (metadata[i].MetadataId === id) {
                 return metadata[i];
@@ -1226,14 +1685,14 @@
         return null;
     };
 
-    EasyTranslator.ClearColumns = function () {
-        var columns = EasyTranslator.GetColumns(false);
+    DataverseLabelTranslator.ClearColumns = function () {
+        var columns = DataverseLabelTranslator.GetColumns(false);
         for (var i = 0; i < columns.length; i++) {
-            EasyTranslator.GetGrid().removeColumn(columns[i]);
+            DataverseLabelTranslator.GetGrid().removeColumn(columns[i]);
         }
     };
 
-    EasyTranslator.RenderTranslationCell = function (record, field) {
+    DataverseLabelTranslator.RenderTranslationCell = function (record, field) {
         var value = GetRecordFieldValue(record, field);
 
         if (value !== null && typeof value !== "undefined" && String(value).length > 0) {
@@ -1267,13 +1726,13 @@
         return "";
     };
 
-    EasyTranslator.CreateTranslationCellRenderer = function (field) {
+    DataverseLabelTranslator.CreateTranslationCellRenderer = function (field) {
         return function (record) {
-            return EasyTranslator.RenderTranslationCell(record, field);
+            return DataverseLabelTranslator.RenderTranslationCell(record, field);
         };
     };
 
-    EasyTranslator.AddSummary = function (records) {
+    DataverseLabelTranslator.AddSummary = function (records) {
         var count = (records || []).filter(function (record) {
             return !(record.w2ui && record.w2ui.summary);
         }).length;
@@ -1282,7 +1741,7 @@
             recid: "Summary-1",
             schemaName: '<span style="float: right;">Of ' + count + " labels in total</span>"
         };
-        var languages = EasyTranslator.GetColumns(false);
+        var languages = DataverseLabelTranslator.GetColumns(false);
 
         for (var i = 0; i < languages.length; i++) {
             var language = String(languages[i]);
@@ -1302,7 +1761,7 @@
         records.push(summary);
     };
 
-    EasyTranslator.NormalizeRecordChanges = function (record) {
+    DataverseLabelTranslator.NormalizeRecordChanges = function (record) {
         if (!record || !record.w2ui || !record.w2ui.changes) {
             return false;
         }
@@ -1329,12 +1788,12 @@
         return changed;
     };
 
-    EasyTranslator.NormalizeGridChanges = function (records) {
-        records = records || EasyTranslator.GetAllRecords();
+    DataverseLabelTranslator.NormalizeGridChanges = function (records) {
+        records = records || DataverseLabelTranslator.GetAllRecords();
         var normalizedRecords = [];
 
         for (var i = 0; i < records.length; i++) {
-            if (EasyTranslator.NormalizeRecordChanges(records[i])) {
+            if (DataverseLabelTranslator.NormalizeRecordChanges(records[i])) {
                 normalizedRecords.push(records[i]);
             }
         }
@@ -1342,11 +1801,11 @@
         return normalizedRecords;
     };
 
-    EasyTranslator.HasPendingChanges = function (records) {
-        records = records || EasyTranslator.GetAllRecords();
+    DataverseLabelTranslator.HasPendingChanges = function (records) {
+        records = records || DataverseLabelTranslator.GetAllRecords();
 
         for (var i = 0; i < records.length; i++) {
-            EasyTranslator.NormalizeRecordChanges(records[i]);
+            DataverseLabelTranslator.NormalizeRecordChanges(records[i]);
 
             if (records[i].w2ui && records[i].w2ui.changes && Object.keys(records[i].w2ui.changes).length > 0) {
                 return true;
@@ -1356,8 +1815,8 @@
         return false;
     };
 
-    EasyTranslator.HasLoadedRecords = function () {
-        var records = EasyTranslator.GetAllRecords();
+    DataverseLabelTranslator.HasLoadedRecords = function () {
+        var records = DataverseLabelTranslator.GetAllRecords();
 
         for (var i = 0; i < records.length; i++) {
             if (!(records[i].w2ui && records[i].w2ui.summary)) {
@@ -1368,7 +1827,7 @@
         return false;
     };
 
-    EasyTranslator.ApplyGridChangeValue = function (record, field, value) {
+    DataverseLabelTranslator.ApplyGridChangeValue = function (record, field, value) {
         if (!record) {
             return false;
         }
@@ -1376,7 +1835,7 @@
         if (GridValuesEqual(GetOriginalRecordValue(record, field), value)) {
             if (record.w2ui && record.w2ui.changes && HasOwnProperty(record.w2ui.changes, field)) {
                 delete record.w2ui.changes[field];
-                EasyTranslator.NormalizeRecordChanges(record);
+                DataverseLabelTranslator.NormalizeRecordChanges(record);
                 return true;
             }
 
@@ -1394,20 +1853,22 @@
         return true;
     };
 
-    EasyTranslator.ApplyFindAndReplace = function (selected, results) {
-        var grid = EasyTranslator.GetGrid();
+    DataverseLabelTranslator.ApplyFindAndReplace = function (selected, results) {
+        var grid = DataverseLabelTranslator.GetGrid();
         var savable = false;
 
         for (var i = 0; i < selected.length; i++) {
-            var result = EasyTranslator.GetByRecId(results, selected[i]);
-            var record = result ? EasyTranslator.GetByRecId(EasyTranslator.GetAllRecords(), result.recid) : null;
+            var result = DataverseLabelTranslator.GetByRecId(results, selected[i]);
+            var record = result
+                ? DataverseLabelTranslator.GetByRecId(DataverseLabelTranslator.GetAllRecords(), result.recid)
+                : null;
 
             if (!record) {
                 continue;
             }
 
             if (
-                EasyTranslator.ApplyGridChangeValue(
+                DataverseLabelTranslator.ApplyGridChangeValue(
                     record,
                     result.column,
                     result.w2ui && result.w2ui.changes ? result.w2ui.changes.replaced : result.replaced
@@ -1419,12 +1880,12 @@
         }
 
         if (savable) {
-            EasyTranslator.SetSaveButtonDisabled(false);
+            DataverseLabelTranslator.SetSaveButtonDisabled(false);
         }
     };
 
-    EasyTranslator.FindRecords = function (records, find, replace, useRegex, ignoreCase, column, columnName) {
-        records = records || EasyTranslator.GetAllRecords();
+    DataverseLabelTranslator.FindRecords = function (records, find, replace, useRegex, ignoreCase, column, columnName) {
+        records = records || DataverseLabelTranslator.GetAllRecords();
         var findings = [];
         var flags = ignoreCase ? "i" : "";
         var regex = new RegExp(useRegex ? find : EscapeRegex(find), flags);
@@ -1455,24 +1916,24 @@
             });
         }
 
-        DialogHelper.ShowFindAndReplaceResults(findings, EasyTranslator.ApplyFindAndReplace);
+        DialogHelper.ShowFindAndReplaceResults(findings, DataverseLabelTranslator.ApplyFindAndReplace);
     };
 
-    EasyTranslator.LockGrid = function (message) {
-        var grid = EasyTranslator.GetGrid();
+    DataverseLabelTranslator.LockGrid = function (message) {
+        var grid = DataverseLabelTranslator.GetGrid();
         if (grid && typeof grid.lock === "function") {
             grid.lock(message || "Loading...", true);
         }
     };
 
-    EasyTranslator.UnlockGrid = function () {
-        var grid = EasyTranslator.GetGrid();
+    DataverseLabelTranslator.UnlockGrid = function () {
+        var grid = DataverseLabelTranslator.GetGrid();
         if (grid && typeof grid.unlock === "function") {
             grid.unlock();
         }
     };
 
-    EasyTranslator.SetSaveButtonDisabled = function (disabled) {
+    DataverseLabelTranslator.SetSaveButtonDisabled = function (disabled) {
         var toolbar = GetToolbar();
         var saveButton = toolbar ? toolbar.get("w2ui-save") : null;
         if (saveButton) {
@@ -1481,7 +1942,7 @@
         }
     };
 
-    EasyTranslator.SetLoadButtonDisabled = function (disabled) {
+    DataverseLabelTranslator.SetLoadButtonDisabled = function (disabled) {
         var toolbar = GetToolbar();
         var loadButton = toolbar ? toolbar.get("load") : null;
         if (loadButton) {
@@ -1490,12 +1951,15 @@
         }
     };
 
-    EasyTranslator.UpdateChangedCellFooter = function (event) {
-        var grid = EasyTranslator.GetGrid();
+    DataverseLabelTranslator.UpdateChangedCellFooter = function (event) {
+        var grid = DataverseLabelTranslator.GetGrid();
         var recid = event && typeof event.recid !== "undefined" ? event.recid : null;
         var columnIndex = event && typeof event.column !== "undefined" ? event.column : null;
         var column = grid && columnIndex !== null ? grid.columns[columnIndex] : null;
-        var record = recid !== null ? EasyTranslator.GetByRecId(EasyTranslator.GetAllRecords(), recid) : null;
+        var record =
+            recid !== null
+                ? DataverseLabelTranslator.GetByRecId(DataverseLabelTranslator.GetAllRecords(), recid)
+                : null;
 
         if (
             !record ||
@@ -1520,25 +1984,25 @@
         );
     };
 
-    EasyTranslator.ShowStatusBanner = function (options) {
+    DataverseLabelTranslator.ShowStatusBanner = function (options) {
         options = options || {};
         if (options.message) {
             DialogHelper.alert(options.message, { title: options.title || "Status" });
         }
     };
 
-    EasyTranslator.StartOperationStatus = function () {};
-    EasyTranslator.ApplyStoredOperationStatus = function () {};
+    DataverseLabelTranslator.StartOperationStatus = function () {};
+    DataverseLabelTranslator.ApplyStoredOperationStatus = function () {};
 
-    EasyTranslator.errorHandler = function (error) {
-        EasyTranslator.UnlockGrid();
+    DataverseLabelTranslator.errorHandler = function (error) {
+        DataverseLabelTranslator.UnlockGrid();
         return Helper.ShowError(error, { title: "Dataverse Label Translator" });
     };
 
-    EasyTranslator.Initialize = function () {
+    DataverseLabelTranslator.Initialize = function () {
         XrmService.GetBaseLanguage()
             .then(function (baseLanguage) {
-                EasyTranslator.SetBaseLanguage(baseLanguage);
+                DataverseLabelTranslator.SetBaseLanguage(baseLanguage);
                 InitializeGrid();
                 return XrmService.GetSolutions();
             })
@@ -1546,10 +2010,10 @@
                 FillSolutionSelector(solutions || []);
                 SetHandler();
             })
-            .catch(EasyTranslator.errorHandler);
+            .catch(DataverseLabelTranslator.errorHandler);
     };
 
-    EasyTranslator.AiTranslateDataSource = {
+    DataverseLabelTranslator.AiTranslateDataSource = {
         HasTranslatableRows: HasTranslatableRows
     };
-})((window.EasyTranslator = window.EasyTranslator || {}));
+})((window.DataverseLabelTranslator = window.DataverseLabelTranslator || {}));

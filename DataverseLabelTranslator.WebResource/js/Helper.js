@@ -83,8 +83,8 @@
     };
 
     Helper.GetTranslator = function () {
-        if (window.EasyTranslator) {
-            return window.EasyTranslator;
+        if (window.DataverseLabelTranslator) {
+            return window.DataverseLabelTranslator;
         }
 
         throw new Error("Translator is not available.");
