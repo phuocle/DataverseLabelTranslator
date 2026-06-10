@@ -48,7 +48,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             var formsByLanguage = RetrieveFormsByLanguage(context, entityName, languages);
             if (!formsByLanguage.TryGetValue(baseLanguage, out var baseForms) || baseForms.Count == 0)
             {
-                baseForms = formsByLanguage.Values.SelectMany(forms => forms).GroupBy(form => form.FormId).Select(group => group.First()).ToList();
+                baseForms = formsByLanguage.Values.SelectMany(forms => forms).GroupBy(form => form.FormKey).Select(group => group.First()).ToList();
             }
 
             baseForms.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.DisplayName, b.DisplayName));
@@ -74,6 +74,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 {
                     mode = "tree",
                     title = "Forms",
+                    languageColumns = BuildLanguageColumns(languages),
                     rows = rows
                 }
             };
@@ -145,37 +146,88 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             string entityName)
         {
             var rows = new List<EasyTranslatorGridRowOutput>();
-            foreach (var node in GetTranslatableNodes(baseForm.Document))
+            var localizedForms = formsByLanguage
+                .Values
+                .Select(forms => forms.FirstOrDefault(form => string.Equals(form.FormKey, baseForm.FormKey, StringComparison.OrdinalIgnoreCase)))
+                .Where(form => form != null)
+                .ToList();
+
+            foreach (var tab in GetFormTabs(baseForm.Document))
             {
-                var nodeId = GetAttributeValue(node, "id");
-                if (string.IsNullOrWhiteSpace(nodeId))
+                var tabRow = BuildFormNodeRow(baseForm, localizedForms, tab, entityName, "forms.tab", baseForm.DisplayName);
+                var sectionRows = new List<EasyTranslatorGridRowOutput>();
+
+                foreach (var section in GetTabSections(tab))
                 {
-                    continue;
+                    var sectionRow = BuildFormNodeRow(baseForm, localizedForms, section, entityName, "forms.section", GetNodeDisplayName(tab));
+                    var cellRows = new List<EasyTranslatorGridRowOutput>();
+
+                    foreach (var cell in GetSectionCells(section))
+                    {
+                        var cellRow = BuildFormNodeRow(baseForm, localizedForms, cell, entityName, "forms.cell", GetNodeDisplayName(section));
+                        if (cellRow != null)
+                        {
+                            cellRows.Add(cellRow);
+                        }
+                    }
+
+                    if (sectionRow != null)
+                    {
+                        sectionRow.Children = cellRows;
+                        sectionRows.Add(sectionRow);
+                    }
+                    else
+                    {
+                        sectionRows.AddRange(cellRows);
+                    }
                 }
 
-                var row = new EasyTranslatorGridRowOutput
+                if (tabRow != null)
                 {
-                    Recid = "forms:" + baseForm.FormId.ToString("D") + ":" + nodeId,
-                    GridKey = BuildGridKey(TranslatorType, baseForm.FormId.ToString("D"), nodeId, entityName),
-                    SchemaName = GetNodeDisplayName(node),
-                    RowType = "forms.node",
-                    IsEditable = true,
-                    IsTranslatable = true,
-                    Ai = new EasyTranslatorAiOutput { include = true, location = baseForm.DisplayName }
-                };
-
-                AddNodeLabels(row, node);
-                foreach (var formsForLanguage in formsByLanguage.Values)
-                {
-                    var localizedForm = formsForLanguage.FirstOrDefault(form => form.FormId == baseForm.FormId);
-                    var localizedNode = localizedForm == null ? null : FindNodeById(localizedForm.Document, nodeId);
-                    AddNodeLabels(row, localizedNode);
+                    tabRow.Children = sectionRows;
+                    rows.Add(tabRow);
                 }
-
-                rows.Add(row);
+                else
+                {
+                    rows.AddRange(sectionRows);
+                }
             }
 
             return rows;
+        }
+
+        private static EasyTranslatorGridRowOutput BuildFormNodeRow(
+            FormInfo baseForm,
+            List<FormInfo> localizedForms,
+            XElement node,
+            string entityName,
+            string rowType,
+            string aiLocation)
+        {
+            var nodeId = GetAttributeValue(node, "id");
+            if (string.IsNullOrWhiteSpace(nodeId))
+            {
+                return null;
+            }
+
+            var row = new EasyTranslatorGridRowOutput
+            {
+                Recid = "forms:" + baseForm.FormId.ToString("D") + ":" + nodeId,
+                GridKey = BuildGridKey(TranslatorType, baseForm.FormId.ToString("D"), nodeId, entityName),
+                SchemaName = GetNodeDisplayName(node),
+                RowType = rowType,
+                IsEditable = true,
+                IsTranslatable = true,
+                Ai = new EasyTranslatorAiOutput { include = true, location = aiLocation }
+            };
+
+            foreach (var localizedForm in localizedForms)
+            {
+                var localizedNode = FindNodeById(localizedForm.Document, nodeId);
+                AddNodeLabels(row, localizedNode);
+            }
+
+            return row;
         }
 
         private static Dictionary<Guid, FormUpdate> BuildFormUpdates(EasyTranslatorSaveInput input)
@@ -265,46 +317,50 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 throw new InvalidPluginExecutionException("Forms entityName is required.");
             }
 
-            if (string.IsNullOrWhiteSpace(input.formId) || !Guid.TryParse(input.formId, out var formId))
+            var changedCount = RunAsUserLanguage(context, GetBaseLanguage(context.ServiceAdmin), () =>
             {
-                throw new InvalidPluginExecutionException("Forms formId is required.");
-            }
+                var changedForms = 0;
+                var formIds = RetrieveEntityFormIds(context.Service, entityName);
 
-            var changed = RunAsUserLanguage(context, GetBaseLanguage(context.ServiceAdmin), () =>
-            {
-                var form = RetrieveForm(context.Service, formId);
-                var originalXml = form.GetAttributeValue<string>("formxml") ?? string.Empty;
-                var document = ParseFormXml(originalXml);
-
-                foreach (var cell in document.Descendants().Where(element => IsElementName(element, "cell")).ToList())
+                foreach (var formId in formIds)
                 {
-                    var control = cell.Descendants().FirstOrDefault(element => IsElementName(element, "control"));
-                    if (control == null || string.IsNullOrWhiteSpace(GetAttributeValue(control, "datafieldname")))
+                    var form = RetrieveForm(context.Service, formId);
+                    var originalXml = form.GetAttributeValue<string>("formxml") ?? string.Empty;
+                    var document = ParseFormXml(originalXml);
+
+                    foreach (var cell in document.Descendants().Where(element => IsElementName(element, "cell")).ToList())
+                    {
+                        var control = cell.Descendants().FirstOrDefault(element => IsElementName(element, "control"));
+                        if (control == null || string.IsNullOrWhiteSpace(GetAttributeValue(control, "datafieldname")))
+                        {
+                            continue;
+                        }
+
+                        cell.SetAttributeValue("id", Guid.NewGuid().ToString("D"));
+                        foreach (var labels in cell.Elements().Where(element => IsElementName(element, "labels")))
+                        {
+                            labels.Elements().Where(element => IsElementName(element, "label")).Remove();
+                        }
+                    }
+
+                    var updatedXml = SerializeFormXml(document);
+                    var hasChanges = !string.Equals(updatedXml, originalXml, StringComparison.Ordinal);
+                    if (!hasChanges)
                     {
                         continue;
                     }
 
-                    cell.SetAttributeValue("id", Guid.NewGuid().ToString("D"));
-                    foreach (var labels in cell.Elements().Where(element => IsElementName(element, "labels")))
-                    {
-                        labels.Elements().Where(element => IsElementName(element, "label")).Remove();
-                    }
-                }
-
-                var updatedXml = SerializeFormXml(document);
-                var hasChanges = !string.Equals(updatedXml, originalXml, StringComparison.Ordinal);
-                if (hasChanges)
-                {
                     UpdateFormXml(context.ServiceAdmin, formId, updatedXml);
+                    changedForms++;
                 }
 
-                return hasChanges;
+                return changedForms;
             });
 
             var output = new EasyTranslatorSaveOutput();
-            if (changed)
+            if (changedCount > 0)
             {
-                output.changedRowCount = 1;
+                output.changedRowCount = changedCount;
                 AddPublishTarget(output, new HashSet<string>(StringComparer.OrdinalIgnoreCase), PublishKind, entityName);
             }
 
@@ -335,7 +391,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         {
             var query = new QueryExpression("systemform")
             {
-                ColumnSet = new ColumnSet("formid", "type", "name", "objecttypecode", "formxml")
+                ColumnSet = new ColumnSet("formid", "formidunique", "type", "name", "objecttypecode", "formxml")
             };
             query.Criteria.AddCondition("objecttypecode", ConditionOperator.Equal, entityName);
             query.Criteria.AddCondition("iscustomizable", ConditionOperator.Equal, true);
@@ -356,6 +412,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 forms.Add(new FormInfo
                 {
                     FormId = formId,
+                    FormKey = GetFormKey(entity, formId),
                     Name = entity.GetAttributeValue<string>("name") ?? string.Empty,
                     FormType = formType,
                     LanguageCode = languageCode,
@@ -364,6 +421,25 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             return forms;
+        }
+
+        private static List<Guid> RetrieveEntityFormIds(IOrganizationService service, string entityName)
+        {
+            var query = new QueryExpression("systemform")
+            {
+                ColumnSet = new ColumnSet("formid")
+            };
+            query.Criteria.AddCondition("objecttypecode", ConditionOperator.Equal, entityName);
+            query.Criteria.AddCondition("iscustomizable", ConditionOperator.Equal, true);
+            query.Criteria.AddCondition("formactivationstate", ConditionOperator.Equal, 1);
+            query.Criteria.AddCondition("type", ConditionOperator.In, SupportedFormTypes.Cast<object>().ToArray());
+            query.Orders.Add(new OrderExpression("name", OrderType.Ascending));
+
+            return RetrieveAll(service, query)
+                .Select(entity => entity.Contains("formid") ? entity.GetAttributeValue<Guid>("formid") : entity.Id)
+                .Where(formId => formId != Guid.Empty)
+                .Distinct()
+                .ToList();
         }
 
         private static Entity RetrieveForm(IOrganizationService service, Guid formId)
@@ -382,6 +458,21 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         {
             var response = (RetrieveAvailableLanguagesResponse)serviceAdmin.Execute(new RetrieveAvailableLanguagesRequest());
             return response.LocaleIds == null ? new List<int>() : response.LocaleIds.ToList();
+        }
+
+        private static List<EasyTranslatorLanguageColumnOutput> BuildLanguageColumns(List<int> languages)
+        {
+            var columns = new List<EasyTranslatorLanguageColumnOutput>();
+            foreach (var language in languages ?? new List<int>())
+            {
+                columns.Add(new EasyTranslatorLanguageColumnOutput
+                {
+                    field = language.ToString(),
+                    text = language.ToString()
+                });
+            }
+
+            return columns;
         }
 
         private static List<Entity> RetrieveAll(IOrganizationService service, QueryExpression query)
@@ -410,12 +501,61 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
         private static List<XElement> GetTranslatableNodes(XDocument document)
         {
+            var nodes = new List<XElement>();
+            foreach (var tab in GetFormTabs(document))
+            {
+                nodes.Add(tab);
+
+                foreach (var section in GetTabSections(tab))
+                {
+                    nodes.Add(section);
+
+                    foreach (var cell in GetSectionCells(section))
+                    {
+                        nodes.Add(cell);
+                    }
+                }
+            }
+
+            return nodes;
+        }
+
+        private static List<XElement> GetFormTabs(XDocument document)
+        {
+            if (document == null)
+            {
+                return new List<XElement>();
+            }
+
             return document
                 .Descendants()
-                .Where(element =>
-                    !string.IsNullOrWhiteSpace(GetAttributeValue(element, "id")) &&
-                    element.Elements().Any(child => IsElementName(child, "labels")) &&
-                    element.Descendants().Any(child => IsElementName(child, "control")))
+                .Where(element => IsElementName(element, "tab") && !string.IsNullOrWhiteSpace(GetAttributeValue(element, "id")))
+                .ToList();
+        }
+
+        private static List<XElement> GetTabSections(XElement tab)
+        {
+            if (tab == null)
+            {
+                return new List<XElement>();
+            }
+
+            return tab
+                .Descendants()
+                .Where(element => IsElementName(element, "section") && !string.IsNullOrWhiteSpace(GetAttributeValue(element, "id")))
+                .ToList();
+        }
+
+        private static List<XElement> GetSectionCells(XElement section)
+        {
+            if (section == null)
+            {
+                return new List<XElement>();
+            }
+
+            return section
+                .Descendants()
+                .Where(element => IsElementName(element, "cell") && !string.IsNullOrWhiteSpace(GetAttributeValue(element, "id")))
                 .ToList();
         }
 
@@ -554,6 +694,12 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             return string.IsNullOrWhiteSpace(name) ? node.Name.LocalName : name;
         }
 
+        private static string GetFormKey(Entity entity, Guid formId)
+        {
+            var formIdUnique = entity.Contains("formidunique") ? entity.GetAttributeValue<Guid>("formidunique") : Guid.Empty;
+            return (formIdUnique == Guid.Empty ? formId : formIdUnique).ToString("D");
+        }
+
         private static string GetAttributeValue(XElement element, string attributeName)
         {
             if (element == null)
@@ -615,6 +761,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         private class FormInfo
         {
             public Guid FormId { get; set; }
+            public string FormKey { get; set; }
             public string Name { get; set; }
             public int FormType { get; set; }
             public int LanguageCode { get; set; }
