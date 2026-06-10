@@ -154,6 +154,13 @@
         return languageName + " (" + lcid + ")";
     };
 
+    Helper.GetLanguageColumnCode = function (languageCode) {
+        var lcid = String(languageCode || "");
+        var locale = languageLocales && languageLocales[lcid];
+
+        return locale ? locale.code || "" : "";
+    };
+
     Helper.BuildLanguageColumns = function (languageCodes) {
         languageCodes = languageCodes || [];
 
@@ -170,7 +177,8 @@
                 seen[field] = true;
                 columns.push({
                     field: field,
-                    text: Helper.FormatLanguageColumnHeader(field, locales[field])
+                    text: Helper.FormatLanguageColumnHeader(field, locales[field]),
+                    code: locales[field] ? locales[field].code || "" : ""
                 });
             }
 
@@ -366,7 +374,6 @@
         app = app || Helper.GetTranslator();
         var grid = app.GetGrid();
 
-        app.AddSummary(records);
         grid.add(records);
 
         if (typeof app.UnlockGrid === "function") {

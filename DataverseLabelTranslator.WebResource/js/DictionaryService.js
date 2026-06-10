@@ -290,10 +290,6 @@
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
 
-            if (record.w2ui && record.w2ui.summary) {
-                continue;
-            }
-
             var sourceText = String(getDictionaryRecordFieldValue(record, "sourceText") || "").trim();
 
             if (!sourceText) {
@@ -353,7 +349,7 @@
     }
 
     function isDictionaryInputRowEmpty(record, context) {
-        if (!record || (record.w2ui && record.w2ui.summary)) {
+        if (!record) {
             return false;
         }
 

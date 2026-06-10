@@ -168,7 +168,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         {
             var query = new QueryExpression("languagelocale")
             {
-                ColumnSet = new ColumnSet("language", "localeid")
+                ColumnSet = new ColumnSet("language", "localeid", "code")
             };
             var output = new OtherLanguageLocalesOutput
             {
@@ -186,7 +186,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 output.locales.Add(new OtherLanguageLocaleItemOutput
                 {
                     localeid = localeId,
-                    language = locale.GetAttributeValue<string>("language") ?? localeId.ToString()
+                    language = locale.GetAttributeValue<string>("language") ?? localeId.ToString(),
+                    code = locale.GetAttributeValue<string>("code") ?? string.Empty
                 });
             }
 

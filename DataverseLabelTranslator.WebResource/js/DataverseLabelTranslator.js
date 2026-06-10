@@ -27,10 +27,6 @@
         return app.IsDisplayTextComponent() ? Helper.GetPlaceholderDisplayTextBase() : null;
     }
 
-    function IsSummaryRecord(record) {
-        return !!(record && record.w2ui && record.w2ui.summary);
-    }
-
     function IsReadonlyRecord(record) {
         return !!(record && (record.isEditable === false || (record.w2ui && record.w2ui.editable === false)));
     }
@@ -243,14 +239,7 @@
 
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
-            if (
-                !record ||
-                IsSummaryRecord(record) ||
-                IsReadonlyRecord(record) ||
-                !record.gridKey ||
-                !record.w2ui ||
-                !record.w2ui.changes
-            ) {
+            if (!record || IsReadonlyRecord(record) || !record.gridKey || !record.w2ui || !record.w2ui.changes) {
                 continue;
             }
 
@@ -286,24 +275,24 @@
     DataverseLabelTranslatorHandler.IsUnifiedType = function (type) {
         return (
             [
-                "sitemap",
-                "dashboards",
-                "webresources",
-                "globalOptionSet",
-                "attributes",
-                "options",
-                "forms",
-                "entityMeta",
-                "views",
-                "formMeta",
-                "relationships",
-                "charts",
-                "ribbons",
-                "bpf",
-                "entityMessages",
-                "commands",
-                "businessRules",
-                "content"
+                "sitemap", // STT 15 - Sitemap
+                "dashboards", // STT 16 - Dashboards
+                "webresources", // STT 17 - Web Resources
+                "globalOptionSet", // STT 18 - Global Option Sets
+                "attributes", // STT 1 - Attributes
+                "options", // STT 2 - Option Sets
+                "forms", // STT 3 - Forms
+                "entityMeta", // STT 6 - Entity Metadata
+                "views", // STT 4 - Views
+                "formMeta", // STT 5 - Form Metadata
+                "relationships", // STT 7 - Relationships
+                "charts", // STT 8 - Charts
+                "ribbons", // STT 11 - Ribbons
+                "bpf", // STT 9 - Business Process Flows
+                "entityMessages", // STT 13 - Entity Messages
+                "commands", // STT 12 - Commands
+                "businessRules", // STT 10 - Business Rules
+                "content" // STT 14 - Content Snippets
             ].indexOf(type) !== -1
         );
     };
@@ -475,7 +464,8 @@
             if (/^\d+$/.test(field)) {
                 languages.push({
                     lcid: field,
-                    text: GetColumnText(columns[i])
+                    text: GetColumnText(columns[i]),
+                    code: columns[i].code || ""
                 });
             }
         }
@@ -502,10 +492,6 @@
         return "";
     }
 
-    function IsSummaryRecord(record) {
-        return !!(record && record.w2ui && record.w2ui.summary);
-    }
-
     function HasChildRecords(record) {
         return !!(record && record.w2ui && Array.isArray(record.w2ui.children) && record.w2ui.children.length > 0);
     }
@@ -515,16 +501,20 @@
         var records = grid && grid.records ? grid.records : [];
 
         return records.filter(function (record) {
-            return !IsSummaryRecord(record) && (!record.w2ui || !record.w2ui.parent_recid);
+            return !record.w2ui || !record.w2ui.parent_recid;
         });
     }
 
     function IsGenericAiTranslatableRecord(record) {
-        if (!record || IsSummaryRecord(record)) {
+        if (!record) {
             return false;
         }
 
-        if (!record.gridKey || record.isEditable !== true || record.isTranslatable !== true) {
+        if (!record.gridKey) {
+            return false;
+        }
+
+        if (record.isEditable === false || record.isTranslatable === false) {
             return false;
         }
 
@@ -540,7 +530,7 @@
     }
 
     function CreateAiTranslateRow(record, languages, translatable) {
-        if (!record || IsSummaryRecord(record)) {
+        if (!record) {
             return null;
         }
 
@@ -1078,7 +1068,316 @@
         };
     }
 
+    function DecodeDictionaryText(value) {
+        if (value === null || typeof value === "undefined") {
+            return "";
+        }
+
+        var text = String(value);
+        return typeof w2utils !== "undefined" && w2utils.decodeTags ? w2utils.decodeTags(text) : text;
+    }
+
+    function HasDictionaryText(value) {
+        return (
+            DecodeDictionaryText(value)
+                .replace(/&nbsp;/gi, " ")
+                .replace(/\u00a0/g, " ")
+                .replace(/<[^>]*>/g, "")
+                .trim().length > 0
+        );
+    }
+
+    function GetDictionaryGridValue(record, field) {
+        if (!record) {
+            return "";
+        }
+
+        if (record.w2ui && record.w2ui.changes && HasOwnProperty(record.w2ui.changes, field)) {
+            return record.w2ui.changes[field];
+        }
+
+        if (HasOwnProperty(record, field)) {
+            return record[field];
+        }
+
+        var stringField = String(field);
+        if (record.w2ui && record.w2ui.changes && HasOwnProperty(record.w2ui.changes, stringField)) {
+            return record.w2ui.changes[stringField];
+        }
+
+        if (HasOwnProperty(record, stringField)) {
+            return record[stringField];
+        }
+
+        return "";
+    }
+
+    function GetColumnDisplayName(field) {
+        var columns = DataverseLabelTranslator.GetGrid().columns || [];
+        var fieldText = String(field);
+
+        for (var i = 0; i < columns.length; i++) {
+            if (String(columns[i].field) === fieldText) {
+                return columns[i].text || columns[i].caption || columns[i].label || fieldText;
+            }
+        }
+
+        return fieldText;
+    }
+
+    function BuildDictionaryValueBox(label, value) {
+        return (
+            '<div style="margin: 0 0 14px 0;">' +
+            '<div style="font-weight: 600; color: #444; margin-bottom: 5px;">' +
+            EscapeHtml(label) +
+            "</div>" +
+            '<div style="border: 1px solid #d0d7de; background: #f8f9fb; border-radius: 4px; padding: 9px 11px; font-weight: 600; color: #111; white-space: pre-wrap;">' +
+            EscapeHtml(value) +
+            "</div>" +
+            "</div>"
+        );
+    }
+
+    function ConfirmAddSelectedTranslationToDictionary(sourceLabel, sourceText, targetItems) {
+        var body =
+            '<div style="padding: 22px 28px 18px 28px; font-size: 15px; line-height: 1.45;">' +
+            '<div style="font-size: 18px; font-weight: 600; margin-bottom: 18px;">Add this translation to dictionary?</div>' +
+            BuildDictionaryValueBox("Source (" + sourceLabel + ")", sourceText);
+
+        for (var i = 0; i < targetItems.length; i++) {
+            body += BuildDictionaryValueBox(targetItems[i].label, targetItems[i].value);
+        }
+
+        body += "</div>";
+
+        return new Promise(function (resolve) {
+            w2popup.open({
+                title: "Add to Dictionary",
+                body: body,
+                buttons:
+                    '<button class="w2ui-btn" onclick="w2popup._xqtAddDictionaryResult=false; w2popup.close();">No</button> ' +
+                    '<button class="w2ui-btn" onclick="w2popup._xqtAddDictionaryResult=true; w2popup.close();">Add</button>',
+                width: 720,
+                height: 560,
+                modal: true,
+                showClose: true,
+                showMax: false,
+                onOpen: function () {
+                    w2popup._xqtAddDictionaryResult = false;
+                },
+                onClose: function () {
+                    var result = !!w2popup._xqtAddDictionaryResult;
+                    w2popup._xqtAddDictionaryResult = null;
+                    resolve(result);
+                }
+            });
+        });
+    }
+
+    function ApplyDictionaryToGrid(mode) {
+        if (!window.DictionaryService || !DictionaryService.SplitRecordsByDictionary) {
+            w2alert("Dictionary service is not available.");
+            return;
+        }
+
+        DataverseLabelTranslator.LockGrid("Applying dictionary...");
+
+        Helper.GetBaseLanguage()
+            .then(function (baseLanguage) {
+                var baseLcid = String(baseLanguage);
+                var targetLcids = DataverseLabelTranslator.GetColumns(false).filter(function (column) {
+                    return String(column) !== baseLcid && /^\d+$/.test(String(column));
+                });
+
+                if (!targetLcids.length) {
+                    DataverseLabelTranslator.UnlockGrid();
+                    w2alert("No target language columns found.");
+                    return null;
+                }
+
+                var allRecords = DataverseLabelTranslator.GetAllRecords();
+                var promises = targetLcids.map(function (targetLcid) {
+                    var filteredRecords = allRecords.filter(function (record) {
+                        var sourceVal = GetDictionaryGridValue(record, baseLcid);
+                        var targetVal = GetDictionaryGridValue(record, targetLcid);
+
+                        if (!HasDictionaryText(sourceVal)) {
+                            return false;
+                        }
+
+                        return mode === "missing" ? !HasDictionaryText(targetVal) : true;
+                    });
+
+                    if (!filteredRecords.length) {
+                        return Promise.resolve([]);
+                    }
+
+                    return DictionaryService.SplitRecordsByDictionary(baseLcid, targetLcid, filteredRecords).then(
+                        function (split) {
+                            return split.matchedResults || [];
+                        }
+                    );
+                });
+
+                return Promise.all(promises).then(function (resultsPerLang) {
+                    var grid = DataverseLabelTranslator.GetGrid();
+                    var totalApplied = 0;
+
+                    for (var i = 0; i < resultsPerLang.length; i++) {
+                        var results = resultsPerLang[i];
+                        for (var j = 0; j < results.length; j++) {
+                            var result = results[j];
+                            var record = DataverseLabelTranslator.GetByRecId(allRecords, result.recid);
+                            if (!record) {
+                                continue;
+                            }
+
+                            if (
+                                DataverseLabelTranslator.ApplyGridChangeValue(record, result.column, result.translation)
+                            ) {
+                                totalApplied++;
+                                grid.refreshRow(record.recid);
+                            }
+                        }
+                    }
+
+                    DataverseLabelTranslator.SetSaveButtonDisabled(!DataverseLabelTranslator.HasPendingChanges());
+                    DataverseLabelTranslator.UnlockGrid();
+                    w2alert("Applied " + totalApplied + " dictionary translation(s).");
+                    return totalApplied;
+                });
+            })
+            .catch(function (error) {
+                DataverseLabelTranslator.errorHandler(error);
+            });
+    }
+
+    function ShowApplyDictionaryPrompt() {
+        DialogHelper.ShowApplyDictionaryPrompt(ApplyDictionaryToGrid);
+    }
+
+    function ShowAddSelectedTranslationToDictionary() {
+        if (!window.DictionaryService || !DictionaryService.UpsertEntries) {
+            return DialogHelper.alert("Dictionary service is not available.", { title: "Dictionary" });
+        }
+
+        var grid = DataverseLabelTranslator.GetGrid();
+        var selected = grid.getSelection ? grid.getSelection() || [] : [];
+
+        if (selected.length !== 1) {
+            return DialogHelper.alert("Please select exactly one translatable row.", { title: "Dictionary" });
+        }
+
+        var selectedId = selected[0] && selected[0].recid ? selected[0].recid : selected[0];
+        var record = DataverseLabelTranslator.GetByRecId(DataverseLabelTranslator.GetAllRecords(), selectedId);
+
+        if (!record) {
+            return DialogHelper.alert("Selected row was not found.", { title: "Dictionary" });
+        }
+
+        if (record._isGroupNode || (record.w2ui && record.w2ui.editable === false)) {
+            return DialogHelper.alert(
+                "Selected row is a group row and cannot be added to dictionary. Please select a translatable label row.",
+                { title: "Dictionary" }
+            );
+        }
+
+        return Helper.GetBaseLanguage()
+            .then(function (baseLanguage) {
+                var baseLcid = String(baseLanguage);
+                var sourceText = DecodeDictionaryText(GetDictionaryGridValue(record, baseLcid)).trim();
+
+                if (!HasDictionaryText(sourceText)) {
+                    return DialogHelper.alert(
+                        "Selected row does not have source text in " + GetColumnDisplayName(baseLcid) + ".",
+                        { title: "Dictionary" }
+                    );
+                }
+
+                var targetColumns = DataverseLabelTranslator.GetColumns(false)
+                    .map(function (field) {
+                        return String(field);
+                    })
+                    .filter(function (field) {
+                        return field !== baseLcid && /^\d+$/.test(field);
+                    });
+
+                if (!targetColumns.length) {
+                    return DialogHelper.alert("No target language columns found.", { title: "Dictionary" });
+                }
+
+                var targets = {};
+                var targetItems = [];
+                var targetNames = [];
+
+                for (var i = 0; i < targetColumns.length; i++) {
+                    var targetLcid = targetColumns[i];
+                    var targetName = GetColumnDisplayName(targetLcid);
+                    var targetText = DecodeDictionaryText(GetDictionaryGridValue(record, targetLcid)).trim();
+
+                    targetNames.push(targetName);
+
+                    if (!HasDictionaryText(targetText)) {
+                        continue;
+                    }
+
+                    targets[targetLcid] = targetText;
+                    targetItems.push({
+                        label: targetName,
+                        value: targetText
+                    });
+                }
+
+                if (!targetItems.length) {
+                    return DialogHelper.alert(
+                        "No translated value found for target languages: " + targetNames.join(", ") + ".",
+                        { title: "Dictionary" }
+                    );
+                }
+
+                return ConfirmAddSelectedTranslationToDictionary(
+                    GetColumnDisplayName(baseLcid),
+                    sourceText,
+                    targetItems
+                ).then(function (confirmed) {
+                    if (!confirmed) {
+                        return null;
+                    }
+
+                    DataverseLabelTranslator.LockGrid("Updating dictionary...");
+
+                    return DictionaryService.UpsertEntries([
+                        {
+                            sourceText: sourceText,
+                            targets: targets
+                        }
+                    ])
+                        .then(function (result) {
+                            DataverseLabelTranslator.UnlockGrid();
+                            return DialogHelper.alert(
+                                "Dictionary updated.\n\nSource: " +
+                                    sourceText +
+                                    "\nTargets saved: " +
+                                    result.targetCount,
+                                { title: "Dictionary" }
+                            );
+                        })
+                        .catch(function (error) {
+                            DataverseLabelTranslator.UnlockGrid();
+                            var message = error && error.message ? error.message : String(error);
+                            return DialogHelper.alert(message, { title: "Dictionary" });
+                        });
+                });
+            })
+            .catch(function (error) {
+                var message = error && error.message ? error.message : String(error);
+                return DialogHelper.alert(message, { title: "Dictionary" });
+            });
+    }
+
     function GetRootGridRecords(grid) {
+        grid = grid || DataverseLabelTranslator.GetGrid();
+
         return (grid.records || []).filter(function (record) {
             return !record.w2ui || !record.w2ui.parent_recid;
         });
@@ -1256,7 +1555,7 @@
         }
 
         if (target === "applyDictionary") {
-            TriggerUnavailable("Apply Dictionary")();
+            ShowApplyDictionaryPrompt();
             return;
         }
 
@@ -1271,7 +1570,7 @@
         }
 
         if (target === "addSelectedDictionary") {
-            TriggerUnavailable("Add selected translation to dictionary")();
+            ShowAddSelectedTranslationToDictionary();
             return;
         }
 
@@ -1524,25 +1823,70 @@
     }
 
     function GetOriginalRecordValue(record, field) {
-        if (!record || !HasOwnProperty(record, field)) {
-            return "";
+        if (!record) {
+            return undefined;
         }
 
-        return record[field] == null ? "" : record[field];
+        if (HasOwnProperty(record, field)) {
+            return record[field];
+        }
+
+        var stringField = String(field);
+        if (HasOwnProperty(record, stringField)) {
+            return record[stringField];
+        }
+
+        return undefined;
     }
 
     function NormalizeComparableGridValue(value) {
-        return value == null ? "" : String(value);
+        if (value === null || typeof value === "undefined") {
+            return "";
+        }
+
+        var text = String(value);
+        return typeof w2utils !== "undefined" && w2utils.decodeTags ? w2utils.decodeTags(text) : text;
     }
 
     function GridValuesEqual(left, right) {
         return NormalizeComparableGridValue(left) === NormalizeComparableGridValue(right);
     }
 
-    function EscapeHtml(text) {
-        return String(text || "").replace(/[&<>"]/g, function (m) {
+    function EscapeHtml(value) {
+        if (value === null || typeof value === "undefined") {
+            return "";
+        }
+
+        return String(value).replace(/[&<>"]/g, function (m) {
             return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m];
         });
+    }
+
+    function FormatChangedCellFooterValue(value) {
+        if (value === null || typeof value === "undefined" || value === "") {
+            return "<i>(empty)</i>";
+        }
+
+        return EscapeHtml(value);
+    }
+
+    function GetGridEventValue(event, property) {
+        if (!event) {
+            return undefined;
+        }
+
+        if (typeof event[property] !== "undefined") {
+            return event[property];
+        }
+
+        return event.detail ? event.detail[property] : undefined;
+    }
+
+    function GetColumnFooterText(column) {
+        var text = column ? column.text || column.field || "" : "";
+        return typeof w2utils !== "undefined" && w2utils.stripTags
+            ? w2utils.stripTags(text)
+            : String(text).replace(/<[^>]*>/g, "");
     }
 
     function GetRecordFieldValue(record, field) {
@@ -1724,7 +2068,10 @@
                 text:
                     /^\d+$/.test(field) && window.Helper && Helper.FormatLanguageColumnHeader
                         ? Helper.FormatLanguageColumnHeader(field)
-                        : (columns[i] && columns[i].text) || field
+                        : (columns[i] && columns[i].text) || field,
+                code:
+                    (columns[i] && columns[i].code) ||
+                    (window.Helper && Helper.GetLanguageColumnCode ? Helper.GetLanguageColumnCode(field) : "")
             });
         }
 
@@ -1744,6 +2091,7 @@
             grid.addColumn({
                 field: normalizedColumns[j].field,
                 text: normalizedColumns[j].text,
+                code: normalizedColumns[j].code,
                 size: columnWidth + "%",
                 sortable: true,
                 editable: { type: "text" },
@@ -1793,35 +2141,6 @@
         return function (record) {
             return DataverseLabelTranslator.RenderTranslationCell(record, field);
         };
-    };
-
-    DataverseLabelTranslator.AddSummary = function (records) {
-        var count = (records || []).filter(function (record) {
-            return !(record.w2ui && record.w2ui.summary);
-        }).length;
-        var summary = {
-            w2ui: { summary: true },
-            recid: "Summary-1",
-            schemaName: '<span style="float: right;">Of ' + count + " labels in total</span>"
-        };
-        var languages = DataverseLabelTranslator.GetColumns(false);
-
-        for (var i = 0; i < languages.length; i++) {
-            var language = String(languages[i]);
-            var translatedRecords = 0;
-            var flatRecords = FlattenRecords(records);
-
-            for (var j = 0; j < flatRecords.length; j++) {
-                if (flatRecords[j][language]) {
-                    translatedRecords++;
-                }
-            }
-
-            summary[language] =
-                translatedRecords + " translated (" + (flatRecords.length - translatedRecords) + " untranslated)";
-        }
-
-        records.push(summary);
     };
 
     DataverseLabelTranslator.NormalizeRecordChanges = function (record) {
@@ -1881,13 +2200,7 @@
     DataverseLabelTranslator.HasLoadedRecords = function () {
         var records = DataverseLabelTranslator.GetAllRecords();
 
-        for (var i = 0; i < records.length; i++) {
-            if (!(records[i].w2ui && records[i].w2ui.summary)) {
-                return true;
-            }
-        }
-
-        return false;
+        return records.length > 0;
     };
 
     DataverseLabelTranslator.ApplyGridChangeValue = function (record, field, value) {
@@ -1955,10 +2268,6 @@
 
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
-            if (record.w2ui && record.w2ui.summary) {
-                continue;
-            }
-
             var value = GetRecordFieldValue(record, column);
             if (value === null || typeof value === "undefined") {
                 continue;
@@ -2016,11 +2325,12 @@
 
     DataverseLabelTranslator.UpdateChangedCellFooter = function (event) {
         var grid = DataverseLabelTranslator.GetGrid();
-        var recid = event && typeof event.recid !== "undefined" ? event.recid : null;
-        var columnIndex = event && typeof event.column !== "undefined" ? event.column : null;
-        var column = grid && columnIndex !== null ? grid.columns[columnIndex] : null;
+        var recid = GetGridEventValue(event, "recid");
+        var columnIndex = GetGridEventValue(event, "column");
+        var column =
+            grid && typeof columnIndex !== "undefined" && columnIndex !== null ? grid.columns[columnIndex] : null;
         var record =
-            recid !== null
+            typeof recid !== "undefined" && recid !== null
                 ? DataverseLabelTranslator.GetByRecId(DataverseLabelTranslator.GetAllRecords(), recid)
                 : null;
 
@@ -2038,11 +2348,11 @@
         SetChangedCellFooter(
             '<span style="display:flex;align-items:center;box-sizing:border-box;height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;padding:0 8px;transform:translateY(3px);">' +
                 "<b>Column:&nbsp;</b>" +
-                EscapeHtml(column.text || column.field) +
+                EscapeHtml(GetColumnFooterText(column)) +
                 " | <b>Old Value:&nbsp;</b>" +
-                EscapeHtml(GetOriginalRecordValue(record, column.field) || "(empty)") +
+                FormatChangedCellFooterValue(GetOriginalRecordValue(record, column.field)) +
                 " | <b>New Value:&nbsp;</b>" +
-                EscapeHtml(record.w2ui.changes[column.field] || "(empty)") +
+                FormatChangedCellFooterValue(record.w2ui.changes[column.field]) +
                 "</span>"
         );
     };

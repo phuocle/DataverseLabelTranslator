@@ -111,6 +111,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
     {
         public int localeid { get; set; }
         public string language { get; set; }
+        public string code { get; set; }
     }
 
     public class OtherAppSettingsRoot

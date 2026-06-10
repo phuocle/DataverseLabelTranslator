@@ -4,6 +4,11 @@
     var actionName = "Other";
     var workspaceGridName = "easyAiTranslateGrid";
     var state = null;
+    var isoByLcid = {
+        1033: "en",
+        1041: "ja",
+        1066: "vi"
+    };
 
     function executeOther(operation, payload) {
         var input = Object.assign({ operation: operation }, payload || {});
@@ -859,6 +864,12 @@
     }
 
     function getIso(lcid) {
+        for (var i = 0; state && i < state.languages.length; i++) {
+            if (state.languages[i].lcid === String(lcid) && state.languages[i].code) {
+                return String(state.languages[i].code).split(/[-_]/)[0].toLowerCase();
+            }
+        }
+
         var text = getLanguageItemText(lcid);
         var match = text.match(/\(([a-z]{2})(?:[-_][a-z]{2})?\)\s*\(\d+\)\s*$/i);
 
@@ -867,7 +878,11 @@
         }
 
         match = text.match(/\b([a-z]{2})(?:[-_][a-z]{2})?\b/i);
-        return match ? match[1].toLowerCase() : null;
+        if (match) {
+            return match[1].toLowerCase();
+        }
+
+        return isoByLcid[String(lcid)] || null;
     }
 
     function validateTranslate() {
@@ -948,6 +963,7 @@
         var validationError = validateTranslate();
         if (validationError) {
             updateTranslateButtonState();
+            Helper.ShowError(validationError, { title: "AI Translate" });
             return;
         }
 
