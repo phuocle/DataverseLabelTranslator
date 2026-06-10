@@ -611,7 +611,6 @@
         }
 
         grid.searchSelected = null;
-
         if (searchInput) {
             searchInput.readOnly = false;
             var searchValueText = String(searchInput.value || "")
@@ -624,10 +623,112 @@
             searchInput.removeAttribute("placeholder");
         }
 
+        resetDictionaryGridBodyOffset(grid, gridBox);
+
         if (grid.last) {
             grid.last.field = "all";
             grid.last.label = "All Fields";
         }
+    }
+
+    function resetDictionaryGridBodyOffset(grid, gridBox) {
+        var toolbar = gridBox.querySelector(".w2ui-grid-toolbar");
+        var body = gridBox.querySelector(".w2ui-grid-body");
+        var toolbarBounds = getVisibleToolbarContentBounds(toolbar);
+        var toolbarHeight = toolbarBounds.height;
+
+        if (!body || !toolbarHeight) {
+            return;
+        }
+
+        normalizeToolbarLineOffset(toolbar, toolbarBounds.topGap);
+
+        if (grid && grid.last) {
+            grid.last.toolbar_height = toolbarHeight;
+        }
+
+        toolbar.style.setProperty("height", toolbarHeight + "px", "important");
+        body.style.setProperty("top", toolbarHeight + "px", "important");
+        body.style.setProperty("height", "auto", "important");
+        body.style.setProperty("inset", toolbarHeight + "px 0 24px 0", "important");
+    }
+
+    function normalizeToolbarLineOffset(toolbar, topGap) {
+        var toolbarLine = toolbar ? toolbar.querySelector(".w2ui-tb-line") : null;
+
+        if (!toolbarLine) {
+            return;
+        }
+
+        toolbarLine.style.removeProperty("top");
+        toolbarLine.style.removeProperty("position");
+
+        if (topGap <= 0) {
+            return;
+        }
+
+        toolbarLine.style.setProperty("position", "relative", "important");
+        toolbarLine.style.setProperty("top", "-" + topGap + "px", "important");
+    }
+
+    function getVisibleToolbarContentBounds(toolbar) {
+        if (!toolbar) {
+            return {
+                height: 0,
+                topGap: 0
+            };
+        }
+
+        resetToolbarLineOffset(toolbar);
+
+        var toolbarRect = toolbar.getBoundingClientRect();
+        var items = toolbar.querySelectorAll(
+            ".w2ui-grid-search-input, .w2ui-tb-button:not(.w2ui-tb-spacer), .w2ui-tb-break"
+        );
+        var top = Number.MAX_VALUE;
+        var bottom = 0;
+
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var style = window.getComputedStyle(item);
+            if (style.display === "none" || style.visibility === "hidden") {
+                continue;
+            }
+
+            var rect = item.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) {
+                continue;
+            }
+
+            top = Math.min(top, rect.top - toolbarRect.top);
+            bottom = Math.max(bottom, rect.bottom - toolbarRect.top);
+        }
+
+        if (!bottom) {
+            return {
+                height: toolbar.offsetHeight,
+                topGap: 0
+            };
+        }
+
+        var topGap = Math.max(0, Math.floor(top) - 2);
+        var height = Math.max(36, Math.ceil(bottom - topGap) + 4);
+
+        return {
+            height: height,
+            topGap: topGap
+        };
+    }
+
+    function resetToolbarLineOffset(toolbar) {
+        var toolbarLine = toolbar ? toolbar.querySelector(".w2ui-tb-line") : null;
+
+        if (!toolbarLine) {
+            return;
+        }
+
+        toolbarLine.style.removeProperty("top");
+        toolbarLine.style.removeProperty("position");
     }
 
     function normalizeDictionarySearchUiSoon() {
@@ -725,7 +826,10 @@
                 };
             },
             onSearch: function (event) {
-                event.onComplete = normalizeDictionarySearchUiSoon;
+                event.onComplete = function () {
+                    Helper.ApplySimpleGridContainsSearch(w2ui.translationDictionaryGrid);
+                    normalizeDictionarySearchUiSoon();
+                };
             },
             columns: columns,
             records: []

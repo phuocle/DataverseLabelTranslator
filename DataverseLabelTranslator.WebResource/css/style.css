@@ -152,6 +152,9 @@
   box-sizing: border-box;
   height: 30px;
   overflow: visible;
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
+  position: relative !important;
   top: -1px !important;
   width: 240px !important;
 }
@@ -182,7 +185,9 @@
   background-color: #f1f1f1 !important;
   border: 0 !important;
   box-sizing: border-box !important;
+  background-position: 8px center !important;
   height: 30px !important;
+  line-height: 28px !important;
   margin-top: 0 !important;
   padding: 1px 12px 0 28px !important;
   width: 240px !important;

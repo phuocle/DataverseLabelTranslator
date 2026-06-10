@@ -66,6 +66,69 @@
         return Helper.UiText.Placeholders.Readonly;
     };
 
+    Helper.HasSearchValue = function (value) {
+        return value !== null && typeof value !== "undefined" && String(value).trim() !== "";
+    };
+
+    Helper.GetSimpleGridSearchValue = function (grid) {
+        var gridBox = grid && grid.box ? grid.box : null;
+        var searchInput = gridBox && grid.name ? gridBox.querySelector("#grid_" + grid.name + "_search_all") : null;
+
+        return searchInput ? String(searchInput.value || "") : "";
+    };
+
+    Helper.ApplySimpleGridContainsSearch = function (grid) {
+        if (!grid) {
+            return;
+        }
+
+        var searchValue = Helper.GetSimpleGridSearchValue(grid);
+        if (!Helper.HasSearchValue(searchValue)) {
+            if (typeof grid.searchReset === "function") {
+                grid.searchReset(true);
+            } else {
+                grid.searchData = [];
+                if (grid.last) {
+                    grid.last.searchIds = [];
+                }
+            }
+
+            grid.refresh();
+            return;
+        }
+
+        var searchData = [];
+        var searches = grid.searches || [];
+        for (var i = 0; i < searches.length; i++) {
+            if (!searches[i] || !searches[i].field) {
+                continue;
+            }
+
+            searchData.push({
+                field: searches[i].field,
+                type: searches[i].type || "text",
+                operator: "contains",
+                value: searchValue
+            });
+        }
+
+        if (searchData.length === 0) {
+            return;
+        }
+
+        grid.searchData = searchData;
+        grid.last = grid.last || {};
+        grid.last.logic = "OR";
+        grid.last.field = "all";
+        grid.last.label = "All Fields";
+
+        if (typeof grid.localSearch === "function") {
+            grid.localSearch(true);
+        }
+
+        grid.refresh();
+    };
+
     Helper.GetOperationLoading = function () {
         return Helper.UiText.Operations.Loading;
     };

@@ -1769,7 +1769,10 @@
                 DataverseLabelTranslator.SetSaveButtonDisabled(false);
             },
             onSearch: function (event) {
-                event.onComplete = NormalizeGridSearchUiSoon;
+                event.onComplete = function () {
+                    Helper.ApplySimpleGridContainsSearch(w2ui.grid);
+                    NormalizeGridSearchUiSoon();
+                };
             },
             toolbar: {
                 items: toolbarItems,
@@ -2089,7 +2092,12 @@
                 editable: { type: "text" },
                 render: DataverseLabelTranslator.CreateTranslationCellRenderer(normalizedColumns[j].field)
             });
-            grid.addSearch({ field: normalizedColumns[j].field, text: normalizedColumns[j].text, type: "text" });
+            grid.addSearch({
+                field: normalizedColumns[j].field,
+                text: normalizedColumns[j].text,
+                type: "text",
+                operator: "contains"
+            });
         }
 
         grid.refresh();
