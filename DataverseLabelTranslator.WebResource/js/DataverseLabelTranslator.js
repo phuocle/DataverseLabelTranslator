@@ -1,5 +1,8 @@
-﻿(function (DataverseLabelTranslatorHandler, undefined) {
+(function (DataverseLabelTranslator, undefined) {
     "use strict";
+
+    DataverseLabelTranslator.metadata = DataverseLabelTranslator.metadata || [];
+    DataverseLabelTranslator.baseLanguage = DataverseLabelTranslator.baseLanguage || null;
 
     var actionName = "EasyTranslator";
 
@@ -179,7 +182,7 @@
         }
     }
 
-    function GetLanguageColumns(gridOutput) {
+    function GetServerLanguageColumns(gridOutput) {
         var columns = gridOutput && Array.isArray(gridOutput.languageColumns) ? gridOutput.languageColumns : [];
         if (columns.length > 0) {
             return columns;
@@ -203,8 +206,8 @@
         return inferredColumns;
     }
 
-    function ApplyLanguageColumns(gridOutput, app) {
-        var columns = GetLanguageColumns(gridOutput);
+    function ApplyServerLanguageColumns(gridOutput, app) {
+        var columns = GetServerLanguageColumns(gridOutput);
         if (columns.length === 0) {
             return;
         }
@@ -219,7 +222,7 @@
         var rows = gridOutput && Array.isArray(gridOutput.rows) ? gridOutput.rows : [];
 
         grid.clear();
-        ApplyLanguageColumns(gridOutput, app);
+        ApplyServerLanguageColumns(gridOutput, app);
 
         for (var i = 0; i < rows.length; i++) {
             records.push(BuildGridRow(rows[i], app));
@@ -272,7 +275,7 @@
         return changedRows;
     }
 
-    DataverseLabelTranslatorHandler.IsUnifiedType = function (type) {
+    DataverseLabelTranslator.IsUnifiedType = function (type) {
         return (
             [
                 "sitemap", // STT 15 - Sitemap
@@ -297,7 +300,7 @@
         );
     };
 
-    DataverseLabelTranslatorHandler.Load = function (lockText) {
+    DataverseLabelTranslator.Load = function (lockText) {
         var app = GetApp();
 
         app.LockGrid(lockText || Helper.GetOperationLoading());
@@ -317,7 +320,7 @@
         });
     };
 
-    DataverseLabelTranslatorHandler.Save = function () {
+    DataverseLabelTranslator.Save = function () {
         var app = GetApp();
         var payload = BuildOperationPayload();
         payload.baseLanguage = app.GetBaseLanguage();
@@ -365,12 +368,12 @@
                 return HasPublishTargets(output) || (output && output.changed === true);
             },
             reloadAction: function () {
-                return DataverseLabelTranslatorHandler.Load(Helper.GetOperationReLoading());
+                return DataverseLabelTranslator.Load(Helper.GetOperationReLoading());
             }
         });
     };
 
-    DataverseLabelTranslatorHandler.RemoveOverriddenCellLabels = function () {
+    DataverseLabelTranslator.RemoveOverriddenCellLabels = function () {
         var app = GetApp();
         var formId = GetSelectedFormId();
 
@@ -409,19 +412,11 @@
                     return HasPublishTargets(output) || (output && output.changed === true);
                 },
                 reloadAction: function () {
-                    return DataverseLabelTranslatorHandler.Load(Helper.GetOperationReLoading());
+                    return DataverseLabelTranslator.Load(Helper.GetOperationReLoading());
                 }
             });
         });
     };
-})((window.DataverseLabelTranslatorHandler = window.DataverseLabelTranslatorHandler || {}));
-
-(function (DataverseLabelTranslator, undefined) {
-    "use strict";
-
-    DataverseLabelTranslator.metadata = DataverseLabelTranslator.metadata || [];
-    DataverseLabelTranslator.baseLanguage = DataverseLabelTranslator.baseLanguage || null;
-
     DataverseLabelTranslator.GetSelectedRecordIds = function () {
         var grid = DataverseLabelTranslator.GetGrid();
 
@@ -945,11 +940,8 @@
         }
 
         currentHandler = null;
-        if (
-            window.DataverseLabelTranslatorHandler &&
-            DataverseLabelTranslatorHandler.IsUnifiedType(DataverseLabelTranslator.GetType())
-        ) {
-            currentHandler = DataverseLabelTranslatorHandler;
+        if (DataverseLabelTranslator.IsUnifiedType(DataverseLabelTranslator.GetType())) {
+            currentHandler = DataverseLabelTranslator;
         }
 
         var toolbar = GetToolbar();
@@ -1712,7 +1704,7 @@
                 tooltip: "Remove overridden attribute labels",
                 icon: "icon-eraser",
                 onClick: function () {
-                    DataverseLabelTranslatorHandler.RemoveOverriddenCellLabels();
+                    DataverseLabelTranslator.RemoveOverriddenCellLabels();
                 }
             },
             { type: "button", id: "autoTranslate", text: "", tooltip: "Auto Translate", icon: "icon-translate" },
