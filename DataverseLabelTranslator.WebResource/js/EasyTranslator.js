@@ -4,110 +4,10 @@
     EasyTranslator.metadata = EasyTranslator.metadata || [];
     EasyTranslator.baseLanguage = EasyTranslator.baseLanguage || null;
 
-    function GetLegacyTranslator() {
-        if (window.XrmTranslator) {
-            return window.XrmTranslator;
-        }
-
-        throw new Error("XrmTranslator is not available.");
-    }
-
-    function CallLegacy(methodName, args) {
-        var translator = GetLegacyTranslator();
-
-        if (typeof translator[methodName] !== "function") {
-            throw new Error("XrmTranslator." + methodName + " is not available.");
-        }
-
-        return translator[methodName].apply(translator, args || []);
-    }
-
-    EasyTranslator.GetGrid = function () {
-        return CallLegacy("GetGrid");
-    };
-
-    EasyTranslator.GetSolution = function () {
-        return CallLegacy("GetSolution");
-    };
-
-    EasyTranslator.GetEntity = function () {
-        return CallLegacy("GetEntity");
-    };
-
-    EasyTranslator.GetEntityId = function () {
-        return CallLegacy("GetEntityId");
-    };
-
-    EasyTranslator.GetType = function () {
-        return CallLegacy("GetType");
-    };
-
-    EasyTranslator.GetComponent = function () {
-        return CallLegacy("GetComponent");
-    };
-
-    EasyTranslator.GetCurrentToolbarTypeText = function () {
-        return CallLegacy("GetCurrentToolbarTypeText");
-    };
-
-    EasyTranslator.IsDescriptionComponent = function () {
-        return EasyTranslator.GetComponent() === "Description";
-    };
-
-    EasyTranslator.IsDisplayTextComponent = function () {
-        return EasyTranslator.GetComponent() === "DisplayText";
-    };
-
-    EasyTranslator.GetCurrentComponentText = function () {
-        var component = EasyTranslator.GetComponent();
-
-        if (component === "DisplayText") {
-            return "Display Text";
-        }
-
-        if (component === "Description") {
-            return "Description";
-        }
-
-        return component || "";
-    };
-
-    EasyTranslator.GetAllRecords = function () {
-        return CallLegacy("GetAllRecords");
-    };
-
-    EasyTranslator.GetColumns = function (includeSchemaName) {
-        return CallLegacy("GetColumns", [includeSchemaName]);
-    };
-
     EasyTranslator.GetSelectedRecordIds = function () {
         var grid = EasyTranslator.GetGrid();
 
         return grid && typeof grid.getSelection === "function" ? grid.getSelection() : [];
-    };
-
-    EasyTranslator.GetAttributeById = function (id) {
-        return CallLegacy("GetAttributeById", [id]);
-    };
-
-    EasyTranslator.GetByRecId = function (records, recid) {
-        return CallLegacy("GetByRecId", [records, recid]);
-    };
-
-    EasyTranslator.AddSummary = function (records) {
-        return CallLegacy("AddSummary", [records]);
-    };
-
-    EasyTranslator.LockGrid = function (message) {
-        return CallLegacy("LockGrid", [message]);
-    };
-
-    EasyTranslator.UnlockGrid = function () {
-        return CallLegacy("UnlockGrid");
-    };
-
-    EasyTranslator.ApplyGridChangeValue = function (record, field, value) {
-        return CallLegacy("ApplyGridChangeValue", [record, field, value]);
     };
 
     EasyTranslator.RefreshGridRow = function (recid) {
@@ -124,63 +24,7 @@
         }
     };
 
-    EasyTranslator.SetSaveButtonDisabled = function (disabled) {
-        return CallLegacy("SetSaveButtonDisabled", [disabled]);
-    };
-
-    EasyTranslator.HasPendingChanges = function () {
-        return CallLegacy("HasPendingChanges");
-    };
-
-    EasyTranslator.errorHandler = function (error) {
-        return CallLegacy("errorHandler", [error]);
-    };
-
-    EasyTranslator.SetMetadata = function (metadata) {
-        EasyTranslator.metadata = metadata || [];
-
-        if (window.XrmTranslator) {
-            window.XrmTranslator.metadata = EasyTranslator.metadata;
-        }
-
-        return EasyTranslator.metadata;
-    };
-
-    EasyTranslator.GetMetadata = function () {
-        if (window.XrmTranslator && window.XrmTranslator.metadata) {
-            EasyTranslator.metadata = window.XrmTranslator.metadata;
-        }
-
-        return EasyTranslator.metadata || [];
-    };
-
-    EasyTranslator.GetBaseLanguage = function () {
-        if (EasyTranslator.baseLanguage) {
-            return EasyTranslator.baseLanguage;
-        }
-
-        if (window.XrmTranslator && window.XrmTranslator.baseLanguage) {
-            EasyTranslator.baseLanguage = window.XrmTranslator.baseLanguage;
-        }
-
-        return EasyTranslator.baseLanguage || null;
-    };
-
-    EasyTranslator.SetBaseLanguage = function (languageCode) {
-        EasyTranslator.baseLanguage = languageCode;
-
-        if (window.XrmTranslator) {
-            window.XrmTranslator.baseLanguage = languageCode;
-        }
-
-        return EasyTranslator.baseLanguage;
-    };
-
-    function ShowLegacyAiTranslate() {
-        if (window.TranslationHandler && typeof TranslationHandler.ShowTranslationPrompt === "function") {
-            return TranslationHandler.ShowTranslationPrompt();
-        }
-
+    function ShowAiTranslateUnavailable() {
         if (window.DialogHelper && typeof DialogHelper.alert === "function") {
             return DialogHelper.alert("AI Translate is not available.", { title: "AI Translate" });
         }
@@ -400,12 +244,12 @@
 
     EasyTranslator.ShowAITranslate = function () {
         if (!window.AIService || typeof AIService.OpenWorkspace !== "function") {
-            return ShowLegacyAiTranslate();
+            return ShowAiTranslateUnavailable();
         }
 
         var dataSource = EasyTranslator.BuildAiTranslateDataSource();
         if (!HasTranslatableRows(dataSource.rows)) {
-            return ShowLegacyAiTranslate();
+            return ShowAiTranslateUnavailable();
         }
 
         return AIService.OpenWorkspace(dataSource);
@@ -1298,11 +1142,51 @@
         return item ? item.selected : "DisplayText";
     };
 
+    EasyTranslator.IsDescriptionComponent = function () {
+        return EasyTranslator.GetComponent() === "Description";
+    };
+
+    EasyTranslator.IsDisplayTextComponent = function () {
+        return EasyTranslator.GetComponent() === "DisplayText";
+    };
+
+    EasyTranslator.GetCurrentComponentText = function () {
+        var component = EasyTranslator.GetComponent();
+
+        if (component === "DisplayText") {
+            return "Display Text";
+        }
+
+        if (component === "Description") {
+            return "Description";
+        }
+
+        return component || "";
+    };
+
     EasyTranslator.GetCurrentToolbarTypeText = function () {
         return GetTypeStateLabel(EasyTranslator.GetType());
     };
 
     EasyTranslator.GetTypeStateLabel = GetTypeStateLabel;
+
+    EasyTranslator.SetMetadata = function (metadata) {
+        EasyTranslator.metadata = metadata || [];
+        return EasyTranslator.metadata;
+    };
+
+    EasyTranslator.GetMetadata = function () {
+        return EasyTranslator.metadata || [];
+    };
+
+    EasyTranslator.GetBaseLanguage = function () {
+        return EasyTranslator.baseLanguage || null;
+    };
+
+    EasyTranslator.SetBaseLanguage = function (languageCode) {
+        EasyTranslator.baseLanguage = languageCode;
+        return EasyTranslator.baseLanguage;
+    };
 
     EasyTranslator.GetAllRecords = function () {
         return Array.from(new Set(FlattenRecords(EasyTranslator.GetGrid().records || [])));

@@ -73,9 +73,10 @@
 
     function getLanguageNameByLcid(lcid) {
         var lookup = String(lcid || "");
+        var app = window.EasyTranslator;
 
-        if (window.XrmTranslator && XrmTranslator.GetGrid) {
-            var columns = XrmTranslator.GetGrid().columns || [];
+        if (app && app.GetGrid) {
+            var columns = app.GetGrid().columns || [];
 
             for (var i = 0; i < columns.length; i++) {
                 var column = columns[i];
@@ -96,21 +97,16 @@
         return XrmService.GetBaseLanguage().then(function (baseLanguage) {
             var baseLcid = String(baseLanguage);
             var localeIds = [];
+            var gridColumns =
+                window.EasyTranslator && EasyTranslator.GetColumns ? EasyTranslator.GetColumns(false) : [];
 
-            if (XrmTranslator.installedLanguages && XrmTranslator.installedLanguages.LocaleIds) {
-                localeIds = XrmTranslator.installedLanguages.LocaleIds.map(function (lcid) {
-                    return String(lcid);
+            localeIds = gridColumns
+                .filter(function (field) {
+                    return /^\d+$/.test(String(field));
+                })
+                .map(function (field) {
+                    return String(field);
                 });
-            } else {
-                var gridColumns = XrmTranslator.GetColumns(false);
-                localeIds = gridColumns
-                    .filter(function (field) {
-                        return /^\d+$/.test(String(field));
-                    })
-                    .map(function (field) {
-                        return String(field);
-                    });
-            }
 
             if (localeIds.indexOf(baseLcid) === -1) {
                 localeIds.unshift(baseLcid);
@@ -948,7 +944,7 @@
     };
 
     DictionaryService.ShowDictionaryPrompt = function () {
-        XrmTranslator.LockGrid("Loading dictionary ...");
+        EasyTranslator.LockGrid("Loading dictionary ...");
         logDebug("ShowDictionaryPrompt:start", null);
 
         return buildDictionaryGridContext()
@@ -989,7 +985,7 @@
 
                     grid.add(gridRecords);
                     ensureDictionaryInputRow(grid, context);
-                    XrmTranslator.UnlockGrid();
+                    EasyTranslator.UnlockGrid();
 
                     w2popup.open({
                         title: "Dictionary",
@@ -1054,8 +1050,8 @@
                 });
             })
             .catch(function (error) {
-                XrmTranslator.UnlockGrid();
-                XrmTranslator.errorHandler(error);
+                EasyTranslator.UnlockGrid();
+                EasyTranslator.errorHandler(error);
             });
     };
 

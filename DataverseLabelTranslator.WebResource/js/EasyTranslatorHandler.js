@@ -209,7 +209,7 @@
 
     function ApplyLanguageColumns(gridOutput, app) {
         var columns = GetLanguageColumns(gridOutput);
-        var translator = window.XrmTranslator || app;
+        var translator = app;
         var grid = app.GetGrid();
 
         if (columns.length === 0) {

@@ -87,10 +87,6 @@
             return window.EasyTranslator;
         }
 
-        if (window.XrmTranslator) {
-            return window.XrmTranslator;
-        }
-
         throw new Error("Translator is not available.");
     };
 
@@ -99,10 +95,6 @@
 
         if (app && app.baseLanguage) {
             return app.baseLanguage;
-        }
-
-        if (window.XrmTranslator && window.XrmTranslator.baseLanguage) {
-            return window.XrmTranslator.baseLanguage;
         }
 
         if (typeof app.GetBaseLanguage === "function") {
