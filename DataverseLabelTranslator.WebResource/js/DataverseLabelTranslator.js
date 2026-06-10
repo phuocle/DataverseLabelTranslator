@@ -209,36 +209,11 @@
 
     function ApplyLanguageColumns(gridOutput, app) {
         var columns = GetLanguageColumns(gridOutput);
-        var translator = app;
-        var grid = app.GetGrid();
-
         if (columns.length === 0) {
             return;
         }
 
-        translator.columnRestoreNeeded = true;
-        translator.ClearColumns();
-
-        var schemaSize = translator.defaultSchemaNameSize || "30%";
-        var schemaSizeNumber = parseInt(schemaSize.replace("%"), 10);
-        var columnWidth = (100 - (isNaN(schemaSizeNumber) ? 30 : schemaSizeNumber)) / columns.length;
-
-        for (var i = 0; i < columns.length; i++) {
-            var field = String(columns[i].field || "");
-            if (!field) {
-                continue;
-            }
-
-            grid.addColumn({
-                field: field,
-                text: columns[i].text || field,
-                size: columnWidth + "%",
-                sortable: true,
-                editable: { type: "text" },
-                render: translator.CreateTranslationCellRenderer(field)
-            });
-            grid.addSearch({ field: field, text: columns[i].text || field, type: "text" });
-        }
+        app.ApplyLanguageColumns(columns);
     }
 
     function FillTable(gridOutput) {
@@ -1103,23 +1078,57 @@
         };
     }
 
-    function ToggleExpandCollapse(expand) {
-        var grid = DataverseLabelTranslator.GetGrid();
-        var records = grid.records || [];
+    function GetRootGridRecords(grid) {
+        return (grid.records || []).filter(function (record) {
+            return !record.w2ui || !record.w2ui.parent_recid;
+        });
+    }
 
-        function setExpanded(record) {
-            if (record.w2ui && Array.isArray(record.w2ui.children) && record.w2ui.children.length > 0) {
-                record.w2ui.expanded = !!expand;
-                for (var i = 0; i < record.w2ui.children.length; i++) {
-                    setExpanded(record.w2ui.children[i]);
-                }
+    function HasChildGridRecords(record) {
+        return record && record.w2ui && Array.isArray(record.w2ui.children) && record.w2ui.children.length > 0;
+    }
+
+    function AppendRecordTree(flatRecords, record, expand) {
+        flatRecords.push(record);
+
+        if (!HasChildGridRecords(record)) {
+            return;
+        }
+
+        record.w2ui.expanded = !!expand;
+
+        for (var i = 0; i < record.w2ui.children.length; i++) {
+            var child = record.w2ui.children[i];
+            child.w2ui = child.w2ui || {};
+            child.w2ui.parent_recid = record.recid;
+
+            if (!Array.isArray(child.w2ui.children)) {
+                child.w2ui.children = [];
+            }
+
+            if (expand) {
+                AppendRecordTree(flatRecords, child, true);
             }
         }
+    }
 
-        for (var i = 0; i < records.length; i++) {
-            setExpanded(records[i]);
+    function ToggleExpandCollapse(expand) {
+        var grid = DataverseLabelTranslator.GetGrid();
+        var rootRecords = GetRootGridRecords(grid);
+        var flatRecords = [];
+
+        for (var i = 0; i < rootRecords.length; i++) {
+            AppendRecordTree(flatRecords, rootRecords[i], expand);
         }
 
+        grid.records = flatRecords;
+        grid.total = flatRecords.length;
+        if (grid.last) {
+            grid.last.idCache = {};
+        }
+        if (grid.searchData && grid.searchData.length > 0) {
+            grid.localSearch(true);
+        }
         grid.refresh();
     }
 
@@ -1686,10 +1695,64 @@
     };
 
     DataverseLabelTranslator.ClearColumns = function () {
+        var grid = DataverseLabelTranslator.GetGrid();
         var columns = DataverseLabelTranslator.GetColumns(false);
         for (var i = 0; i < columns.length; i++) {
-            DataverseLabelTranslator.GetGrid().removeColumn(columns[i]);
+            grid.removeColumn(columns[i]);
         }
+
+        grid.searches = (grid.searches || []).filter(function (search) {
+            return search && search.field === "schemaName";
+        });
+    };
+
+    DataverseLabelTranslator.ApplyLanguageColumns = function (columns) {
+        var grid = DataverseLabelTranslator.GetGrid();
+        var normalizedColumns = [];
+        var seen = {};
+
+        columns = columns || [];
+        for (var i = 0; i < columns.length; i++) {
+            var field = String((columns[i] && columns[i].field) || "");
+            if (!field || seen[field]) {
+                continue;
+            }
+
+            seen[field] = true;
+            normalizedColumns.push({
+                field: field,
+                text:
+                    /^\d+$/.test(field) && window.Helper && Helper.FormatLanguageColumnHeader
+                        ? Helper.FormatLanguageColumnHeader(field)
+                        : (columns[i] && columns[i].text) || field
+            });
+        }
+
+        DataverseLabelTranslator.columnRestoreNeeded = normalizedColumns.length > 0;
+        DataverseLabelTranslator.ClearColumns();
+
+        if (normalizedColumns.length === 0) {
+            grid.refresh();
+            return;
+        }
+
+        var schemaSize = DataverseLabelTranslator.defaultSchemaNameSize || "30%";
+        var schemaSizeNumber = parseInt(schemaSize.replace("%"), 10);
+        var columnWidth = (100 - (isNaN(schemaSizeNumber) ? 30 : schemaSizeNumber)) / normalizedColumns.length;
+
+        for (var j = 0; j < normalizedColumns.length; j++) {
+            grid.addColumn({
+                field: normalizedColumns[j].field,
+                text: normalizedColumns[j].text,
+                size: columnWidth + "%",
+                sortable: true,
+                editable: { type: "text" },
+                render: DataverseLabelTranslator.CreateTranslationCellRenderer(normalizedColumns[j].field)
+            });
+            grid.addSearch({ field: normalizedColumns[j].field, text: normalizedColumns[j].text, type: "text" });
+        }
+
+        grid.refresh();
     };
 
     DataverseLabelTranslator.RenderTranslationCell = function (record, field) {
@@ -2004,6 +2067,13 @@
             .then(function (baseLanguage) {
                 DataverseLabelTranslator.SetBaseLanguage(baseLanguage);
                 InitializeGrid();
+                return Helper.GetAllNoneBaseLanguageCodes().then(function (installedLanguages) {
+                    var languages = [baseLanguage].concat((installedLanguages && installedLanguages.LocaleIds) || []);
+                    return Helper.BuildLanguageColumns(languages);
+                });
+            })
+            .then(function (columns) {
+                DataverseLabelTranslator.ApplyLanguageColumns(columns);
                 return Helper.GetSolutions();
             })
             .then(function (solutions) {

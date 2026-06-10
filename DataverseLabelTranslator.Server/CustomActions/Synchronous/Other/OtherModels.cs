@@ -101,6 +101,18 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         public List<int> LocaleIds { get; set; } = new List<int>();
     }
 
+    public class OtherLanguageLocalesOutput
+    {
+        public string operation { get; set; }
+        public List<OtherLanguageLocaleItemOutput> locales { get; set; } = new List<OtherLanguageLocaleItemOutput>();
+    }
+
+    public class OtherLanguageLocaleItemOutput
+    {
+        public int localeid { get; set; }
+        public string language { get; set; }
+    }
+
     public class OtherAppSettingsRoot
     {
         public OtherAiSettings ai { get; set; } = new OtherAiSettings();

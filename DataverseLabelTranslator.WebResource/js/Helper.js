@@ -3,6 +3,7 @@
 
     var otherActionName = "Other";
     var baseLanguage = null;
+    var languageLocales = null;
 
     function GetXrm() {
         if (typeof Xrm !== "undefined") {
@@ -123,6 +124,57 @@
             return {
                 LocaleIds: (output && output.LocaleIds) || []
             };
+        });
+    };
+
+    Helper.GetLanguageLocales = function () {
+        if (languageLocales) {
+            return Promise.resolve(languageLocales);
+        }
+
+        return ExecuteOther("GetLanguageLocales").then(function (output) {
+            languageLocales = {};
+
+            var locales = (output && output.locales) || [];
+            for (var i = 0; i < locales.length; i++) {
+                if (locales[i] && locales[i].localeid) {
+                    languageLocales[String(locales[i].localeid)] = locales[i];
+                }
+            }
+
+            return languageLocales;
+        });
+    };
+
+    Helper.FormatLanguageColumnHeader = function (languageCode, locale) {
+        var lcid = String(languageCode || "");
+        var resolvedLocale = locale || (languageLocales && languageLocales[lcid]);
+        var languageName = (resolvedLocale && resolvedLocale.language) || lcid;
+
+        return languageName + " (" + lcid + ")";
+    };
+
+    Helper.BuildLanguageColumns = function (languageCodes) {
+        languageCodes = languageCodes || [];
+
+        return Helper.GetLanguageLocales().then(function (locales) {
+            var columns = [];
+            var seen = {};
+
+            for (var i = 0; i < languageCodes.length; i++) {
+                var field = String(languageCodes[i] || "");
+                if (!field || seen[field]) {
+                    continue;
+                }
+
+                seen[field] = true;
+                columns.push({
+                    field: field,
+                    text: Helper.FormatLanguageColumnHeader(field, locales[field])
+                });
+            }
+
+            return columns;
         });
     };
 

@@ -15,6 +15,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
         internal const string GetEntitiesOperationName = "GetEntities";
         internal const string GetBaseLanguageOperationName = "GetBaseLanguage";
         internal const string GetAllNoneBaseLanguageCodesOperationName = "GetAllNoneBaseLanguageCodes";
+        internal const string GetLanguageLocalesOperationName = "GetLanguageLocales";
 
         internal static bool IsXrmOperation(string operation)
         {
@@ -22,7 +23,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             return normalized == OtherSupport.Normalize(GetSolutionsOperationName) ||
                 normalized == OtherSupport.Normalize(GetEntitiesOperationName) ||
                 normalized == OtherSupport.Normalize(GetBaseLanguageOperationName) ||
-                normalized == OtherSupport.Normalize(GetAllNoneBaseLanguageCodesOperationName);
+                normalized == OtherSupport.Normalize(GetAllNoneBaseLanguageCodesOperationName) ||
+                normalized == OtherSupport.Normalize(GetLanguageLocalesOperationName);
         }
 
         internal object Execute(IOrganizationService serviceAdmin, string json)
@@ -48,6 +50,11 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             if (operation == OtherSupport.Normalize(GetAllNoneBaseLanguageCodesOperationName))
             {
                 return GetAllNoneBaseLanguageCodes(serviceAdmin);
+            }
+
+            if (operation == OtherSupport.Normalize(GetLanguageLocalesOperationName))
+            {
+                return GetLanguageLocales(serviceAdmin);
             }
 
             throw new InvalidPluginExecutionException("Other Xrm operation is not supported.");
@@ -154,6 +161,36 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
                 }
             }
 
+            return output;
+        }
+
+        private static OtherLanguageLocalesOutput GetLanguageLocales(IOrganizationService serviceAdmin)
+        {
+            var query = new QueryExpression("languagelocale")
+            {
+                ColumnSet = new ColumnSet("language", "localeid")
+            };
+            var output = new OtherLanguageLocalesOutput
+            {
+                operation = GetLanguageLocalesOperationName
+            };
+
+            foreach (var locale in serviceAdmin.RetrieveMultiple(query).Entities)
+            {
+                var localeId = locale.GetAttributeValue<int>("localeid");
+                if (localeId <= 0)
+                {
+                    continue;
+                }
+
+                output.locales.Add(new OtherLanguageLocaleItemOutput
+                {
+                    localeid = localeId,
+                    language = locale.GetAttributeValue<string>("language") ?? localeId.ToString()
+                });
+            }
+
+            output.locales = output.locales.OrderBy(locale => locale.language).ThenBy(locale => locale.localeid).ToList();
             return output;
         }
 
