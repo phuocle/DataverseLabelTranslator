@@ -750,7 +750,7 @@
         var columns = [
             {
                 field: "sourceText",
-                text: "Source " + context.baseName,
+                text: "Source " + context.baseName + " (" + context.baseLcid + ")",
                 size: sourceSize + "%",
                 sortable: true,
                 searchable: true,
@@ -762,7 +762,7 @@
             var target = context.targetLanguages[i];
             columns.push({
                 field: target.field,
-                text: "Target " + target.name,
+                text: "Target " + target.name + " (" + target.lcid + ")",
                 size: targetSize.toFixed(2) + "%",
                 sortable: true,
                 searchable: true,

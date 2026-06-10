@@ -1117,15 +1117,17 @@
         return fieldText;
     }
 
-    function BuildDictionaryValueBox(label, value) {
+    function BuildDictionaryInputBox(id, label, value) {
         return (
             '<div style="margin: 0 0 14px 0;">' +
             '<div style="font-weight: 600; color: #444; margin-bottom: 5px;">' +
             EscapeHtml(label) +
             "</div>" +
-            '<div style="border: 1px solid #d0d7de; background: #f8f9fb; border-radius: 4px; padding: 9px 11px; font-weight: 600; color: #111; white-space: pre-wrap;">' +
+            '<input id="' +
+            EscapeHtml(id) +
+            '" type="text" value="' +
             EscapeHtml(value) +
-            "</div>" +
+            '" style="border: 1px solid #d0d7de; background: #f8f9fb; border-radius: 4px; box-sizing: border-box; color: #111; font-weight: 600; height: 40px; padding: 8px 11px; width: 100%;" />' +
             "</div>"
         );
     }
@@ -1134,13 +1136,37 @@
         var body =
             '<div style="padding: 22px 28px 18px 28px; font-size: 15px; line-height: 1.45;">' +
             '<div style="font-size: 18px; font-weight: 600; margin-bottom: 18px;">Add this translation to dictionary?</div>' +
-            BuildDictionaryValueBox("Source (" + sourceLabel + ")", sourceText);
+            BuildDictionaryInputBox("xqt-add-dictionary-source", "Source (" + sourceLabel + ")", sourceText);
 
         for (var i = 0; i < targetItems.length; i++) {
-            body += BuildDictionaryValueBox(targetItems[i].label, targetItems[i].value);
+            body += BuildDictionaryInputBox(
+                "xqt-add-dictionary-target-" + i,
+                targetItems[i].label,
+                targetItems[i].value
+            );
         }
 
         body += "</div>";
+
+        function getInputValue(id) {
+            var input = document.getElementById(id);
+            return input ? String(input.value || "").trim() : "";
+        }
+
+        function getLatestValues() {
+            var latestTargets = {};
+
+            for (var targetIndex = 0; targetIndex < targetItems.length; targetIndex++) {
+                latestTargets[targetItems[targetIndex].lcid] = getInputValue(
+                    "xqt-add-dictionary-target-" + targetIndex
+                );
+            }
+
+            return {
+                sourceText: getInputValue("xqt-add-dictionary-source"),
+                targets: latestTargets
+            };
+        }
 
         return new Promise(function (resolve) {
             w2popup.open({
@@ -1159,8 +1185,9 @@
                 },
                 onClose: function () {
                     var result = !!w2popup._xqtAddDictionaryResult;
+                    var latestValues = result ? getLatestValues() : null;
                     w2popup._xqtAddDictionaryResult = null;
-                    resolve(result);
+                    resolve(latestValues);
                 }
             });
         });
@@ -1298,7 +1325,6 @@
                     return DialogHelper.alert("No target language columns found.", { title: "Dictionary" });
                 }
 
-                var targets = {};
                 var targetItems = [];
                 var targetNames = [];
 
@@ -1313,8 +1339,8 @@
                         continue;
                     }
 
-                    targets[targetLcid] = targetText;
                     targetItems.push({
+                        lcid: targetLcid,
                         label: targetName,
                         value: targetText
                     });
@@ -1331,24 +1357,43 @@
                     GetColumnDisplayName(baseLcid),
                     sourceText,
                     targetItems
-                ).then(function (confirmed) {
-                    if (!confirmed) {
+                ).then(function (latestValues) {
+                    if (!latestValues) {
                         return null;
+                    }
+
+                    if (!HasDictionaryText(latestValues.sourceText)) {
+                        return DialogHelper.alert("Source text is required.", { title: "Dictionary" });
+                    }
+
+                    var latestTargets = {};
+                    for (var targetIndex = 0; targetIndex < targetItems.length; targetIndex++) {
+                        var targetItem = targetItems[targetIndex];
+                        var latestTargetText = latestValues.targets[targetItem.lcid];
+                        if (HasDictionaryText(latestTargetText)) {
+                            latestTargets[targetItem.lcid] = latestTargetText;
+                        }
+                    }
+
+                    if (Object.keys(latestTargets).length === 0) {
+                        return DialogHelper.alert("At least one target translation is required.", {
+                            title: "Dictionary"
+                        });
                     }
 
                     DataverseLabelTranslator.LockGrid("Updating dictionary...");
 
                     return DictionaryService.UpsertEntries([
                         {
-                            sourceText: sourceText,
-                            targets: targets
+                            sourceText: latestValues.sourceText,
+                            targets: latestTargets
                         }
                     ])
                         .then(function (result) {
                             DataverseLabelTranslator.UnlockGrid();
                             return DialogHelper.alert(
                                 "Dictionary updated.\n\nSource: " +
-                                    sourceText +
+                                    latestValues.sourceText +
                                     "\nTargets saved: " +
                                     result.targetCount,
                                 { title: "Dictionary" }
@@ -1421,24 +1466,6 @@
             grid.localSearch(true);
         }
         grid.refresh();
-    }
-
-    function EscapeRegex(text) {
-        return String(text || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    }
-
-    function OpenFindAndReplaceDialog() {
-        DialogHelper.ShowFindAndReplaceDialog(DataverseLabelTranslator.GetGrid().columns, function (values) {
-            DataverseLabelTranslator.FindRecords(
-                undefined,
-                values.find,
-                values.replace,
-                values.regex,
-                values.ignoreCase,
-                values.columnId,
-                values.columnText
-            );
-        });
     }
 
     function FillEntitySelector(entities) {
@@ -1652,23 +1679,23 @@
                     { id: "none", text: "None", icon: "icon-empty" },
                     { text: "--" },
                     { id: "attributes", text: "Attributes", icon: "icon-attribute" },
-                    { id: "options", text: "Option Sets", icon: "icon-options" },
-                    { id: "forms", text: "Forms", icon: "icon-form" },
-                    { id: "views", text: "Views", icon: "icon-view" },
-                    { id: "formMeta", text: "Form Metadata", icon: "icon-layout" },
-                    { id: "entityMeta", text: "Entity Metadata", icon: "icon-entity" },
-                    { id: "relationships", text: "Relationships", icon: "icon-link" },
-                    { id: "charts", text: "Charts", icon: "icon-chart" },
                     { id: "bpf", text: "Business Process Flows", icon: "icon-flow" },
                     { id: "businessRules", text: "Business Rules", icon: "icon-flow" },
-                    { id: "ribbons", text: "Ribbons", icon: "icon-grid" },
+                    { id: "charts", text: "Charts", icon: "icon-chart" },
                     { id: "commands", text: "Commands", icon: "icon-component" },
-                    { id: "entityMessages", text: "Entity Messages", icon: "icon-description" },
                     { id: "content", text: "Content Snippets", icon: "icon-code" },
-                    { id: "sitemap", text: "Sitemap", icon: "icon-sitemap" },
                     { id: "dashboards", text: "Dashboards", icon: "icon-dashboard" },
-                    { id: "webresources", text: "Web Resources", icon: "icon-file-code" },
-                    { id: "globalOptionSet", text: "Global Option Set", icon: "icon-global-options" }
+                    { id: "entityMessages", text: "Entity Messages", icon: "icon-description" },
+                    { id: "entityMeta", text: "Entity Metadata", icon: "icon-entity" },
+                    { id: "formMeta", text: "Form Metadata", icon: "icon-layout" },
+                    { id: "forms", text: "Forms", icon: "icon-form" },
+                    { id: "globalOptionSet", text: "Global Option Set", icon: "icon-global-options" },
+                    { id: "options", text: "Option Sets", icon: "icon-options" },
+                    { id: "relationships", text: "Relationships", icon: "icon-link" },
+                    { id: "ribbons", text: "Ribbons", icon: "icon-grid" },
+                    { id: "sitemap", text: "Sitemap", icon: "icon-sitemap" },
+                    { id: "views", text: "Views", icon: "icon-view" },
+                    { id: "webresources", text: "Web Resources", icon: "icon-file-code" }
                 ]
             },
             {
@@ -1793,17 +1820,6 @@
             ]
         });
         gridToolbar.insert("w2ui-search-advanced", { type: "break", id: "break-toggle" });
-        gridToolbar.insert("w2ui-search-advanced", {
-            type: "button",
-            text: "",
-            tooltip: "Find and replace",
-            icon: "icon-find-replace",
-            id: "findReplace",
-            onClick: function () {
-                OpenFindAndReplaceDialog();
-            }
-        });
-
         var saveBtn = gridToolbar.get("w2ui-save");
         if (saveBtn) {
             saveBtn.text = "Save";
@@ -2227,68 +2243,6 @@
 
         record.w2ui.changes[field] = value;
         return true;
-    };
-
-    DataverseLabelTranslator.ApplyFindAndReplace = function (selected, results) {
-        var grid = DataverseLabelTranslator.GetGrid();
-        var savable = false;
-
-        for (var i = 0; i < selected.length; i++) {
-            var result = DataverseLabelTranslator.GetByRecId(results, selected[i]);
-            var record = result
-                ? DataverseLabelTranslator.GetByRecId(DataverseLabelTranslator.GetAllRecords(), result.recid)
-                : null;
-
-            if (!record) {
-                continue;
-            }
-
-            if (
-                DataverseLabelTranslator.ApplyGridChangeValue(
-                    record,
-                    result.column,
-                    result.w2ui && result.w2ui.changes ? result.w2ui.changes.replaced : result.replaced
-                )
-            ) {
-                savable = true;
-                grid.refreshRow(record.recid);
-            }
-        }
-
-        if (savable) {
-            DataverseLabelTranslator.SetSaveButtonDisabled(false);
-        }
-    };
-
-    DataverseLabelTranslator.FindRecords = function (records, find, replace, useRegex, ignoreCase, column, columnName) {
-        records = records || DataverseLabelTranslator.GetAllRecords();
-        var findings = [];
-        var flags = ignoreCase ? "i" : "";
-        var regex = new RegExp(useRegex ? find : EscapeRegex(find), flags);
-
-        for (var i = 0; i < records.length; i++) {
-            var record = records[i];
-            var value = GetRecordFieldValue(record, column);
-            if (value === null || typeof value === "undefined") {
-                continue;
-            }
-
-            var replaced = String(value).replace(regex, replace);
-            if (String(value) === replaced) {
-                continue;
-            }
-
-            findings.push({
-                recid: record.recid,
-                schemaName: record.schemaName,
-                column: column,
-                columnName: columnName,
-                current: value,
-                replaced: replaced
-            });
-        }
-
-        DialogHelper.ShowFindAndReplaceResults(findings, DataverseLabelTranslator.ApplyFindAndReplace);
     };
 
     DataverseLabelTranslator.LockGrid = function (message) {
