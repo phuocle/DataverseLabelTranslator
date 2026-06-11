@@ -339,7 +339,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Criteria.AddCondition("iscustomizable", ConditionOperator.Equal, true);
             query.Criteria.AddCondition("formactivationstate", ConditionOperator.Equal, 1);
 
-            return ToList(serviceAdmin.RetrieveMultiple(query));
+            return Helper.RetrieveAll(serviceAdmin, query);
         }
 
         private static List<Entity> RetrieveEntityForms(IOrganizationService serviceAdmin, string entityName)
@@ -352,7 +352,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Criteria.AddCondition("iscustomizable", ConditionOperator.Equal, true);
             query.Criteria.AddCondition("formactivationstate", ConditionOperator.Equal, 1);
 
-            return ToList(serviceAdmin.RetrieveMultiple(query));
+            return Helper.RetrieveAll(serviceAdmin, query);
         }
 
         private static Label RetrieveLocLabel(IOrganizationService serviceAdmin, Guid formId, string attributeName)
@@ -415,7 +415,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             componentQuery.Criteria.AddCondition("componenttype", ConditionOperator.Equal, 1);
 
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var component in ToList(serviceAdmin.RetrieveMultiple(componentQuery)))
+            foreach (var component in Helper.RetrieveAll(serviceAdmin, componentQuery))
             {
                 var objectId = component.GetAttributeValue<Guid>("objectid");
                 if (idToName.TryGetValue(objectId, out var logicalName))

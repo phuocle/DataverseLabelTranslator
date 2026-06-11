@@ -149,7 +149,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 ColumnSet = new ColumnSet("sitemapid", "sitemapname", "sitemapxml")
             };
 
-            return ToList(serviceAdmin.RetrieveMultiple(query)).Select(ToSitemapInfo).ToList();
+            return Helper.RetrieveAll(serviceAdmin, query).Select(ToSitemapInfo).ToList();
         }
 
         private static List<SitemapInfo> RetrieveSitemapsBySolution(IOrganizationService serviceAdmin, Guid solutionId)
@@ -166,7 +166,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             };
             query.Criteria.AddCondition("sitemapid", ConditionOperator.In, ids.Cast<object>().ToArray());
 
-            return ToList(serviceAdmin.RetrieveMultiple(query)).Select(ToSitemapInfo).ToList();
+            return Helper.RetrieveAll(serviceAdmin, query).Select(ToSitemapInfo).ToList();
         }
 
         private static SitemapInfo ToSitemapInfo(Entity entity)
@@ -189,7 +189,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Criteria.AddCondition("componenttype", ConditionOperator.Equal, SitemapComponentType);
 
             var ids = new List<Guid>();
-            foreach (var entity in ToList(serviceAdmin.RetrieveMultiple(query)))
+            foreach (var entity in Helper.RetrieveAll(serviceAdmin, query))
             {
                 var id = entity.GetAttributeValue<Guid>("objectid");
                 if (id != Guid.Empty)
@@ -222,7 +222,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             link.Columns = new ColumnSet("appmoduleid");
             link.EntityAlias = "app";
 
-            foreach (var component in ToList(serviceAdmin.RetrieveMultiple(query)))
+            foreach (var component in Helper.RetrieveAll(serviceAdmin, query))
             {
                 var appModuleId = GetAliasedGuid(component, "app.appmoduleid");
                 if (appModuleId.HasValue && seen.Add(appModuleId.Value))

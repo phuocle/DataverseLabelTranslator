@@ -289,31 +289,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Criteria.AddCondition("primaryentity", ConditionOperator.Equal, entityName);
             query.Orders.Add(new OrderExpression("name", OrderType.Ascending));
 
-            return RetrieveAll(serviceAdmin, query);
-        }
-
-        private static List<Entity> RetrieveAll(IOrganizationService serviceAdmin, QueryExpression query)
-        {
-            var results = new List<Entity>();
-            query.PageInfo = new PagingInfo
-            {
-                Count = 5000,
-                PageNumber = 1
-            };
-
-            while (true)
-            {
-                var page = serviceAdmin.RetrieveMultiple(query);
-                results.AddRange(ToList(page));
-
-                if (!page.MoreRecords)
-                {
-                    return results;
-                }
-
-                query.PageInfo.PageNumber++;
-                query.PageInfo.PagingCookie = page.PagingCookie;
-            }
+            return Helper.RetrieveAll(serviceAdmin, query);
         }
 
         private static Dictionary<string, string> LoadAttributeDisplayNames(

@@ -136,7 +136,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Criteria.AddCondition("componenttype", ConditionOperator.Equal, OptionSetComponentType);
 
             var optionSetIds = new List<Guid>();
-            foreach (var component in ToList(serviceAdmin.RetrieveMultiple(query)))
+            foreach (var component in Helper.RetrieveAll(serviceAdmin, query))
             {
                 if (!component.Contains("objectid"))
                 {

@@ -492,7 +492,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             var filtered = new List<EntityMetadata>();
-            foreach (var component in ToList(serviceAdmin.RetrieveMultiple(query)))
+            foreach (var component in Helper.RetrieveAll(serviceAdmin, query))
             {
                 var objectId = component.GetAttributeValue<Guid>("objectid");
                 if (objectId != Guid.Empty && metadataById.TryGetValue(objectId, out var entity))

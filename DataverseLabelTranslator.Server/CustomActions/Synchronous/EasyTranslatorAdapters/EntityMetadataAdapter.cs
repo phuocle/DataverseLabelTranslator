@@ -194,7 +194,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var component in ToList(serviceAdmin.RetrieveMultiple(query)))
+            foreach (var component in Helper.RetrieveAll(serviceAdmin, query))
             {
                 if (!component.Contains("objectid"))
                 {

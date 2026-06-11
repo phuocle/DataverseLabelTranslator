@@ -237,7 +237,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             };
             var map = new Dictionary<string, LocaleInfo>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var locale in RetrieveAll(serviceAdmin, query))
+            foreach (var locale in Helper.RetrieveAll(serviceAdmin, query))
             {
                 var localeId = locale.Contains("localeid") && locale["localeid"] != null
                     ? Convert.ToString(locale["localeid"])
@@ -283,7 +283,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             portalLink.EntityAlias = "portal";
             portalLink.Columns = new ColumnSet("adx_lcid", "adx_languagecode");
 
-            var rows = RetrieveAll(serviceAdmin, query);
+            var rows = Helper.RetrieveAll(serviceAdmin, query);
             var languages = new List<PortalLanguageInfo>();
 
             foreach (var row in rows)
@@ -324,7 +324,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Orders.Add(new OrderExpression("adx_name", OrderType.Ascending));
 
             var snippets = new List<ContentSnippetInfo>();
-            foreach (var row in RetrieveAll(serviceAdmin, query))
+            foreach (var row in Helper.RetrieveAll(serviceAdmin, query))
             {
                 var website = row.GetAttributeValue<EntityReference>("adx_websiteid");
                 var language = row.GetAttributeValue<EntityReference>("adx_contentsnippetlanguageid");
@@ -377,7 +377,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
             query.Criteria.AddCondition("adx_websiteid", ConditionOperator.In, ids);
 
-            foreach (var website in RetrieveAll(serviceAdmin, query))
+            foreach (var website in Helper.RetrieveAll(serviceAdmin, query))
             {
                 var id = website.GetAttributeValue<Guid>("adx_websiteid");
                 if (id != Guid.Empty)
@@ -411,30 +411,6 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             create["adx_websiteid"] = new EntityReference("adx_website", websiteId);
             create["adx_contentsnippetlanguageid"] = new EntityReference("adx_websitelanguage", languageId);
             serviceAdmin.Create(create);
-        }
-
-        private static List<Entity> RetrieveAll(IOrganizationService serviceAdmin, QueryExpression query)
-        {
-            var results = new List<Entity>();
-            query.PageInfo = new PagingInfo
-            {
-                Count = 5000,
-                PageNumber = 1
-            };
-
-            while (true)
-            {
-                var page = serviceAdmin.RetrieveMultiple(query);
-                results.AddRange(ToList(page));
-
-                if (!page.MoreRecords)
-                {
-                    return results;
-                }
-
-                query.PageInfo.PageNumber++;
-                query.PageInfo.PagingCookie = page.PagingCookie;
-            }
         }
 
         private static PortalLanguageInfo FindPortalLanguage(List<PortalLanguageInfo> languages, Guid websiteId, Guid websiteLanguageId)

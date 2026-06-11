@@ -105,6 +105,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
                     var label = RetrieveLocLabel(serviceAdmin, commandId, property.PropertyName);
                     AddLabelValues(child, label);
+                    child.SetLanguageValue(baseLanguage.ToString(), GetAttributeText(command, property.PropertyName));
                     children.Add(child);
                 }
 
@@ -129,6 +130,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             var output = new EasyTranslatorSaveOutput();
             var seenTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var fallbackEntityName = (input.entityName ?? string.Empty).Trim().ToLowerInvariant();
+            var baseLanguage = GetBaseLanguage(context.ServiceAdmin);
 
             foreach (var row in input.changedRows ?? new List<EasyTranslatorChangedRowInput>())
             {
@@ -145,16 +147,25 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 var entityName = parts[3];
 
                 ValidatePropertyName(propertyName);
-
-                var currentLabel = RetrieveLocLabel(context.ServiceAdmin, commandId, propertyName);
-                var mergedLabels = BuildMergedLabel(currentLabel, changes);
-
-                context.ServiceAdmin.Execute(new SetLocLabelsRequest
+                var baseLanguageClear = false;
+                var locLabelChanges = GetLocLabelChanges(changes, baseLanguage, out baseLanguageClear);
+                if (locLabelChanges.Count > 0)
                 {
-                    EntityMoniker = new EntityReference("appaction", commandId),
-                    AttributeName = propertyName,
-                    Labels = mergedLabels
-                });
+                    var currentLabel = RetrieveLocLabel(context.ServiceAdmin, commandId, propertyName);
+                    var mergedLabels = BuildMergedLabel(currentLabel, locLabelChanges);
+
+                    context.ServiceAdmin.Execute(new SetLocLabelsRequest
+                    {
+                        EntityMoniker = new EntityReference("appaction", commandId),
+                        AttributeName = propertyName,
+                        Labels = mergedLabels
+                    });
+                }
+
+                if (baseLanguageClear)
+                {
+                    ClearBaseLanguageValue(context.ServiceAdmin, commandId, propertyName);
+                }
 
                 output.changedRowCount++;
                 var publishEntity = string.IsNullOrWhiteSpace(entityName) ? fallbackEntityName : entityName;
@@ -199,7 +210,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Criteria.AddCondition("componenttype", ConditionOperator.Equal, AppActionComponentType);
 
             var ids = new HashSet<Guid>();
-            foreach (var component in RetrieveAll(serviceAdmin, query))
+            foreach (var component in Helper.RetrieveAll(serviceAdmin, query))
             {
                 var id = component.GetAttributeValue<Guid>("objectid");
                 if (id != Guid.Empty)
@@ -246,7 +257,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Orders.Add(new OrderExpression("sequence", OrderType.Ascending));
             query.Orders.Add(new OrderExpression("name", OrderType.Ascending));
 
-            var commands = RetrieveAll(serviceAdmin, query);
+            var commands = Helper.RetrieveAll(serviceAdmin, query);
             if (solutionCommandIds == null)
             {
                 return commands;
@@ -263,30 +274,6 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             return filtered;
-        }
-
-        private static List<Entity> RetrieveAll(IOrganizationService serviceAdmin, QueryExpression query)
-        {
-            var results = new List<Entity>();
-            query.PageInfo = new PagingInfo
-            {
-                Count = 5000,
-                PageNumber = 1
-            };
-
-            while (true)
-            {
-                var page = serviceAdmin.RetrieveMultiple(query);
-                results.AddRange(ToList(page));
-
-                if (!page.MoreRecords)
-                {
-                    return results;
-                }
-
-                query.PageInfo.PageNumber++;
-                query.PageInfo.PagingCookie = page.PagingCookie;
-            }
         }
 
         private static Dictionary<Guid, Entity> BuildCommandMap(List<Entity> commands)
@@ -510,6 +497,35 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             throw new InvalidPluginExecutionException("Command propertyName is not supported: " + propertyName);
+        }
+
+        private static List<EasyTranslatorLabelChange> GetLocLabelChanges(
+            List<EasyTranslatorLabelChange> changes,
+            int baseLanguage,
+            out bool baseLanguageClear)
+        {
+            baseLanguageClear = false;
+            var locLabelChanges = new List<EasyTranslatorLabelChange>();
+
+            foreach (var change in changes ?? new List<EasyTranslatorLabelChange>())
+            {
+                if (change.LanguageCode == baseLanguage && string.IsNullOrWhiteSpace(change.Label))
+                {
+                    baseLanguageClear = true;
+                    continue;
+                }
+
+                locLabelChanges.Add(change);
+            }
+
+            return locLabelChanges;
+        }
+
+        private static void ClearBaseLanguageValue(IOrganizationService serviceAdmin, Guid commandId, string propertyName)
+        {
+            var update = new Entity("appaction", commandId);
+            update[propertyName] = string.Empty;
+            serviceAdmin.Update(update);
         }
 
         private static LocalizedLabel[] BuildMergedLabel(Label currentLabel, List<EasyTranslatorLabelChange> changes)

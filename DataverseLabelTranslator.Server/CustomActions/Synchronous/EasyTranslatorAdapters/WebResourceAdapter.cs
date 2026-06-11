@@ -416,7 +416,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Criteria.AddCondition("componenttype", ConditionOperator.Equal, WebResourceComponentType);
 
             var ids = new List<Guid>();
-            foreach (var component in ToList(serviceAdmin.RetrieveMultiple(query)))
+            foreach (var component in Helper.RetrieveAll(serviceAdmin, query))
             {
                 if (!component.Contains("objectid"))
                 {
@@ -459,7 +459,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             nameFilter.AddCondition("displayname", ConditionOperator.Like, "%" + baseLanguage + "%");
             query.Criteria.AddFilter(nameFilter);
 
-            return ToList(serviceAdmin.RetrieveMultiple(query));
+            return Helper.RetrieveAll(serviceAdmin, query);
         }
 
         private static List<Entity> RetrieveSiblingWebResources(IOrganizationService serviceAdmin, string groupKey)
@@ -473,7 +473,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             nameFilter.AddCondition("displayname", ConditionOperator.Like, "%" + groupKey + "%");
             query.Criteria.AddFilter(nameFilter);
 
-            return ToList(serviceAdmin.RetrieveMultiple(query));
+            return Helper.RetrieveAll(serviceAdmin, query);
         }
 
         private static bool IsLocalizableResource(Entity resource, string baseLanguage)

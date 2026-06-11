@@ -201,7 +201,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             link.LinkCriteria.AddCondition("objecttypecode", ConditionOperator.Equal, entityInfo.ObjectTypeCode.Value);
 
             var identitySet = new EntityMessageIdentitySet();
-            foreach (var row in ToList(serviceAdmin.RetrieveMultiple(query)))
+            foreach (var row in Helper.RetrieveAll(serviceAdmin, query))
             {
                 var id = row.GetAttributeValue<Guid>("displaystringid");
                 if (id != Guid.Empty)

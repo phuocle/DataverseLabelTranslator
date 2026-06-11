@@ -283,7 +283,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             };
             query.Criteria.AddCondition("iscustomizable", ConditionOperator.Equal, true);
 
-            return ToList(serviceAdmin.RetrieveMultiple(query));
+            return Helper.RetrieveAll(serviceAdmin, query);
         }
 
         private static List<Entity> RetrieveEntityCharts(IOrganizationService serviceAdmin, string entityName)
@@ -295,7 +295,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Criteria.AddCondition("primaryentitytypecode", ConditionOperator.Equal, entityName);
             query.Criteria.AddCondition("iscustomizable", ConditionOperator.Equal, true);
 
-            return ToList(serviceAdmin.RetrieveMultiple(query));
+            return Helper.RetrieveAll(serviceAdmin, query);
         }
 
         private static Label RetrieveLocLabel(IOrganizationService serviceAdmin, Guid chartId, string attributeName)
@@ -372,7 +372,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var component in ToList(serviceAdmin.RetrieveMultiple(componentQuery)))
+            foreach (var component in Helper.RetrieveAll(serviceAdmin, componentQuery))
             {
                 var objectId = component.GetAttributeValue<Guid>("objectid");
                 if (idToName.TryGetValue(objectId, out var logicalName))

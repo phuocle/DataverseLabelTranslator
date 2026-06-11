@@ -400,7 +400,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Orders.Add(new OrderExpression("name", OrderType.Ascending));
 
             var forms = new List<FormInfo>();
-            foreach (var entity in RetrieveAll(service, query))
+            foreach (var entity in Helper.RetrieveAll(service, query))
             {
                 var formId = entity.Contains("formid") ? entity.GetAttributeValue<Guid>("formid") : entity.Id;
                 if (formId == Guid.Empty)
@@ -435,7 +435,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Criteria.AddCondition("type", ConditionOperator.In, SupportedFormTypes.Cast<object>().ToArray());
             query.Orders.Add(new OrderExpression("name", OrderType.Ascending));
 
-            return RetrieveAll(service, query)
+            return Helper.RetrieveAll(service, query)
                 .Select(entity => entity.Contains("formid") ? entity.GetAttributeValue<Guid>("formid") : entity.Id)
                 .Where(formId => formId != Guid.Empty)
                 .Distinct()
@@ -473,30 +473,6 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             return columns;
-        }
-
-        private static List<Entity> RetrieveAll(IOrganizationService service, QueryExpression query)
-        {
-            var results = new List<Entity>();
-            query.PageInfo = new PagingInfo
-            {
-                Count = 5000,
-                PageNumber = 1
-            };
-
-            while (true)
-            {
-                var page = service.RetrieveMultiple(query);
-                results.AddRange(ToList(page));
-
-                if (!page.MoreRecords)
-                {
-                    return results;
-                }
-
-                query.PageInfo.PageNumber++;
-                query.PageInfo.PagingCookie = page.PagingCookie;
-            }
         }
 
         private static List<XElement> GetTranslatableNodes(XDocument document)

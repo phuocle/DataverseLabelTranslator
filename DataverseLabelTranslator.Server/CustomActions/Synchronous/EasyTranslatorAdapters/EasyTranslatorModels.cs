@@ -198,13 +198,13 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 ColumnSet = new ColumnSet("languagecode"),
                 TopCount = 1
             };
-            var result = serviceAdmin.RetrieveMultiple(query);
-            if (result.Entities.Count == 0)
+            var organization = Helper.RetrieveFirst(serviceAdmin, query);
+            if (organization == null)
             {
                 throw new InvalidPluginExecutionException("Could not retrieve organization base language.");
             }
 
-            var languageCode = result.Entities[0].GetAttributeValue<int>("languagecode");
+            var languageCode = organization.GetAttributeValue<int>("languagecode");
             if (languageCode <= 0)
             {
                 throw new InvalidPluginExecutionException("Could not retrieve organization base language.");

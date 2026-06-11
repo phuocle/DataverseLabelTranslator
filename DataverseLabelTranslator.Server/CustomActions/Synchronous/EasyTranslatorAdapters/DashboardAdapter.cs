@@ -118,7 +118,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
         private static List<Entity> RetrieveAllDashboards(IOrganizationService serviceAdmin)
         {
-            return ToList(serviceAdmin.RetrieveMultiple(CreateDashboardQuery()));
+            return Helper.RetrieveAll(serviceAdmin, CreateDashboardQuery());
         }
 
         private static List<Entity> RetrieveDashboardsBySolution(IOrganizationService serviceAdmin, Guid solutionId)
@@ -137,7 +137,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             query.Criteria.AddCondition(new ConditionExpression("formid", ConditionOperator.In, values));
-            return ToList(serviceAdmin.RetrieveMultiple(query));
+            return Helper.RetrieveAll(serviceAdmin, query);
         }
 
         private static QueryExpression CreateDashboardQuery()
@@ -166,7 +166,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             query.Criteria.AddCondition("componenttype", ConditionOperator.Equal, DashboardComponentType);
 
             var ids = new List<Guid>();
-            foreach (var component in ToList(serviceAdmin.RetrieveMultiple(query)))
+            foreach (var component in Helper.RetrieveAll(serviceAdmin, query))
             {
                 if (!component.Contains("objectid"))
                 {
