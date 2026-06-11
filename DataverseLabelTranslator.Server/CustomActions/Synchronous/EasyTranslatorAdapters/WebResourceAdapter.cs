@@ -3,9 +3,11 @@ using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslatorAdapters
@@ -19,13 +21,14 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         private const int PublishedWaitMilliseconds = 10000;
         private const string TranslatorType = "webresources";
         private const string PublishKind = "webresource";
-        private static readonly Regex LocalizedFileRegex = new Regex(@"([0-9]+)\.(js|resx)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly Regex LocalizedNameRegex = new Regex(@"([0-9]+)$", RegexOptions.Compiled);
+        private static readonly Regex LocalizedNameRegex = new Regex(@"\.([0-9]+)(?:\.([^./\\]+))?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex ResxNameLcidSuffixRegex = new Regex(@"([0-9]+)$", RegexOptions.Compiled);
         public static Action<int> WaitAction { get; set; } = Thread.Sleep;
 
         public EasyTranslatorLoadOutput Load(EasyTranslatorRuntimeContext context, EasyTranslatorLoadInput input)
         {
             var baseLanguage = GetBaseLanguage(context.ServiceAdmin).ToString();
+            var languages = RetrieveAvailableLanguages(context.ServiceAdmin);
             var groups = LoadGroups(context.ServiceAdmin, input.solutionId, baseLanguage);
             var rows = new List<EasyTranslatorGridRowOutput>();
 
@@ -43,6 +46,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 {
                     mode = IsDescriptionComponent(input.component) ? "flat" : "tree",
                     title = "Web Resources",
+                    languageColumns = BuildLanguageColumns(languages),
                     rows = rows
                 }
             };
@@ -104,20 +108,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
         private static List<WebResourceGroupInfo> LoadGroups(IOrganizationService serviceAdmin, string solutionIdText, string baseLanguage)
         {
-            List<Entity> candidates;
-            if (string.IsNullOrWhiteSpace(solutionIdText) || string.Equals(solutionIdText, "all", StringComparison.OrdinalIgnoreCase))
-            {
-                candidates = RetrieveWebResourcesByLanguage(serviceAdmin, baseLanguage);
-            }
-            else
-            {
-                if (!Guid.TryParse(solutionIdText, out var solutionId))
-                {
-                    throw new InvalidPluginExecutionException("WebResource solutionId must be a GUID or all.");
-                }
-
-                candidates = RetrieveWebResourcesByIds(serviceAdmin, GetSolutionWebResourceIds(serviceAdmin, solutionId));
-            }
+            var solutionResources = GetScopedWebResources(serviceAdmin, solutionIdText);
+            var candidates = solutionResources ?? RetrieveWebResourcesByLanguage(serviceAdmin, baseLanguage);
 
             var groups = new List<WebResourceGroupInfo>();
             var seenGroupKeys = new HashSet<string>(StringComparer.Ordinal);
@@ -129,16 +121,14 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     continue;
                 }
 
-                var baseName = candidate.GetAttributeValue<string>("name") ?? string.Empty;
-                var baseDisplayName = candidate.GetAttributeValue<string>("displayname") ?? baseName;
-                var groupKey = GetResourceGroupingKey(baseName, baseDisplayName, baseLanguage);
+                var groupKey = GetResourceGroupingKey(candidate, baseLanguage);
 
                 if (!seenGroupKeys.Add(groupKey))
                 {
                     continue;
                 }
 
-                var group = LoadGroup(serviceAdmin, groupKey, candidate);
+                var group = LoadGroup(serviceAdmin, groupKey, candidate, solutionResources);
                 if (group.resources.Count > 0)
                 {
                     groups.Add(group);
@@ -149,12 +139,19 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             return groups;
         }
 
-        private static WebResourceGroupInfo LoadGroup(IOrganizationService serviceAdmin, string groupKey, Entity baseResource)
+        private static WebResourceGroupInfo LoadGroup(IOrganizationService serviceAdmin, string groupKey, Entity baseResource, List<Entity> scopedResources)
         {
             var resources = new List<WebResourceInfo>();
-            foreach (var sibling in RetrieveSiblingWebResources(serviceAdmin, groupKey))
+            var siblings = scopedResources ?? RetrieveSiblingWebResources(serviceAdmin, groupKey);
+            foreach (var sibling in siblings)
             {
-                var lcid = GetResourceLcid(sibling);
+                var match = MatchLocalizedResource(sibling);
+                if (!string.Equals(match?.groupKey, groupKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var lcid = match.lcid;
                 if (lcid == null)
                 {
                     continue;
@@ -274,6 +271,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             var changesByTarget = new Dictionary<string, WebResourceChangeInfo>(StringComparer.OrdinalIgnoreCase);
             var baseLanguage = !string.IsNullOrWhiteSpace(input.baseLanguage) ? input.baseLanguage : GetBaseLanguage(serviceAdmin).ToString();
             var groupCache = new Dictionary<string, WebResourceGroupInfo>(StringComparer.Ordinal);
+            var scopedResources = GetScopedWebResources(serviceAdmin, input.solutionId);
 
             foreach (var row in input.changedRows ?? new List<EasyTranslatorChangedRowInput>())
             {
@@ -289,7 +287,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
                 if (!groupCache.ContainsKey(groupKey))
                 {
-                    groupCache[groupKey] = LoadGroup(serviceAdmin, groupKey, null);
+                    groupCache[groupKey] = LoadGroup(serviceAdmin, groupKey, null, scopedResources);
                 }
 
                 var group = groupCache[groupKey];
@@ -320,7 +318,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                             changesByTarget[changeKey] = new WebResourceChangeInfo
                             {
                                 lcid = lcid,
-                                baseWebresourceid = baseResource?.webresourceid
+                                baseWebresourceid = baseResource?.webresourceid,
+                                solutionId = input.solutionId
                             };
                         }
 
@@ -343,6 +342,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             var changes = new List<WebResourceChangeInfo>();
             var baseLanguage = !string.IsNullOrWhiteSpace(input.baseLanguage) ? input.baseLanguage : GetBaseLanguage(serviceAdmin).ToString();
             var groupCache = new Dictionary<string, WebResourceGroupInfo>(StringComparer.Ordinal);
+            var scopedResources = GetScopedWebResources(serviceAdmin, input.solutionId);
 
             foreach (var row in input.changedRows ?? new List<EasyTranslatorChangedRowInput>())
             {
@@ -361,7 +361,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
                 if (!groupCache.ContainsKey(groupKey))
                 {
-                    groupCache[groupKey] = LoadGroup(serviceAdmin, groupKey, null);
+                    groupCache[groupKey] = LoadGroup(serviceAdmin, groupKey, null, scopedResources);
                 }
 
                 var group = groupCache[groupKey];
@@ -384,6 +384,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                         var baseResource = FindResourceByLcid(group, baseLanguage);
                         change.lcid = lcid;
                         change.baseWebresourceid = baseResource?.webresourceid;
+                        change.solutionId = input.solutionId;
                     }
 
                     changes.Add(change);
@@ -438,8 +439,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             var resources = new List<Entity>();
             foreach (var id in ids)
             {
-                var entity = serviceAdmin.Retrieve("webresource", id, new ColumnSet("webresourceid", "name", "displayname", "description", "content", "webresourcetype"));
-                if (entity != null)
+                var entity = serviceAdmin.Retrieve("webresource", id, new ColumnSet("webresourceid", "name", "displayname", "description", "content", "webresourcetype", "ismanaged"));
+                if (entity != null && !entity.GetAttributeValue<bool>("ismanaged"))
                 {
                     resources.Add(entity);
                 }
@@ -448,15 +449,55 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             return resources;
         }
 
+        private static List<Entity> GetScopedWebResources(IOrganizationService serviceAdmin, string solutionIdText)
+        {
+            if (string.IsNullOrWhiteSpace(solutionIdText) || string.Equals(solutionIdText, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (!Guid.TryParse(solutionIdText, out var solutionId))
+            {
+                throw new InvalidPluginExecutionException("WebResource solutionId must be a GUID or all.");
+            }
+
+            return RetrieveWebResourcesByIds(serviceAdmin, GetSolutionWebResourceIds(serviceAdmin, solutionId));
+        }
+
+        private static List<int> RetrieveAvailableLanguages(IOrganizationService serviceAdmin)
+        {
+            var response = (RetrieveAvailableLanguagesResponse)serviceAdmin.Execute(new RetrieveAvailableLanguagesRequest());
+            return response.LocaleIds == null ? new List<int>() : new List<int>(response.LocaleIds);
+        }
+
+        private static List<EasyTranslatorLanguageColumnOutput> BuildLanguageColumns(List<int> languages)
+        {
+            var columns = new List<EasyTranslatorLanguageColumnOutput>();
+            foreach (var language in languages ?? new List<int>())
+            {
+                columns.Add(new EasyTranslatorLanguageColumnOutput
+                {
+                    field = language.ToString(),
+                    text = language.ToString()
+                });
+            }
+
+            return columns;
+        }
+
         private static List<Entity> RetrieveWebResourcesByLanguage(IOrganizationService serviceAdmin, string baseLanguage)
         {
             var query = new QueryExpression("webresource")
             {
-                ColumnSet = new ColumnSet("webresourceid", "name", "displayname", "description", "content", "webresourcetype")
+                ColumnSet = new ColumnSet("webresourceid", "name", "displayname", "description", "content", "webresourcetype", "ismanaged")
             };
+            query.Criteria.AddCondition("ismanaged", ConditionOperator.Equal, false);
             var nameFilter = new FilterExpression(LogicalOperator.Or);
-            nameFilter.AddCondition("name", ConditionOperator.Like, "%" + baseLanguage + "%");
-            nameFilter.AddCondition("displayname", ConditionOperator.Like, "%" + baseLanguage + "%");
+            nameFilter.AddCondition("name", ConditionOperator.Like, "%." + baseLanguage + "%");
+            var resxSuffixFilter = new FilterExpression(LogicalOperator.And);
+            resxSuffixFilter.AddCondition("webresourcetype", ConditionOperator.Equal, WebResourceTypeResx);
+            resxSuffixFilter.AddCondition("name", ConditionOperator.Like, "%" + baseLanguage);
+            nameFilter.AddFilter(resxSuffixFilter);
             query.Criteria.AddFilter(nameFilter);
 
             return Helper.RetrieveAll(serviceAdmin, query);
@@ -466,11 +507,15 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         {
             var query = new QueryExpression("webresource")
             {
-                ColumnSet = new ColumnSet("webresourceid", "name", "displayname", "description", "content", "webresourcetype")
+                ColumnSet = new ColumnSet("webresourceid", "name", "displayname", "description", "content", "webresourcetype", "ismanaged")
             };
+            query.Criteria.AddCondition("ismanaged", ConditionOperator.Equal, false);
             var nameFilter = new FilterExpression(LogicalOperator.Or);
-            nameFilter.AddCondition("name", ConditionOperator.Like, "%" + groupKey + "%");
-            nameFilter.AddCondition("displayname", ConditionOperator.Like, "%" + groupKey + "%");
+            nameFilter.AddCondition("name", ConditionOperator.Like, groupKey + ".%");
+            var resxSuffixFilter = new FilterExpression(LogicalOperator.And);
+            resxSuffixFilter.AddCondition("webresourcetype", ConditionOperator.Equal, WebResourceTypeResx);
+            resxSuffixFilter.AddCondition("name", ConditionOperator.Like, groupKey + "%");
+            nameFilter.AddFilter(resxSuffixFilter);
             query.Criteria.AddFilter(nameFilter);
 
             return Helper.RetrieveAll(serviceAdmin, query);
@@ -487,24 +532,36 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             var name = resource?.GetAttributeValue<string>("name") ?? string.Empty;
             var displayName = resource?.GetAttributeValue<string>("displayname") ?? string.Empty;
             var webresourcetype = GetOptionValue(resource, "webresourcetype") ?? 0;
-            var candidates = new[] { name, displayName };
 
-            foreach (var candidate in candidates)
+            var match = MatchLocalizedResourceName(name, webresourcetype);
+            if (match != null)
             {
-                if (string.IsNullOrEmpty(candidate))
-                {
-                    continue;
-                }
+                return match;
+            }
 
-                var fileMatch = LocalizedFileRegex.Match(candidate);
-                if (fileMatch.Success)
+            return webresourcetype == WebResourceTypeResx
+                ? MatchLocalizedResourceName(displayName, webresourcetype)
+                : null;
+        }
+
+        private static LocalizedResourceMatch MatchLocalizedResourceName(string value, int webresourcetype)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return null;
+            }
+
+            var nameMatch = LocalizedNameRegex.Match(value);
+            if (nameMatch.Success)
+            {
+                var extension = nameMatch.Groups[2].Success ? nameMatch.Groups[2].Value.ToLowerInvariant() : null;
+                return new LocalizedResourceMatch
                 {
-                    return new LocalizedResourceMatch
-                    {
-                        lcid = fileMatch.Groups[1].Value,
-                        format = fileMatch.Groups[2].Value.ToLowerInvariant()
-                    };
-                }
+                    lcid = nameMatch.Groups[1].Value,
+                    format = webresourcetype == WebResourceTypeResx || extension == "resx" ? "resx" : "json",
+                    token = nameMatch.Groups[1].Value,
+                    groupKey = value.Substring(0, nameMatch.Index)
+                };
             }
 
             if (webresourcetype != WebResourceTypeResx)
@@ -512,25 +569,19 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 return null;
             }
 
-            foreach (var candidate in candidates)
+            var suffixMatch = ResxNameLcidSuffixRegex.Match(value);
+            if (!suffixMatch.Success)
             {
-                if (string.IsNullOrEmpty(candidate))
-                {
-                    continue;
-                }
-
-                var nameMatch = LocalizedNameRegex.Match(candidate);
-                if (nameMatch.Success)
-                {
-                    return new LocalizedResourceMatch
-                    {
-                        lcid = nameMatch.Groups[1].Value,
-                        format = "resx"
-                    };
-                }
+                return null;
             }
 
-            return null;
+            return new LocalizedResourceMatch
+            {
+                lcid = suffixMatch.Groups[1].Value,
+                format = "resx",
+                token = suffixMatch.Groups[1].Value,
+                groupKey = value.Substring(0, suffixMatch.Index)
+            };
         }
 
         private static string GetResourceLcid(Entity resource)
@@ -538,18 +589,47 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             return MatchLocalizedResource(resource)?.lcid;
         }
 
-        private static string GetResourceGroupingKey(string name, string displayName, string lcid)
+        private static string GetResourceLanguageToken(Entity resource)
         {
-            var index = name.IndexOf(lcid, StringComparison.Ordinal);
-            if (index >= 0)
+            return MatchLocalizedResource(resource)?.token;
+        }
+
+        private static bool IsResxResource(Entity resource)
+        {
+            var webresourcetype = GetOptionValue(resource, "webresourcetype") ?? 0;
+            var match = MatchLocalizedResource(resource);
+            return webresourcetype == WebResourceTypeResx || string.Equals(match?.format, "resx", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string GetResourceGroupingKey(Entity resource, string fallbackToken)
+        {
+            var name = resource?.GetAttributeValue<string>("name") ?? string.Empty;
+            var displayName = resource?.GetAttributeValue<string>("displayname") ?? string.Empty;
+            var match = MatchLocalizedResource(resource);
+            var groupKey = match?.groupKey;
+            if (!string.IsNullOrWhiteSpace(groupKey))
             {
-                return name.Substring(0, index);
+                return groupKey;
             }
 
-            index = displayName.IndexOf(lcid, StringComparison.Ordinal);
-            if (index >= 0)
+            return GetResourceGroupingKey(name, displayName, fallbackToken);
+        }
+
+        private static string GetResourceGroupingKey(string name, string displayName, string token)
+        {
+            if (!string.IsNullOrEmpty(token))
             {
-                return displayName.Substring(0, index);
+                var index = name.IndexOf("." + token, StringComparison.OrdinalIgnoreCase);
+                if (index >= 0)
+                {
+                    return name.Substring(0, index);
+                }
+
+                index = displayName.IndexOf("." + token, StringComparison.OrdinalIgnoreCase);
+                if (index >= 0)
+                {
+                    return displayName.Substring(0, index);
+                }
             }
 
             return !string.IsNullOrEmpty(name) ? name : displayName;
@@ -564,10 +644,15 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
             var name = resource.GetAttributeValue<string>("name");
             var displayName = resource.GetAttributeValue<string>("displayname");
-            var lcid = GetResourceLcid(resource);
-            if (!string.IsNullOrEmpty(lcid))
+            var match = MatchLocalizedResource(resource);
+            if (!string.IsNullOrWhiteSpace(match?.groupKey))
             {
-                var groupKey = GetResourceGroupingKey(name ?? string.Empty, displayName ?? string.Empty, lcid);
+                return CleanGroupDisplayName(match.groupKey);
+            }
+
+            if (!string.IsNullOrEmpty(match?.token))
+            {
+                var groupKey = GetResourceGroupingKey(name ?? string.Empty, displayName ?? string.Empty, match.token);
                 if (!string.IsNullOrWhiteSpace(groupKey))
                 {
                     return CleanGroupDisplayName(groupKey);
@@ -579,9 +664,14 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
         private static string CleanGroupDisplayName(string value)
         {
-            return string.IsNullOrWhiteSpace(value)
-                ? string.Empty
-                : value.Trim().TrimEnd('.', '_', '-', ' ');
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var cleaned = value.Trim().TrimEnd('.', '_', '-', ' ');
+            var slashIndex = cleaned.LastIndexOf('/');
+            return slashIndex >= 0 ? cleaned.Substring(slashIndex + 1) : cleaned;
         }
 
         private static WebResourceInfo ParseWebResource(Entity resource, string lcid)
@@ -620,11 +710,16 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             var doc = XDocument.Parse(xml);
             foreach (var dataElem in doc.Root.Elements("data"))
             {
+                if (!IsStringResxDataElement(dataElem))
+                {
+                    continue;
+                }
+
                 var name = dataElem.Attribute("name")?.Value;
                 var valueElem = dataElem.Element("value");
                 if (!string.IsNullOrEmpty(name))
                 {
-                    result[name] = valueElem == null ? string.Empty : valueElem.Value;
+                    result[name] = valueElem.Value;
                 }
             }
 
@@ -667,7 +762,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 }
 
                 existingNames.Add(name);
-                if (content.ContainsKey(name))
+                if (IsStringResxDataElement(dataElem) && content.ContainsKey(name))
                 {
                     var valueElem = dataElem.Element("value");
                     if (valueElem != null)
@@ -690,7 +785,56 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     new XElement("value", kv.Value ?? string.Empty)));
             }
 
-            return doc.ToString();
+            SortResxDataElements(doc);
+            return WriteResxDocument(doc);
+        }
+
+        private static void SortResxDataElements(XDocument doc)
+        {
+            var dataElements = new List<XElement>(doc.Root.Elements("data"));
+            dataElements.Sort((a, b) => string.Compare(
+                a.Attribute("name")?.Value ?? string.Empty,
+                b.Attribute("name")?.Value ?? string.Empty,
+                StringComparison.OrdinalIgnoreCase));
+
+            foreach (var dataElem in dataElements)
+            {
+                dataElem.Remove();
+            }
+
+            doc.Root.Add(dataElements);
+        }
+
+        private static bool IsStringResxDataElement(XElement dataElem)
+        {
+            return dataElem.Attribute("type") == null
+                && dataElem.Attribute("mimetype") == null
+                && dataElem.Element("value") != null;
+        }
+
+        private static string WriteResxDocument(XDocument doc)
+        {
+            using (var writer = new Utf8StringWriter())
+            {
+                using (var xmlWriter = XmlWriter.Create(writer, new XmlWriterSettings
+                {
+                    Encoding = Encoding.UTF8,
+                    Indent = true,
+                    IndentChars = "  ",
+                    NewLineChars = "\r\n",
+                    OmitXmlDeclaration = doc.Declaration == null
+                }))
+                {
+                    doc.Save(xmlWriter);
+                }
+
+                return writer.ToString();
+            }
+        }
+
+        private sealed class Utf8StringWriter : StringWriter
+        {
+            public override Encoding Encoding => Encoding.UTF8;
         }
 
         private static string UpdateWebResource(IOrganizationService serviceAdmin, WebResourceChangeInfo change)
@@ -701,10 +845,9 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             var current = serviceAdmin.Retrieve("webresource", id, new ColumnSet("content", "webresourcetype", "name"));
-            var webresourcetype = GetOptionValue(current, "webresourcetype") ?? 0;
             var rawBase64 = current.GetAttributeValue<string>("content") ?? string.Empty;
             var rawText = string.IsNullOrEmpty(rawBase64) ? string.Empty : Encoding.UTF8.GetString(Convert.FromBase64String(rawBase64));
-            var format = webresourcetype == WebResourceTypeResx ? "resx" : "json";
+            var format = IsResxResource(current) ? "resx" : "json";
             var content = format == "resx" ? ParseResxContent(rawText) : ParseJsonContent(rawText);
 
             foreach (var cc in change.contentChanges ?? new List<WebResourceContentChangeInfo>())
@@ -750,21 +893,21 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             {
                 var baseEntity = serviceAdmin.Retrieve("webresource", baseId, new ColumnSet("content", "webresourcetype", "name", "displayname"));
                 var baseWebresourcetype = GetOptionValue(baseEntity, "webresourcetype") ?? 0;
-                format = baseWebresourcetype == WebResourceTypeResx ? "resx" : "json";
+                format = IsResxResource(baseEntity) ? "resx" : "json";
                 webresourcetype = baseWebresourcetype;
 
                 var baseRawBase64 = baseEntity.GetAttributeValue<string>("content") ?? string.Empty;
                 rawText = string.IsNullOrEmpty(baseRawBase64) ? string.Empty : Encoding.UTF8.GetString(Convert.FromBase64String(baseRawBase64));
                 baseContent = format == "resx" ? ParseResxContent(rawText) : ParseJsonContent(rawText);
 
-                var baseLcid = GetResourceLcid(baseEntity);
+                var baseToken = GetResourceLanguageToken(baseEntity);
                 var baseName = baseEntity.GetAttributeValue<string>("name") ?? string.Empty;
                 var baseDisplayName = baseEntity.GetAttributeValue<string>("displayname") ?? baseName;
 
-                if (!string.IsNullOrEmpty(baseLcid) && !string.IsNullOrEmpty(change.lcid))
+                if (!string.IsNullOrEmpty(baseToken) && !string.IsNullOrEmpty(change.lcid))
                 {
-                    name = baseName.Replace(baseLcid, change.lcid);
-                    displayName = baseDisplayName.Replace(baseLcid, change.lcid);
+                    name = ReplaceResourceLcid(baseName, baseToken, change.lcid);
+                    displayName = ReplaceResourceLcid(baseDisplayName, baseToken, change.lcid);
                 }
                 else
                 {
@@ -821,7 +964,42 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 newEntity["description"] = change.description ?? string.Empty;
             }
 
-            return serviceAdmin.Create(newEntity).ToString("D");
+            var createdId = serviceAdmin.Create(newEntity);
+            AddWebResourceToSolution(serviceAdmin, createdId, change.solutionId);
+            return createdId.ToString("D");
+        }
+
+        private static void AddWebResourceToSolution(IOrganizationService serviceAdmin, Guid webresourceId, string solutionIdText)
+        {
+            var solutionUniqueName = GetSolutionUniqueName(serviceAdmin, solutionIdText);
+            if (string.IsNullOrWhiteSpace(solutionUniqueName))
+            {
+                return;
+            }
+
+            serviceAdmin.Execute(new AddSolutionComponentRequest
+            {
+                ComponentId = webresourceId,
+                ComponentType = WebResourceComponentType,
+                SolutionUniqueName = solutionUniqueName,
+                AddRequiredComponents = false
+            });
+        }
+
+        private static string GetSolutionUniqueName(IOrganizationService serviceAdmin, string solutionIdText)
+        {
+            if (string.IsNullOrWhiteSpace(solutionIdText) || string.Equals(solutionIdText, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (!Guid.TryParse(solutionIdText, out var solutionId))
+            {
+                throw new InvalidPluginExecutionException("WebResource solutionId must be a GUID or all.");
+            }
+
+            var solution = serviceAdmin.Retrieve("solution", solutionId, new ColumnSet("uniquename"));
+            return solution?.GetAttributeValue<string>("uniquename");
         }
 
         private static string BuildPublishXml(List<string> ids)
@@ -833,6 +1011,27 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             return string.Concat("<importexportxml><webresources>", sb.ToString(), "</webresources></importexportxml>");
+        }
+
+        private static string ReplaceResourceLcid(string value, string oldLcid, string newLcid)
+        {
+            if (string.IsNullOrEmpty(value) || string.IsNullOrEmpty(oldLcid) || string.IsNullOrEmpty(newLcid))
+            {
+                return value;
+            }
+
+            var index = value.IndexOf("." + oldLcid, StringComparison.OrdinalIgnoreCase);
+            if (index >= 0)
+            {
+                return value.Substring(0, index) + "." + newLcid + value.Substring(index + oldLcid.Length + 1);
+            }
+
+            if (value.EndsWith(oldLcid, StringComparison.OrdinalIgnoreCase))
+            {
+                return value.Substring(0, value.Length - oldLcid.Length) + newLcid;
+            }
+
+            return value;
         }
 
         private static void Wait(int milliseconds)
@@ -864,6 +1063,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             public string webresourceid { get; set; }
             public string lcid { get; set; }
             public string baseWebresourceid { get; set; }
+            public string solutionId { get; set; }
             public bool hasDescription { get; set; }
             public string description { get; set; }
             public List<WebResourceContentChangeInfo> contentChanges { get; set; } = new List<WebResourceContentChangeInfo>();
@@ -879,6 +1079,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         {
             public string lcid { get; set; }
             public string format { get; set; }
+            public string token { get; set; }
+            public string groupKey { get; set; }
         }
     }
 }

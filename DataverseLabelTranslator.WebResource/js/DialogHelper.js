@@ -233,45 +233,177 @@
     };
 
     DialogHelper.ShowHelp = function () {
+        function buildDetails(title, body) {
+            return (
+                '<details class="xqt-help-details">' +
+                '<summary class="xqt-help-summary">' +
+                escapeHtml(title) +
+                "</summary>" +
+                '<div class="xqt-help-detail-body">' +
+                body +
+                "</div>" +
+                "</details>"
+            );
+        }
+
+        function buildType(title, description, flow, notes) {
+            var html =
+                '<p class="xqt-help-detail-text">' +
+                escapeHtml(description) +
+                "</p>" +
+                '<p class="xqt-help-detail-text"><b>Typical flow:</b> ' +
+                escapeHtml(flow) +
+                "</p>";
+
+            if (notes) {
+                html += '<p class="xqt-help-detail-text"><b>Notes:</b> ' + escapeHtml(notes) + "</p>";
+            }
+
+            return buildDetails(title, html);
+        }
+
         var html =
-            '<div style="padding: 15px 20px; font-size: 13px; line-height: 1.75;">' +
-            '<p style="margin: 0 0 10px 0;"><b>Basic flow:</b> Select a Solution, choose an Entity when the selected type needs one, choose a Type, click Load, edit language columns, then Save.</p>' +
-            '<p style="margin: 0 0 10px 0;"><b>Solution scope:</b> The Solution selector filters component loading. Entity-dependent types require an entity from the selected solution. Global types are available when Entity is set to None.</p>' +
-            '<p style="margin: 0 0 10px 0;"><b>Search:</b> The toolbar search uses contains matching. Main, Auto Translate, and Dictionary grids search across schema/source and language columns, and clearing the box restores the full grid.</p>' +
-            '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
-            "<b>Entity-dependent types</b>" +
-            '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>Attributes</b>: table column labels and descriptions.</li>" +
-            "<li><b>Business Process Flows</b>: process and stage labels.</li>" +
-            "<li><b>Business Rules</b>: business rule labels. Save updates changed rule XAML through the server adapter.</li>" +
-            "<li><b>Commands</b>: modern command designer appaction labels, then publishes the selected table.</li>" +
-            "<li><b>Content Snippets</b>: Power Pages content snippet labels, normally for the adx_contentsnippet table.</li>" +
-            "<li><b>Entity Messages</b>: table message and display string labels from the selected solution translation package.</li>" +
-            "<li><b>Forms</b>: form labels handled by the server Easy Translator adapter.</li>" +
-            "<li><b>Option Sets</b>: local choice option labels.</li>" +
-            "<li><b>Ribbons</b>: classic ribbon labels. Save imports the changed solution data and starts async Publish XML.</li>" +
-            "</ul>" +
-            "<b>Global types</b>" +
-            '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>Charts</b>: chart labels.</li>" +
-            "<li><b>Dashboards</b>: dashboard parent row labels only. Tabs, sections, and cells are intentionally not loaded.</li>" +
-            "<li><b>Entity Metadata</b>: table display names, collection names, and descriptions.</li>" +
-            "<li><b>Form Metadata</b>: form tabs, sections, controls, and related form metadata labels.</li>" +
-            "<li><b>Global Option Sets</b>: global choice and option labels.</li>" +
-            "<li><b>Relationships</b>: relationship and associated menu labels.</li>" +
-            "<li><b>Sitemap</b>: model-driven app sitemap labels in the selected solution.</li>" +
-            "<li><b>Views</b>: saved query display labels.</li>" +
-            "<li><b>Web Resources</b>: web resource display names and descriptions.</li>" +
-            "</ul>" +
-            '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
-            "<b>Translation tools</b>" +
-            '<ul style="margin: 4px 0 12px 0; padding-left: 20px;">' +
-            "<li><b>Add selected translation to dictionary</b>: opens an editable confirmation dialog with the selected source and target texts. Defaults come from the grid, and the latest edited values are saved when Add is clicked.</li>" +
-            "<li><b>App Settings</b>: stores provider URLs, API keys, model names, and prompts in the Dataverse app settings web resource.</li>" +
-            "<li><b>Apply Dictionary</b>: applies existing dictionary matches to the current grid without calling an AI provider. Choose missing-only or overwrite mode before applying.</li>" +
-            "<li><b>Auto Translate</b>: translates visible grid rows from the selected source language to the selected target language with the selected AI provider.</li>" +
-            "<li><b>Dictionary</b>: manages source and target term pairs stored in the Dataverse Label Translator data web resource. Source and target column headers include LCID values, for example Source English (1033).</li>" +
-            "</ul>" +
+            '<div class="xqt-help-body">' +
+            '<p class="xqt-help-intro"><b>Dataverse Label Translator</b> is a focused dashboard for loading solution-scoped Dataverse labels, reviewing installed language columns side by side, editing translations in the grid, using dictionary or AI-assisted translation workflows, and saving/publishing the changed labels back to Dataverse.</p>' +
+            '<h3 class="xqt-help-heading">Flows</h3>' +
+            '<ol class="xqt-help-flow">' +
+            "<li><b>Select scope:</b> choose a Solution first. For entity-dependent types, choose an Entity from that solution. For global types, keep Entity as None.</li>" +
+            "<li><b>Choose work:</b> select a Type and, when available, choose Display Text or Description in the Component selector.</li>" +
+            "<li><b>Load data:</b> click Load to retrieve rows and installed language columns. Use search to filter by schema/source or language text.</li>" +
+            "<li><b>Edit translations:</b> edit language cells directly. The selected row stays highlighted and the focused cell is outlined. Changed cells enable Save and cell undo.</li>" +
+            "<li><b>Accelerate translation:</b> use Apply Dictionary for existing matches, Add selected translation to dictionary for reusable terms, or Auto Translate for AI-assisted drafts.</li>" +
+            "<li><b>Save and publish:</b> click Save after reviewing changes. The server adapter writes the selected component type and publishes when that type requires Dataverse publish.</li>" +
+            "</ol>" +
+            '<h3 class="xqt-help-heading">Types</h3>' +
+            buildType(
+                "Attributes",
+                "Translates table column display names and descriptions for the selected entity.",
+                "Select Solution, select Entity, choose Attributes, choose Display Text or Description, Load, edit language columns, then Save.",
+                "Readonly or unavailable label values appear as placeholders. Empty editable labels can be restored through normal grid editing."
+            ) +
+            buildType(
+                "Business Process Flows",
+                "Translates process and stage labels for business process flows on the selected entity.",
+                "Select Solution, select Entity, choose Business Process Flows, Load, update process or stage labels, then Save.",
+                "Only labels returned by the Dataverse adapter are editable in the dashboard."
+            ) +
+            buildType(
+                "Business Rules",
+                "Translates business rule labels for the selected entity.",
+                "Select Solution, select Entity, choose Business Rules, Load, edit language labels, then Save.",
+                "Save updates changed rule XAML through the server adapter."
+            ) +
+            buildType(
+                "Charts",
+                "Translates chart labels returned by the selected solution.",
+                "Select Solution, keep Entity as None, choose Charts, Load, edit chart labels, then Save.",
+                "Review chart names carefully because users often see them in dashboards and view chart panes."
+            ) +
+            buildType(
+                "Commands",
+                "Translates modern command designer appaction labels for the selected entity.",
+                "Select Solution, select Entity, choose Commands, Load, update command labels, then Save.",
+                "Saving command labels publishes the selected table when the adapter requires it."
+            ) +
+            buildType(
+                "Content Snippets",
+                "Translates Power Pages content snippet labels, normally for the adx_contentsnippet table.",
+                "Select Solution, select Entity, choose Content Snippets, Load, update snippet translations, then Save.",
+                "This type is usually relevant only when the selected solution contains Power Pages content snippet rows."
+            ) +
+            buildType(
+                "Dashboards",
+                "Translates dashboard parent row labels only.",
+                "Select Solution, keep Entity as None, choose Dashboards, Load, edit dashboard parent labels, then Save.",
+                "Dashboard tabs, sections, and cells are intentionally not loaded into this type."
+            ) +
+            buildType(
+                "Entity Messages",
+                "Translates table message and display string labels from the selected solution translation package.",
+                "Select Solution, select Entity, choose Entity Messages, Load, edit message labels, then Save.",
+                "Use this when user-facing platform messages need localized wording."
+            ) +
+            buildType(
+                "Entity Metadata",
+                "Translates table display names, collection names, and descriptions returned for solution-scoped table metadata.",
+                "Select Solution, keep Entity as None, choose Entity Metadata, choose Display Text or Description, Load, edit, then Save.",
+                "Use this for the table-level labels users see in model-driven apps and metadata surfaces."
+            ) +
+            buildType(
+                "Form Metadata",
+                "Translates detailed form metadata such as tabs, sections, controls, and related labels.",
+                "Select Solution, keep Entity as None, choose Form Metadata, Load, update language cells, then Save.",
+                "This type is more granular than Forms and is useful when labels inside the form layout need direct maintenance."
+            ) +
+            buildType(
+                "Forms",
+                "Translates form labels handled by the server Easy Translator adapter for the selected entity.",
+                "Select Solution, select Entity, choose Forms, Load, edit form label translations, then Save.",
+                "Use Form Metadata when you need detailed form tabs, sections, controls, or related metadata labels."
+            ) +
+            buildType(
+                "Global Option Set",
+                "Translates global choice names and option labels.",
+                "Select Solution, keep Entity as None, choose Global Option Set, Load, update labels, then Save.",
+                "Use Option Sets for local table choices."
+            ) +
+            buildType(
+                "Option Sets",
+                "Translates local choice option labels that belong to the selected entity.",
+                "Select Solution, select Entity, choose Option Sets, Load, update option labels across languages, then Save.",
+                "Use Global Option Set when the choice is a reusable global choice rather than a local table column choice."
+            ) +
+            buildType(
+                "Relationships",
+                "Translates relationship labels and associated menu labels returned by the selected solution.",
+                "Select Solution, keep Entity as None, choose Relationships, Load, update relationship/menu text, then Save.",
+                "This helps keep related-record navigation names consistent across languages."
+            ) +
+            buildType(
+                "Ribbons",
+                "Translates classic ribbon labels for the selected entity.",
+                "Select Solution, select Entity, choose Ribbons, Load, edit command labels, then Save.",
+                "Save imports changed solution data and starts the required async Publish XML operation."
+            ) +
+            buildType(
+                "Sitemap",
+                "Translates model-driven app sitemap labels in the selected solution.",
+                "Select Solution, keep Entity as None, choose Sitemap, Load, update area/group/subarea labels, then Save.",
+                "Sitemap labels are solution-scoped and are not tied to one selected entity."
+            ) +
+            buildType(
+                "Views",
+                "Translates saved query display labels returned by the selected solution.",
+                "Select Solution, keep Entity as None, choose Views, Load, edit view label cells, then Save.",
+                "Search can help narrow long view lists before editing."
+            ) +
+            buildType(
+                "Web Resources",
+                "Translates localizable key/value content inside JavaScript JSON resources and RESX resources, plus web resource descriptions when Description is selected.",
+                "Select Solution, keep Entity as None, choose Web Resources, choose Display Text or Description, Load, expand a web resource parent row, edit child key rows or descriptions, then Save.",
+                "Only unmanaged web resources that follow the LCID naming convention are grouped. For example, AAA.1033, AAA.1041, and pl_/resx/AAAA.1033.resx are shown under parent AAA or AAAA."
+            ) +
+            '<h3 class="xqt-help-heading">Translation Tools</h3>' +
+            buildDetails(
+                "Auto Translate",
+                '<p class="xqt-help-detail-text">Opens an AI translation workspace for visible grid rows. Choose source and target languages, select provider settings, optionally use dictionary matches, translate, review, then apply changes back to the main grid.</p>'
+            ) +
+            buildDetails(
+                "Apply Dictionary",
+                '<p class="xqt-help-detail-text">Applies existing dictionary entries to matching rows in the current grid without calling an AI provider. Choose missing-only mode when you want to fill blanks, or overwrite mode when dictionary values should replace existing target text.</p>'
+            ) +
+            buildDetails(
+                "Add selected translation to dictionary",
+                '<p class="xqt-help-detail-text">Creates a reusable dictionary entry from the currently selected translation row. Defaults come from the selected source and target cells, and the latest edited values are saved when Add is clicked.</p>'
+            ) +
+            buildDetails(
+                "Dictionary",
+                '<p class="xqt-help-detail-text">Manages source and target term pairs stored in the Dataverse Label Translator data web resource. Column headers include LCID values, for example Source English (1033), so entries stay tied to installed Dataverse languages.</p>'
+            ) +
+            buildDetails(
+                "App Settings",
+                '<p class="xqt-help-detail-text">Stores provider URLs, API keys, model names, and custom prompts used by AI translation. These settings are managed inside the app settings web resource.</p>'
+            ) +
             "</div>";
 
         openHtmlDialog({

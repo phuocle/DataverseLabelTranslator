@@ -429,6 +429,84 @@
   padding: 20px 34px;
 }
 
+.xqt-help-body {
+  box-sizing: border-box;
+  color: #333;
+  font-size: 13px;
+  height: 100%;
+  line-height: 1.65;
+  overflow: auto;
+  padding: 18px 24px 24px;
+  width: 100%;
+}
+
+.xqt-help-intro {
+  color: #333;
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 0 0 16px;
+}
+
+.xqt-help-heading {
+  border-bottom: 1px solid #d9dee7;
+  color: #1f2937;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 18px 0 10px;
+  padding-bottom: 5px;
+}
+
+.xqt-help-flow {
+  margin: 4px 0 16px;
+  padding-left: 23px;
+}
+
+.xqt-help-flow li {
+  margin: 0 0 7px;
+}
+
+.xqt-help-section-label {
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 14px 0 7px;
+}
+
+.xqt-help-details {
+  border: 1px solid #d9dee7;
+  border-radius: 4px;
+  margin: 0 0 7px;
+}
+
+.xqt-help-summary {
+  background: #f7f9fc;
+  color: #1f2937;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  padding: 9px 12px;
+  user-select: none;
+}
+
+.xqt-help-details[open] .xqt-help-summary {
+  border-bottom: 1px solid #d9dee7;
+}
+
+.xqt-help-detail-body {
+  background: #fff;
+  padding: 10px 14px 12px;
+}
+
+.xqt-help-detail-text {
+  margin: 0 0 9px;
+}
+
+.xqt-help-detail-text:last-child {
+  margin-bottom: 0;
+}
+
 .xqt-translation-prompt-popup-form {
   box-sizing: border-box;
   height: 100%;
