@@ -191,6 +191,8 @@
         }
 
         Helper.FinalizeGrid(records, app);
+        SetActiveChangedCell(null);
+        SetChangedCellFooter("");
     }
 
     function GetRowPath(record) {
@@ -631,6 +633,7 @@
     var entityMetadata = {};
     var allEntities = [];
     var loadedToolbarType = null;
+    var activeChangedCell = null;
     var ENTITY_DEPENDENT_TYPE_ITEMS = [
         "type:attributes",
         "type:options",
@@ -1727,6 +1730,18 @@
                 icon: "icon-book-plus"
             },
             { type: "button", id: "dictionary", text: "", tooltip: "Manage dictionary", icon: "icon-book" },
+            { type: "break", id: "break-undoCellChange" },
+            {
+                type: "button",
+                id: "undoCellChange",
+                text: "",
+                tooltip: "Undo selected cell change",
+                icon: "icon-undo",
+                disabled: true,
+                onClick: function () {
+                    DataverseLabelTranslator.UndoActiveCellChange();
+                }
+            },
             { type: "spacer" },
             { type: "button", id: "about", text: "", tooltip: "About", icon: "icon-about" },
             { type: "button", id: "help", text: "", tooltip: "Help", icon: "icon-help" }
@@ -1773,8 +1788,9 @@
                     DataverseLabelTranslator.UpdateChangedCellFooter(event);
                 };
             },
-            onEditField: function () {
+            onEditField: function (event) {
                 DataverseLabelTranslator.SetSaveButtonDisabled(false);
+                DataverseLabelTranslator.UpdateChangedCellFooter(event);
             },
             onSearch: function (event) {
                 event.onComplete = function () {
@@ -1872,6 +1888,73 @@
         }
 
         return event.detail ? event.detail[property] : undefined;
+    }
+
+    function GetEventColumn(event) {
+        var grid = DataverseLabelTranslator.GetGrid();
+        var column = GetGridEventValue(event, "column");
+
+        if (!grid || typeof column === "undefined" || column === null) {
+            return null;
+        }
+
+        if (typeof column === "number") {
+            return grid.columns[column] || null;
+        }
+
+        if (/^\d+$/.test(String(column || "")) && grid.columns[parseInt(column, 10)]) {
+            return grid.columns[parseInt(column, 10)];
+        }
+
+        for (var i = 0; i < grid.columns.length; i++) {
+            if (grid.columns[i] && String(grid.columns[i].field) === String(column)) {
+                return grid.columns[i];
+            }
+        }
+
+        return null;
+    }
+
+    function GetEventCellContext(event) {
+        var recid = GetGridEventValue(event, "recid");
+        var column = GetEventColumn(event);
+        var record =
+            typeof recid !== "undefined" && recid !== null
+                ? DataverseLabelTranslator.GetByRecId(DataverseLabelTranslator.GetAllRecords(), recid)
+                : null;
+
+        if (!record || !column || !column.field) {
+            return null;
+        }
+
+        return {
+            record: record,
+            recid: record.recid,
+            column: column,
+            field: column.field
+        };
+    }
+
+    function HasChangedCell(record, field) {
+        return !!(record && record.w2ui && record.w2ui.changes && HasOwnProperty(record.w2ui.changes, field));
+    }
+
+    function SetUndoCellChangeButtonDisabled(disabled) {
+        SetToolbarItemsEnabled(["undoCellChange"], !disabled);
+    }
+
+    function SetActiveChangedCell(context) {
+        if (context && HasChangedCell(context.record, context.field)) {
+            activeChangedCell = {
+                recid: context.recid,
+                field: context.field
+            };
+            SetUndoCellChangeButtonDisabled(false);
+            return;
+        }
+
+        activeChangedCell = null;
+        SetUndoCellChangeButtonDisabled(true);
     }
 
     function GetColumnFooterText(column) {
@@ -2258,16 +2341,35 @@
         }
     };
 
+    DataverseLabelTranslator.UndoActiveCellChange = function () {
+        if (!activeChangedCell) {
+            SetUndoCellChangeButtonDisabled(true);
+            return;
+        }
+
+        var record = DataverseLabelTranslator.GetByRecId(
+            DataverseLabelTranslator.GetAllRecords(),
+            activeChangedCell.recid
+        );
+        var field = activeChangedCell.field;
+
+        if (HasChangedCell(record, field)) {
+            delete record.w2ui.changes[field];
+            DataverseLabelTranslator.NormalizeRecordChanges(record);
+            DataverseLabelTranslator.RefreshGridRow(record.recid);
+            DataverseLabelTranslator.RefreshGrid();
+        }
+
+        activeChangedCell = null;
+        SetUndoCellChangeButtonDisabled(true);
+        SetChangedCellFooter("");
+        DataverseLabelTranslator.SetSaveButtonDisabled(!DataverseLabelTranslator.HasPendingChanges());
+    };
+
     DataverseLabelTranslator.UpdateChangedCellFooter = function (event) {
-        var grid = DataverseLabelTranslator.GetGrid();
-        var recid = GetGridEventValue(event, "recid");
-        var columnIndex = GetGridEventValue(event, "column");
-        var column =
-            grid && typeof columnIndex !== "undefined" && columnIndex !== null ? grid.columns[columnIndex] : null;
-        var record =
-            typeof recid !== "undefined" && recid !== null
-                ? DataverseLabelTranslator.GetByRecId(DataverseLabelTranslator.GetAllRecords(), recid)
-                : null;
+        var context = GetEventCellContext(event);
+        var record = context ? context.record : null;
+        var column = context ? context.column : null;
 
         if (
             !record ||
@@ -2276,10 +2378,12 @@
             !record.w2ui.changes ||
             !HasOwnProperty(record.w2ui.changes, column.field)
         ) {
+            SetActiveChangedCell(null);
             SetChangedCellFooter("");
             return;
         }
 
+        SetActiveChangedCell(context);
         SetChangedCellFooter(
             '<span style="display:flex;align-items:center;box-sizing:border-box;height:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;padding:0 8px;transform:translateY(3px);">' +
                 "<b>Column:&nbsp;</b>" +
