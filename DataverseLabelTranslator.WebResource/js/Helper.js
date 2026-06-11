@@ -33,7 +33,6 @@
     Helper.UiText = {
         Placeholders: {
             DisplayText: "Add-display-text",
-            DisplayTextBase: "Add-display-text(*)",
             Description: "Add-description",
             Readonly: "-"
         },
@@ -52,10 +51,6 @@
 
     Helper.GetPlaceholderDisplayText = function () {
         return Helper.UiText.Placeholders.DisplayText;
-    };
-
-    Helper.GetPlaceholderDisplayTextBase = function () {
-        return Helper.UiText.Placeholders.DisplayTextBase;
     };
 
     Helper.GetPlaceholderDescription = function () {
@@ -325,18 +320,12 @@
         return field;
     };
 
-    Helper.ApplyPlaceholder = function (record, editablePlaceholder, basePlaceholder, app) {
+    Helper.ApplyPlaceholder = function (record, editablePlaceholder) {
         if (!editablePlaceholder) {
             return;
         }
 
         record._emptyEditablePlaceholder = editablePlaceholder;
-
-        var baseLanguage = GetBaseLanguage(app);
-        if (basePlaceholder && baseLanguage) {
-            record._emptyEditablePlaceholders = record._emptyEditablePlaceholders || {};
-            record._emptyEditablePlaceholders[String(baseLanguage)] = basePlaceholder;
-        }
     };
 
     Helper.AddLocalizedLabelsToRecord = function (record, localizedLabels) {
@@ -436,36 +425,6 @@
         }
 
         return AddBaseDisplayTextLabel(labels, options);
-    };
-
-    Helper.ValidateBaseLanguageNotEmpty = function (record, changes, options) {
-        options = options || {};
-        var app = options.app || Helper.GetTranslator();
-
-        if (!app.IsDisplayTextComponent || !app.IsDisplayTextComponent()) {
-            return;
-        }
-
-        var baseLanguage = GetBaseLanguage(app);
-        if (!baseLanguage) {
-            return;
-        }
-
-        baseLanguage = String(baseLanguage);
-        if (!Helper.IsEmptyLabelValue(GetRecordValue(record, baseLanguage))) {
-            return;
-        }
-
-        var rowPath =
-            typeof options.getRowPath === "function" ? options.getRowPath(record) : record && record.schemaName;
-
-        throw new Error(
-            "Display Text in the base language (" +
-                Helper.GetLanguageColumnText(baseLanguage) +
-                ") cannot be empty.\n" +
-                "Row: " +
-                (rowPath || "(unknown)")
-        );
     };
 
     Helper.FinalizeGrid = function (records, app) {

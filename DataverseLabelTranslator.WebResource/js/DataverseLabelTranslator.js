@@ -26,10 +26,6 @@
         return null;
     }
 
-    function GetBaseEditablePlaceholder(app) {
-        return app.IsDisplayTextComponent() ? Helper.GetPlaceholderDisplayTextBase() : null;
-    }
-
     function IsReadonlyRecord(record) {
         return !!(record && (record.isEditable === false || (record.w2ui && record.w2ui.editable === false)));
     }
@@ -42,7 +38,6 @@
         var text = String(value);
         var placeholders = [
             Helper.GetPlaceholderDisplayText(),
-            Helper.GetPlaceholderDisplayTextBase(),
             Helper.GetPlaceholderDescription(),
             Helper.GetPlaceholderReadonly()
         ];
@@ -112,7 +107,7 @@
         record._isGroupNode = record.isTranslatable === false || record.ai?.include === false;
 
         if (editable) {
-            Helper.ApplyPlaceholder(record, GetEditablePlaceholder(app), GetBaseEditablePlaceholder(app), app);
+            Helper.ApplyPlaceholder(record, GetEditablePlaceholder(app));
         } else {
             record._emptyReadonlyPlaceholder = Helper.GetPlaceholderReadonly();
         }
@@ -209,11 +204,6 @@
             if (!record || IsReadonlyRecord(record) || !record.gridKey || !record.w2ui || !record.w2ui.changes) {
                 continue;
             }
-
-            Helper.ValidateBaseLanguageNotEmpty(record, record.w2ui.changes, {
-                app: app,
-                getRowPath: GetRowPath
-            });
 
             var changes = {};
             for (var field in record.w2ui.changes) {

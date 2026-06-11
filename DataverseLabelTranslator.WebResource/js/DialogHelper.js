@@ -214,12 +214,13 @@
         var html =
             '<div style="padding: 25px 30px; font-size: 16px; line-height: 1.6; text-align: center;">' +
             '<h2 style="margin: 0 0 10px 0; font-size: 26px; font-weight: 600;">Dataverse Label Translator</h2>' +
-            '<p style="margin: 0 0 10px 0; color: #777; font-size: 15px;">Version: 1.0.0.0</p>' +
-            '<p style="margin: 0 0 15px 0; color: #777; font-size: 15px;">Translation dashboard for Microsoft Dataverse labels.</p>' +
+            '<p style="margin: 0 0 8px 0; color: #777; font-size: 15px;">Version 1.0.0.0</p>' +
+            '<p style="margin: 0 auto 15px auto; color: #555; font-size: 15px; max-width: 620px;">A focused translation workspace for Microsoft Dataverse labels and descriptions.</p>' +
             '<hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">' +
-            '<p style="text-align: justify; text-align-last: center; font-size: 15px; margin: 0; color: #444;">Developed by ' +
-            '<a href="https://github.com/phuocle" target="_blank" rel="noopener noreferrer" style="font-weight: 500; text-decoration: none;">Phuoc Le</a>. ' +
-            "Use it to load solution-scoped Dataverse components, edit labels across installed languages, save the changes back to Dataverse, and maintain AI and dictionary-assisted translations.</p>" +
+            '<p style="font-size: 15px; margin: 0 auto 8px auto; color: #444; max-width: 900px;">Load solution-scoped Dataverse components, review labels across installed languages, and publish translation changes back to Dataverse from one dashboard.</p>' +
+            '<p style="font-size: 15px; margin: 0 auto; color: #555; max-width: 900px;">Built by ' +
+            '<a href="https://github.com/phuocle" target="_blank" rel="noopener noreferrer" style="font-weight: 600; text-decoration: none;">Phuoc Le</a> ' +
+            "with AI-assisted translation and dictionary workflows for repeatable label maintenance.</p>" +
             "</div>";
 
         openHtmlDialog({

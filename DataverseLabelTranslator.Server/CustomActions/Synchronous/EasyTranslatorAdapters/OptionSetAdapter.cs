@@ -21,6 +21,12 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         {
             var entityName = RequireEntityName(input.entityName);
             var baseLanguage = GetBaseLanguage(context.ServiceAdmin);
+            var languages = RetrieveAvailableLanguages(context.ServiceAdmin);
+            if (!languages.Contains(baseLanguage))
+            {
+                languages.Insert(0, baseLanguage);
+            }
+
             var entity = RetrieveEntityMetadata(context.ServiceAdmin, entityName);
             var rows = new List<EasyTranslatorGridRowOutput>();
 
@@ -47,6 +53,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 {
                     mode = "tree",
                     title = "Option Sets",
+                    languageColumns = BuildLanguageColumns(languages),
                     rows = rows
                 }
             };
@@ -65,12 +72,31 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     continue;
                 }
 
-                var parts = ParseGridKey(row.gridKey, TranslatorType, 8);
+                var parts = ParseGridKey(row.gridKey, TranslatorType, 4);
                 var entityName = RequireEntityName(parts[1]);
                 var attributeName = RequireAttributeName(parts[2]);
+                if (string.Equals(parts[3], "description", StringComparison.OrdinalIgnoreCase))
+                {
+                    SaveOptionSetDescription(
+                        context.ServiceAdmin,
+                        entityName,
+                        attributeName,
+                        changes);
+
+                    output.changedRowCount++;
+                    AddPublishTarget(output, seenTargets, PublishKindEntity, entityName);
+
+                    continue;
+                }
+
                 if (!string.Equals(parts[3], "option", StringComparison.OrdinalIgnoreCase))
                 {
                     throw new InvalidPluginExecutionException("OptionSet gridKey does not target an option row.");
+                }
+
+                if (parts.Length < 8)
+                {
+                    throw new InvalidPluginExecutionException("OptionSet option gridKey is incomplete.");
                 }
 
                 if (!int.TryParse(parts[4], out var optionValue))
@@ -170,16 +196,26 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 return null;
             }
 
+            var isDescription = IsDescriptionComponent(component);
+            var scope = optionSet != null && optionSet.IsGlobal.GetValueOrDefault() ? "global" : "local";
+            var optionSetName = optionSet?.Name ?? string.Empty;
             var row = new EasyTranslatorGridRowOutput
             {
                 Recid = "options:" + entityName + ":" + attribute.LogicalName,
-                GridKey = BuildGridKey(TranslatorType, entityName, attribute.LogicalName),
+                GridKey = isDescription
+                    ? BuildGridKey(TranslatorType, entityName, attribute.LogicalName, "description", scope, optionSetName)
+                    : BuildGridKey(TranslatorType, entityName, attribute.LogicalName),
                 SchemaName = attribute.LogicalName,
                 RowType = "options.attribute",
-                IsEditable = false,
-                IsTranslatable = false,
-                Ai = new EasyTranslatorAiOutput { include = false }
+                IsEditable = isDescription,
+                IsTranslatable = isDescription,
+                Ai = new EasyTranslatorAiOutput { include = isDescription }
             };
+
+            if (isDescription)
+            {
+                AddLabelValues(row, attribute.Description);
+            }
 
             row.Children = BuildOptionRows(entityName, attribute.LogicalName, optionSet, component);
             return row;
@@ -283,6 +319,33 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             serviceAdmin.Execute(request);
         }
 
+        private static void SaveOptionSetDescription(
+            IOrganizationService serviceAdmin,
+            string entityName,
+            string attributeName,
+            List<EasyTranslatorLabelChange> changes)
+        {
+            var retrieveAttributeResponse = (RetrieveAttributeResponse)serviceAdmin.Execute(new RetrieveAttributeRequest
+            {
+                EntityLogicalName = entityName,
+                LogicalName = attributeName,
+                RetrieveAsIfPublished = true
+            });
+
+            if (retrieveAttributeResponse.AttributeMetadata == null)
+            {
+                throw new InvalidPluginExecutionException("OptionSet attribute metadata was not found.");
+            }
+
+            retrieveAttributeResponse.AttributeMetadata.Description = BuildLabel(changes);
+            serviceAdmin.Execute(new UpdateAttributeRequest
+            {
+                EntityName = entityName,
+                Attribute = retrieveAttributeResponse.AttributeMetadata,
+                MergeLabels = true
+            });
+        }
+
         private static Label BuildLabel(List<EasyTranslatorLabelChange> labels)
         {
             var label = new Label();
@@ -292,6 +355,27 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             return label;
+        }
+
+        private static List<int> RetrieveAvailableLanguages(IOrganizationService serviceAdmin)
+        {
+            var response = (RetrieveAvailableLanguagesResponse)serviceAdmin.Execute(new RetrieveAvailableLanguagesRequest());
+            return response.LocaleIds == null ? new List<int>() : new List<int>(response.LocaleIds);
+        }
+
+        private static List<EasyTranslatorLanguageColumnOutput> BuildLanguageColumns(List<int> languages)
+        {
+            var columns = new List<EasyTranslatorLanguageColumnOutput>();
+            foreach (var language in languages ?? new List<int>())
+            {
+                columns.Add(new EasyTranslatorLanguageColumnOutput
+                {
+                    field = language.ToString(),
+                    text = language.ToString()
+                });
+            }
+
+            return columns;
         }
 
         private static EasyTranslatorSaveOutput ToPublishOutput(List<string> entityNames, List<string> optionSetNames)
