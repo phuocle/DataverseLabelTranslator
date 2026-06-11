@@ -186,6 +186,8 @@
         }
 
         Helper.FinalizeGrid(records, app);
+        activeFocusedCell = null;
+        ClearFocusedCellElements();
         SetActiveChangedCell(null);
         SetChangedCellFooter("");
     }
@@ -624,6 +626,7 @@
     var allEntities = [];
     var loadedToolbarType = null;
     var activeChangedCell = null;
+    var activeFocusedCell = null;
     var ENTITY_DEPENDENT_TYPE_ITEMS = [
         "type:attributes",
         "type:options",
@@ -1770,17 +1773,23 @@
             },
             onClick: function (event) {
                 event.onComplete = function () {
+                    SetFocusedCell(event);
                     DataverseLabelTranslator.UpdateChangedCellFooter(event);
                 };
             },
             onDblClick: function (event) {
                 event.onComplete = function () {
+                    SetFocusedCell(event);
                     DataverseLabelTranslator.UpdateChangedCellFooter(event);
                 };
             },
             onEditField: function (event) {
+                SetFocusedCell(event);
                 DataverseLabelTranslator.SetSaveButtonDisabled(false);
                 DataverseLabelTranslator.UpdateChangedCellFooter(event);
+            },
+            onRefresh: function (event) {
+                event.onComplete = ApplyFocusedCellElement;
             },
             onSearch: function (event) {
                 event.onComplete = function () {
@@ -1923,6 +1932,100 @@
             column: column,
             field: column.field
         };
+    }
+
+    function GetEventOriginalTarget(event) {
+        var originalEvent = GetGridEventValue(event, "originalEvent");
+        return originalEvent && originalEvent.target ? originalEvent.target : null;
+    }
+
+    function GetEventCellElement(event) {
+        var target = GetEventOriginalTarget(event);
+        if (!target || !target.closest) {
+            return null;
+        }
+
+        var cell = target.closest("td");
+        var grid = DataverseLabelTranslator.GetGrid();
+        if (!cell || !grid || !grid.box || !grid.box.contains(cell)) {
+            return null;
+        }
+
+        return cell;
+    }
+
+    function GetGridColumnIndex(field) {
+        var grid = DataverseLabelTranslator.GetGrid();
+        var columns = grid && grid.columns ? grid.columns : [];
+
+        for (var i = 0; i < columns.length; i++) {
+            if (columns[i] && String(columns[i].field) === String(field)) {
+                return i;
+            }
+        }
+
+        return null;
+    }
+
+    function ClearFocusedCellElements() {
+        var grid = DataverseLabelTranslator.GetGrid();
+        var focusedCells = grid && grid.box ? grid.box.querySelectorAll(".xqt-cell-focus") : [];
+
+        for (var i = 0; i < focusedCells.length; i++) {
+            focusedCells[i].classList.remove("xqt-cell-focus");
+        }
+    }
+
+    function FindGridCellElement(recid, columnIndex) {
+        var grid = DataverseLabelTranslator.GetGrid();
+        var rows = grid && grid.box ? grid.box.querySelectorAll("tr[recid]") : [];
+
+        for (var i = 0; i < rows.length; i++) {
+            if (String(rows[i].getAttribute("recid")) !== String(recid)) {
+                continue;
+            }
+
+            var cell = rows[i].querySelector('td[col="' + columnIndex + '"]');
+            if (cell) {
+                return cell;
+            }
+        }
+
+        return null;
+    }
+
+    function ApplyFocusedCellElement() {
+        ClearFocusedCellElements();
+
+        if (!activeFocusedCell) {
+            return;
+        }
+
+        var cell = FindGridCellElement(activeFocusedCell.recid, activeFocusedCell.columnIndex);
+        if (cell) {
+            cell.classList.add("xqt-cell-focus");
+        }
+    }
+
+    function SetFocusedCell(event) {
+        var context = GetEventCellContext(event);
+        var columnIndex = context ? GetGridColumnIndex(context.field) : null;
+        var eventCell = GetEventCellElement(event);
+
+        if (!context || columnIndex === null) {
+            activeFocusedCell = null;
+            ClearFocusedCellElements();
+            return;
+        }
+
+        activeFocusedCell = {
+            recid: context.recid,
+            field: context.field,
+            columnIndex: columnIndex
+        };
+
+        ClearFocusedCellElements();
+        (eventCell || FindGridCellElement(context.recid, columnIndex))?.classList.add("xqt-cell-focus");
     }
 
     function HasChangedCell(record, field) {
