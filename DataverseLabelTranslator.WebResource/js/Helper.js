@@ -77,6 +77,43 @@
         return searchInput ? String(searchInput.value || "") : "";
     };
 
+    Helper.ClearSimpleGridSearchPlaceholder = function (grid) {
+        var gridBox = grid && grid.box ? grid.box : null;
+        var searchInput = gridBox && grid.name ? gridBox.querySelector("#grid_" + grid.name + "_search_all") : null;
+        var searchName = gridBox && grid.name ? gridBox.querySelector("#grid_" + grid.name + "_search_name") : null;
+        var nameText = searchName ? searchName.querySelector(".name-text") : null;
+
+        if (searchName) {
+            searchName.style.display = "none";
+        }
+
+        if (nameText) {
+            nameText.textContent = "";
+        }
+
+        if (grid) {
+            grid.searchSelected = null;
+            grid.last = grid.last || {};
+            grid.last.field = "all";
+            grid.last.label = "All Fields";
+        }
+
+        if (!searchInput) {
+            return;
+        }
+
+        var searchText = String(searchInput.value || "")
+            .trim()
+            .toLowerCase();
+        if (searchText === "null" || searchText === "undefined" || searchText === "search undefined") {
+            searchInput.value = "";
+        }
+
+        searchInput.placeholder = "";
+        searchInput.setAttribute("placeholder", "");
+        searchInput.removeAttribute("placeholder");
+    };
+
     Helper.ApplySimpleGridContainsSearch = function (grid) {
         if (!grid) {
             return;
@@ -94,6 +131,7 @@
             }
 
             grid.refresh();
+            Helper.ClearSimpleGridSearchPlaceholder(grid);
             return;
         }
 
@@ -127,6 +165,7 @@
         }
 
         grid.refresh();
+        Helper.ClearSimpleGridSearchPlaceholder(grid);
     };
 
     Helper.GetOperationLoading = function () {
@@ -413,11 +452,7 @@
         }
 
         baseLanguage = String(baseLanguage);
-        if (!Object.prototype.hasOwnProperty.call(changes, baseLanguage)) {
-            return;
-        }
-
-        if (!Helper.IsEmptyLabelValue(changes[baseLanguage])) {
+        if (!Helper.IsEmptyLabelValue(GetRecordValue(record, baseLanguage))) {
             return;
         }
 

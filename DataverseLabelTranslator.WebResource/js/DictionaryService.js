@@ -599,36 +599,13 @@
             }
         }
 
-        var searchName = gridBox.querySelector("#grid_" + grid.name + "_search_name");
         var searchInput = gridBox.querySelector("#grid_" + grid.name + "_search_all");
-        var nameText = searchName ? searchName.querySelector(".name-text") : null;
-
-        if (searchName) {
-            searchName.style.display = "none";
-        }
-        if (nameText) {
-            nameText.textContent = "";
-        }
-
-        grid.searchSelected = null;
         if (searchInput) {
             searchInput.readOnly = false;
-            var searchValueText = String(searchInput.value || "")
-                .trim()
-                .toLowerCase();
-            if (searchValueText === "null" || searchValueText === "undefined" || searchInput.value === " ") {
-                searchInput.value = "";
-            }
-            searchInput.placeholder = "";
-            searchInput.removeAttribute("placeholder");
         }
+        Helper.ClearSimpleGridSearchPlaceholder(grid);
 
         resetDictionaryGridBodyOffset(grid, gridBox);
-
-        if (grid.last) {
-            grid.last.field = "all";
-            grid.last.label = "All Fields";
-        }
     }
 
     function resetDictionaryGridBodyOffset(grid, gridBox) {

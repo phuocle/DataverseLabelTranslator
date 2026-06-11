@@ -237,6 +237,10 @@
   display: none !important;
 }
 
+#dictionary-main .w2ui-grid-toolbar .w2ui-grid-search-input {
+  top: -2px !important;
+}
+
 #easy-ai-translate-main .w2ui-grid-toolbar,
 #easy-ai-translate-main .w2ui-grid-toolbar .w2ui-toolbar,
 #easy-ai-translate-main .w2ui-grid-toolbar .w2ui-tb-line,

@@ -1019,10 +1019,15 @@
             return;
         }
 
-        currentHandler.Save().catch(function (error) {
+        try {
+            Promise.resolve(currentHandler.Save()).catch(function (error) {
+                DataverseLabelTranslator.SetSaveButtonDisabled(false);
+                DataverseLabelTranslator.errorHandler(error);
+            });
+        } catch (error) {
             DataverseLabelTranslator.SetSaveButtonDisabled(false);
             DataverseLabelTranslator.errorHandler(error);
-        });
+        }
     }
 
     function TriggerUnavailable(name) {
