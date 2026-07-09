@@ -1324,6 +1324,9 @@ namespace DataverseLabelTranslator.ProxyTypes
 		Croatian = 1050,
 		
 		[System.Runtime.Serialization.EnumMemberAttribute()]
+		Serbian_Latin = 2074,
+		
+		[System.Runtime.Serialization.EnumMemberAttribute()]
 		Bulgarian = 1026,
 		
 		[System.Runtime.Serialization.EnumMemberAttribute()]
@@ -1333,6 +1336,9 @@ namespace DataverseLabelTranslator.ProxyTypes
 		Catalan = 1027,
 		
 		[System.Runtime.Serialization.EnumMemberAttribute()]
+		Serbian_Cyrillic = 3098,
+		
+		[System.Runtime.Serialization.EnumMemberAttribute()]
 		Basque = 1069,
 		
 		[System.Runtime.Serialization.EnumMemberAttribute()]
@@ -1340,6 +1346,12 @@ namespace DataverseLabelTranslator.ProxyTypes
 		
 		[System.Runtime.Serialization.EnumMemberAttribute()]
 		Kazakh = 1087,
+		
+		[System.Runtime.Serialization.EnumMemberAttribute()]
+		Malaysian = 1086,
+		
+		[System.Runtime.Serialization.EnumMemberAttribute()]
+		English_NewZealand = 5129,
 	}
 	
 	/// <summary>
@@ -1665,6 +1677,32 @@ namespace DataverseLabelTranslator.ProxyTypes
 	}
 	
 	/// <summary>
+	/// AI Model Task Type
+	/// </summary>
+	[System.Runtime.Serialization.DataContractAttribute()]
+	public enum msdyn_aimodeltasktype
+	{
+		
+		/// <summary>
+		/// None
+		/// </summary>
+		[System.Runtime.Serialization.EnumMemberAttribute()]
+		None = 100000000,
+		
+		/// <summary>
+		/// QueryBoosting
+		/// </summary>
+		[System.Runtime.Serialization.EnumMemberAttribute()]
+		QueryBoosting = 100000001,
+		
+		/// <summary>
+		/// Classification
+		/// </summary>
+		[System.Runtime.Serialization.EnumMemberAttribute()]
+		Classification = 100000002,
+	}
+	
+	/// <summary>
 	/// Type of connection to use with RunDesktopFlow action.
 	/// </summary>
 	[System.Runtime.Serialization.DataContractAttribute()]
@@ -1731,23 +1769,46 @@ namespace DataverseLabelTranslator.ProxyTypes
 	}
 	
 	/// <summary>
-	/// 1
+	/// Your item in product
+	/// </summary>
+	[System.Runtime.Serialization.DataContractAttribute()]
+	public enum pl_itemtype
+	{
+		
+		/// <summary>
+		/// Why ?
+		/// </summary>
+		[System.Runtime.Serialization.EnumMemberAttribute()]
+		Whoowner = 222220000,
+		
+		/// <summary>
+		/// This my item
+		/// </summary>
+		[System.Runtime.Serialization.EnumMemberAttribute()]
+		Thisbecometo = 222220001,
+		
+		/// <summary>
+		/// I dont' known
+		/// </summary>
+		[System.Runtime.Serialization.EnumMemberAttribute()]
+		WhyIneed = 222220002,
+	}
+	
+	/// <summary>
+	/// This is the global choice
 	/// </summary>
 	[System.Runtime.Serialization.DataContractAttribute()]
 	public enum pl_globalchoice
 	{
 		
-		/// <summary>
-		/// 2
-		/// </summary>
 		[System.Runtime.Serialization.EnumMemberAttribute()]
-		_1 = 222220000,
+		CreatedBy = 222220000,
 		
 		/// <summary>
-		/// 3
+		/// I Like this item.
 		/// </summary>
 		[System.Runtime.Serialization.EnumMemberAttribute()]
-		_2 = 222220001,
+		SecondayItem = 222220001,
 	}
 	
 	/// <summary>
@@ -2041,9 +2102,6 @@ namespace DataverseLabelTranslator.ProxyTypes
 	{
 		
 		[System.Runtime.Serialization.EnumMemberAttribute()]
-		Account = 1,
-		
-		[System.Runtime.Serialization.EnumMemberAttribute()]
 		Contact = 2,
 		
 		[System.Runtime.Serialization.EnumMemberAttribute()]
@@ -2195,6 +2253,9 @@ namespace DataverseLabelTranslator.ProxyTypes
 		
 		[System.Runtime.Serialization.EnumMemberAttribute()]
 		HistoricalCaseHarvestRunLog = 10817,
+		
+		[System.Runtime.Serialization.EnumMemberAttribute()]
+		AnotherSalesOrderBPF = 10822,
 	}
 	
 	/// <summary>
@@ -3347,58 +3408,6 @@ namespace DataverseLabelTranslator.ProxyTypes
 		/// </summary>
 		[System.Runtime.Serialization.EnumMemberAttribute()]
 		PostProcessing = 64,
-	}
-	
-	/// <summary>
-	/// AI Model Task Type
-	/// </summary>
-	[System.Runtime.Serialization.DataContractAttribute()]
-	public enum msdyn_aimodeltasktype
-	{
-		
-		/// <summary>
-		/// None
-		/// </summary>
-		[System.Runtime.Serialization.EnumMemberAttribute()]
-		None = 100000000,
-		
-		/// <summary>
-		/// QueryBoosting
-		/// </summary>
-		[System.Runtime.Serialization.EnumMemberAttribute()]
-		QueryBoosting = 100000001,
-		
-		/// <summary>
-		/// Classification
-		/// </summary>
-		[System.Runtime.Serialization.EnumMemberAttribute()]
-		Classification = 100000002,
-	}
-	
-	/// <summary>
-	/// 4
-	/// </summary>
-	[System.Runtime.Serialization.DataContractAttribute()]
-	public enum pl_itemtype
-	{
-		
-		/// <summary>
-		/// 5
-		/// </summary>
-		[System.Runtime.Serialization.EnumMemberAttribute()]
-		_3 = 222220000,
-		
-		/// <summary>
-		/// 6
-		/// </summary>
-		[System.Runtime.Serialization.EnumMemberAttribute()]
-		_4 = 222220001,
-		
-		/// <summary>
-		/// 7
-		/// </summary>
-		[System.Runtime.Serialization.EnumMemberAttribute()]
-		_5 = 222220002,
 	}
 	
 	/// <summary>

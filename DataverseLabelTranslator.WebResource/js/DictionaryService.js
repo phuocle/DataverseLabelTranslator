@@ -939,7 +939,12 @@
                 }
 
                 if (targetCount === 0) {
-                    throw new Error("No dictionary target translations to save.");
+                    return {
+                        addedEntries: 0,
+                        updatedEntries: 0,
+                        targetCount: 0,
+                        model: model
+                    };
                 }
 
                 return saveDictionaryModel(toGridRecords(model, activeContext), activeContext).then(

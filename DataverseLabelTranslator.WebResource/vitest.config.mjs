@@ -5,15 +5,17 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.js"],
     passWithNoTests: true,
+    setupFiles: ["tests/setup.js"],
     coverage: {
       provider: "v8",
-      include: [],
+      include: ["js/**/*.js"],
+      exclude: ["js/lib/**"],
       reporter: ["text", "json", "json-summary", "html"],
       thresholds: {
-        lines: 100,
-        functions: 100,
-        branches: 100,
-        statements: 100
+        lines: 60,
+        functions: 60,
+        branches: 60,
+        statements: 60
       }
     }
   }

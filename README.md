@@ -12,25 +12,26 @@ A Dataverse model-driven app for translating labels and metadata through a singl
 
 Translate UI labels for Dataverse components using the same type menu shown in the app:
 
-| Type | Scope | What is translated |
-|------|-------|-------------------|
-| **1. Attributes** | Entity | Display names and descriptions |
-| **2. Option Sets** | Entity | Local option set values, including state/status labels and descriptions |
-| **3. Forms** | Entity | Form tabs, sections, field labels, and related form labels |
-| **4. Views** | Entity | View display names and descriptions |
-| **5. Form Metadata** | Entity | Form display names |
-| **6. Entity Metadata** | Entity | Entity display names and collection names |
-| **7. Relationships** | Entity | Navigation menu labels for entity relationships |
-| **8. Charts** | Entity | Visualization display names |
-| **9. Business Process Flows** | Entity | Stage and field labels |
-| **10. Business Rules** | Entity | Business rule error messages and recommendation text stored in workflow XAML |
-| **11. Ribbons** | Entity | Classic ribbon / command bar button text, tooltip title, and tooltip description labels |
-| **12. Commands** | Entity | Modern command designer appaction labels: text, title, description, accessibility text, and group title |
-| **13. Entity Messages** | Entity | System table messages/display strings from solution translation packages |
-| **15. Sitemap** | None | App navigation areas, groups, and subareas |
-| **16. Dashboards** | None | Dashboard form labels |
-| **17. Web Resources** | None | Text content within web resources |
-| **Global Option Sets** | None | Global option set values independent of an entity |
+| Type                          | Scope  | What is translated                                                                                      |
+| ----------------------------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| **1. Attributes**             | Entity | Display names and descriptions                                                                          |
+| **2. Option Sets**            | Entity | Local option set values, including state/status labels and descriptions                                 |
+| **3. Forms**                  | Entity | Form tabs, sections, field labels, and related form labels                                              |
+| **4. Views**                  | Entity | View display names and descriptions                                                                     |
+| **5. Form Metadata**          | Entity | Form display names                                                                                      |
+| **6. Entity Metadata**        | Entity | Entity display names and collection names                                                               |
+| **7. Relationships**          | Entity | Navigation menu labels for entity relationships                                                         |
+| **8. Charts**                 | Entity | Visualization display names                                                                             |
+| **9. Business Process Flows** | Entity | Stage and field labels                                                                                  |
+| **10. Business Rules**        | Entity | Business rule error messages and recommendation text stored in workflow XAML                            |
+| **11. Ribbons**               | Entity | Classic ribbon / command bar button text, tooltip title, and tooltip description labels                 |
+| **12. Commands**              | Entity | Modern command designer appaction labels: text, title, description, accessibility text, and group title |
+| **13. Entity Messages**       | Entity | System table messages/display strings from solution translation packages                                |
+| **14. Content Snippets**      | Entity | Legacy Power Pages / Dynamics 365 Portal content snippet values                                         |
+| **15. Sitemap**               | None   | App navigation areas, groups, and subareas                                                              |
+| **16. Dashboards**            | None   | Dashboard form labels                                                                                   |
+| **17. Web Resources**         | None   | Text content within web resources                                                                       |
+| **18. Global Option Sets**    | None   | Global option set values independent of an entity                                                       |
 
 There is also a special **14. Content Snippets** type for legacy Dynamics 365 Portals / Power Pages content snippets. It appears only when the selected entity is `Adx_contentsnippet`.
 
@@ -64,11 +65,11 @@ When available, **14. Content Snippets** loads `adx_contentsnippet` records thro
 
 Translate labels automatically using an enabled AI provider. Select a source language and target language, then click **Auto Translate** to fill missing labels or overwrite selected records.
 
-| Provider | Notes |
-|----------|-------|
+| Provider   | Notes                                                                   |
+| ---------- | ----------------------------------------------------------------------- |
 | **Google** | Gemini-compatible batch mode, custom prompt support, configurable model |
-| **OpenAI** | Configurable endpoint URL, API key, model name, and custom prompt |
-| **Azure** | OpenAI-compatible chat completions using `api-key` authentication |
+| **OpenAI** | Configurable endpoint URL, API key, model name, and custom prompt       |
+| **Azure**  | OpenAI-compatible chat completions using `api-key` authentication       |
 
 Provider credentials and model settings are managed through **App Settings** and stored in a Dataverse app settings web resource: `pl_/DataverseLabelTranslator/data/AppSettings.xml`.
 
@@ -189,10 +190,10 @@ DevKit batch files load local connection settings from the repository root `.env
 
 ## Tech Stack
 
-| Library | Version | Purpose |
-|---------|---------|---------|
-| [w2ui](https://github.com/vitmalina/w2ui) | 2.0 | Grid UI framework |
-| [WebApiClient](https://github.com/XRM-OSS/Xrm-WebApi-Client) | 4.1.6 | Dataverse Web API wrapper |
+| Library                                                      | Version | Purpose                   |
+| ------------------------------------------------------------ | ------- | ------------------------- |
+| [w2ui](https://github.com/vitmalina/w2ui)                    | 2.0     | Grid UI framework         |
+| [WebApiClient](https://github.com/XRM-OSS/Xrm-WebApi-Client) | 4.1.6   | Dataverse Web API wrapper |
 
 No build step is required. JavaScript files deploy directly as Dataverse web resources.
 

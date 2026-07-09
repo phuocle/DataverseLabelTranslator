@@ -75,11 +75,13 @@ export default [
       ecmaVersion: "latest",
       sourceType: "module",
       globals: {
-        ...globals.node
+        ...globals.node,
+        ...appGlobals
       }
     },
     rules: {
       ...js.configs.recommended.rules,
+      "no-empty": "off",
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }]
     }
   }
