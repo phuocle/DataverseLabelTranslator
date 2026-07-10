@@ -4,12 +4,6 @@ release/
 dist/
 tmp/
 
-.codex/
-.vscode/mcp.json
-.agents/mcp_config.json
-.claude/skills/
-.github/prompts/
-
 *.zip
 *.png
 *.jpg

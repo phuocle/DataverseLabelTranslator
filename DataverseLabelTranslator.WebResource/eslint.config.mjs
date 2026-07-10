@@ -41,11 +41,6 @@ export default [
       "release/**",
       "dist/**",
       "tmp/**",
-      ".codex/**",
-      ".vscode/mcp.json",
-      ".agents/mcp_config.json",
-      ".claude/skills/**",
-      ".github/prompts/**",
       "js/lib/WebApiClient.js",
       "js/lib/w2ui.js",
       "js/lib/**"

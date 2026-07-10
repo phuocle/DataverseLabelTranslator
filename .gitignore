@@ -24,23 +24,26 @@ DataverseLabelTranslator.Scripts/__pycache__/
 
 DynamicsCrm.DevKit.json
 
-# Track assistant folders, but never track local credentials/secrets
-.codex/config.toml
-.codex/config.local.toml
-.codex/secrets.*
-.claude/settings.local.json
-.claude/*.local
-.claude/*.local.*
-.agents/mcp_config.json
-.agents/mcp_oauth_tokens.json
-.agents/**/*.local
-.agents/**/*.local.*
-.github/**/*.local
-.github/**/*.local.*
-.vscode/mcp.json
-.vscode/*.local
-.vscode/*.local.*
-.vscode/mcp.secrets.json
+# Local development tooling
+/.agents/
+/.claude/
+/.codex/
+/.cursor/
+/.gemini/
+/.continue/
+/.windsurf/
+/.aider*
+/.vscode/
+/AGENTS.md
+/CLAUDE.md
+/GEMINI.md
+/.github/agents/
+/.github/instructions/
+/.github/prompts/
+/.github/copilot-instructions.md
+/.github/workflows/ai-config.yml
+/DataverseLabelTranslator.Scripts/check-ai-config.ps1
+/DataverseLabelTranslator.Scripts/sync-ai-config.ps1
 
 # Solution export working folders
 solutions/1.before/
