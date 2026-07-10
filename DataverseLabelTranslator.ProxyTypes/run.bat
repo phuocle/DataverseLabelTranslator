@@ -1,1 +1,1 @@
-devkit modelbuilder --json "DynamicsCrm.DevKit.Cli.json" --profile "ALL"
+@cd /d "%~dp0" && devkit modelbuilder --json "%~dp0..\DynamicsCrm.DevKit.Cli.json" --profile "ALL"

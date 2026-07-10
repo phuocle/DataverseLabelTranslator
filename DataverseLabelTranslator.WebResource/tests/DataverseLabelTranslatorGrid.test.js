@@ -57,8 +57,9 @@ const toolbarItems = [
             { id: "attributes", text: "Attributes" },
             { id: "forms", text: "Forms" },
             { id: "ribbons", text: "Ribbons" },
-            { id: "options", text: "Option Sets" }
-        ]
+            { id: "options", text: "Option Sets" },
+            { id: "globalOptionSet", text: "Global Option Set" },
+        ],
     },
     {
         id: "component",
@@ -66,8 +67,8 @@ const toolbarItems = [
         selected: "DisplayText",
         items: [
             { id: "DisplayText", text: "Display Text" },
-            { id: "Description", text: "Description" }
-        ]
+            { id: "Description", text: "Description" },
+        ],
     },
     { id: "load", type: "button" },
     { id: "w2ui-save", type: "button" },
@@ -76,7 +77,7 @@ const toolbarItems = [
     { id: "aiSettings", type: "button" },
     { id: "dictionary", type: "button" },
     { id: "applyDictionary", type: "button" },
-    { id: "addSelectedDictionary", type: "button" }
+    { id: "addSelectedDictionary", type: "button" },
 ];
 for (const i of toolbarItems) toolbarItemsById[i.id] = i;
 
@@ -141,6 +142,7 @@ beforeEach(() => {
                 return grid;
             }),
             localSearch: vi.fn(),
+            sort: vi.fn(),
         };
         globalThis.w2ui.grid = grid;
         // also expose w2ui.grid_toolbar so test can interact
@@ -253,7 +255,7 @@ describe("grid event handlers captured by InitializeGrid", () => {
 
     it("onChange.onComplete runs NormalizeGridChanges + SetSaveButtonDisabled + UpdateChangedCellFooter", () => {
         capturedGridConfig.columns = [{ field: "1033", text: "English" }];
-        globalThis.w2ui.grid.records = [{ recid: "r1", "1033": "orig", w2ui: { changes: { "1033": "orig" } } }];
+        globalThis.w2ui.grid.records = [{ recid: "r1", 1033: "orig", w2ui: { changes: { 1033: "orig" } } }];
         const event = { recid: "r1", column: 0 };
         capturedGridConfig.onChange(event);
         expect(typeof event.onComplete).toBe("function");
@@ -264,7 +266,7 @@ describe("grid event handlers captured by InitializeGrid", () => {
 
     it("onClick.onComplete runs SetFocusedCell + UpdateChangedCellFooter", () => {
         capturedGridConfig.columns = [{ field: "1033", text: "English" }];
-        globalThis.w2ui.grid.records = [{ recid: "r1", "1033": "orig" }];
+        globalThis.w2ui.grid.records = [{ recid: "r1", 1033: "orig" }];
         const event = { recid: "r1", column: 0 };
         capturedGridConfig.onClick(event);
         expect(typeof event.onComplete).toBe("function");
@@ -273,7 +275,7 @@ describe("grid event handlers captured by InitializeGrid", () => {
 
     it("onDblClick.onComplete runs SetFocusedCell + UpdateChangedCellFooter", () => {
         capturedGridConfig.columns = [{ field: "1033", text: "English" }];
-        globalThis.w2ui.grid.records = [{ recid: "r1", "1033": "orig" }];
+        globalThis.w2ui.grid.records = [{ recid: "r1", 1033: "orig" }];
         const event = { recid: "r1", column: 0 };
         capturedGridConfig.onDblClick(event);
         expect(typeof event.onComplete).toBe("function");
@@ -282,7 +284,7 @@ describe("grid event handlers captured by InitializeGrid", () => {
 
     it("onEditField runs SetFocusedCell + SetSaveButtonDisabled(false) + UpdateChangedCellFooter", () => {
         capturedGridConfig.columns = [{ field: "1033", text: "English" }];
-        globalThis.w2ui.grid.records = [{ recid: "r1", "1033": "orig" }];
+        globalThis.w2ui.grid.records = [{ recid: "r1", 1033: "orig" }];
         expect(() => capturedGridConfig.onEditField({ recid: "r1", column: 0 })).not.toThrow();
     });
 
@@ -380,13 +382,13 @@ describe("HandleToolbarClick via captured toolbar.onClick", () => {
 
     it("routes 'expandAll' substring to ToggleExpandCollapse(true)", () => {
         expect(() =>
-            capturedGridConfig.toolbar.onClick({ target: "w2ui-search-advanced:toggle:expandAll" })
+            capturedGridConfig.toolbar.onClick({ target: "w2ui-search-advanced:toggle:expandAll" }),
         ).not.toThrow();
     });
 
     it("routes 'collapseAll' substring to ToggleExpandCollapse(false)", () => {
         expect(() =>
-            capturedGridConfig.toolbar.onClick({ target: "w2ui-search-advanced:toggle:collapseAll" })
+            capturedGridConfig.toolbar.onClick({ target: "w2ui-search-advanced:toggle:collapseAll" }),
         ).not.toThrow();
     });
 
@@ -404,9 +406,7 @@ describe("HandleToolbarClick via captured toolbar.onClick", () => {
             if (id === "entitySelect") return { selected: "none", items: [{ id: "none" }] };
             return toolbarItemsById[id] || null;
         });
-        expect(() =>
-            capturedGridConfig.toolbar.onClick({ target: "entitySelect:account" })
-        ).not.toThrow();
+        expect(() => capturedGridConfig.toolbar.onClick({ target: "entitySelect:account" })).not.toThrow();
         expect(capturedToolbar.refresh).toHaveBeenCalled();
     });
 
@@ -418,6 +418,41 @@ describe("HandleToolbarClick via captured toolbar.onClick", () => {
         });
         expect(() => capturedGridConfig.toolbar.onClick({ target: "type:attributes" })).not.toThrow();
         expect(capturedToolbar.refresh).toHaveBeenCalled();
+    });
+
+    it("registers and loads Global Option Set without requiring an entity", async () => {
+        const registeredType = capturedGridConfig.toolbar.items
+            .find((item) => item.id === "type")
+            .items.find((item) => item.id === "globalOptionSet");
+        expect(registeredType).toMatchObject({ text: "Global Option Set", icon: "icon-global-options" });
+
+        toolbarItemsById.type.selected = "none";
+        toolbarItemsById.entitySelect.selected = "none";
+        toolbarItemsById.solutionSelect.selected = "s1";
+        toolbarItemsById.component.selected = "Description";
+        capturedGridConfig.toolbar.onClick({ target: "type:globalOptionSet" });
+
+        expect(toolbarItemsById.type.selected).toBe("globalOptionSet");
+        expect(DLT.IsUnifiedType("globalOptionSet")).toBe(true);
+        expect(capturedToolbar.enable).toHaveBeenCalledWith("component");
+
+        window.Helper.RunServerLoad.mockResolvedValueOnce({ baseLanguage: 1033, grid: { rows: [] } });
+        const loadItem = capturedGridConfig.toolbar.items.find((item) => item.id === "load");
+        loadItem.onClick();
+        await vi.waitFor(() => expect(window.Helper.RunServerLoad).toHaveBeenCalled());
+
+        expect(window.DialogHelper.alert).not.toHaveBeenCalledWith(
+            "Select an entity before loading this type.",
+            expect.anything(),
+        );
+        const request = window.Helper.RunServerLoad.mock.calls.at(-1)[0];
+        expect(request.getPayload()).toEqual({
+            translatorType: "globalOptionSet",
+            solutionId: "s1",
+            entityName: "none",
+            entityId: null,
+            component: "Description",
+        });
     });
 
     it("routes 'component:Description' to updating the component selected", () => {
@@ -484,11 +519,50 @@ describe("Save (DLT.Save) with changed rows", () => {
 
     it("invokes RunServerSaveFlow when pending changes exist", async () => {
         globalThis.w2ui.grid.records = [
-            { recid: "r1", gridKey: "key1", schemaName: "attr1", "1033": "orig", w2ui: { changes: { "1033": "new" } } },
+            { recid: "r1", gridKey: "key1", schemaName: "attr1", 1033: "orig", w2ui: { changes: { 1033: "new" } } },
         ];
         window.Helper.RunServerSaveFlow.mockResolvedValueOnce({ changed: true });
         await DLT.Save();
         expect(window.Helper.RunServerSaveFlow).toHaveBeenCalled();
+    });
+
+    it("builds the Global Option Set save payload from changed language cells", async () => {
+        capturedToolbar.get = vi.fn((id) => {
+            if (id === "type") return { selected: "globalOptionSet" };
+            if (id === "entitySelect") return { selected: "none" };
+            if (id === "component") return { selected: "Description" };
+            if (id === "solutionSelect") return { selected: "s1" };
+            if (id === "w2ui-save") return toolbarItemsById["w2ui-save"];
+            return toolbarItemsById[id] || null;
+        });
+        globalThis.w2ui.grid.records = [
+            {
+                recid: "gos-description",
+                gridKey: "globalOptionSet|pl_test|description",
+                rowType: "globalOptionSet",
+                1041: "Old description",
+                w2ui: { changes: { 1041: "New description" } },
+            },
+        ];
+        window.Helper.RunServerSaveFlow.mockResolvedValueOnce({ changed: true });
+
+        await DLT.Save();
+
+        const request = window.Helper.RunServerSaveFlow.mock.calls.at(-1)[0];
+        expect(request.getSavePayload()).toMatchObject({
+            translatorType: "globalOptionSet",
+            solutionId: "s1",
+            entityName: "none",
+            component: "Description",
+            changedRows: [
+                {
+                    gridKey: "globalOptionSet|pl_test|description",
+                    recid: "gos-description",
+                    rowType: "globalOptionSet",
+                    changes: { 1041: "New description" },
+                },
+            ],
+        });
     });
 
     it("RemoveOverriddenCellLabels runs save flow when confirmed", async () => {

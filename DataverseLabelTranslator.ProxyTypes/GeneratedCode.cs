@@ -1808,7 +1808,7 @@ namespace DataverseLabelTranslator.ProxyTypes
 		/// I Like this item.
 		/// </summary>
 		[System.Runtime.Serialization.EnumMemberAttribute()]
-		SecondayItem = 222220001,
+		INeedYourHelp = 222220001,
 	}
 	
 	/// <summary>
