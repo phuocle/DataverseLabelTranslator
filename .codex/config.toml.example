@@ -1,0 +1,12 @@
+[mcp_servers.devkit-translate]
+args = [
+    "mcp",
+    "devkit-codex-translate",
+]
+command = "devkit"
+
+[mcp_servers.devkit-translate.env]
+DEVKIT_AUTH_TYPE = "ClientSecret"
+DEVKIT_CLIENT_ID = "<client-id>"
+DEVKIT_CLIENT_SECRET = "<client-secret>"
+DEVKIT_URL = "https://<environment>.crm.dynamics.com"

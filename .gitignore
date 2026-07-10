@@ -24,26 +24,20 @@ DataverseLabelTranslator.Scripts/__pycache__/
 
 DynamicsCrm.DevKit.json
 
-# Local development tooling
-/.agents/
-/.claude/
-/.codex/
+# Local Codex configuration and secrets
+/.codex/config.toml
+/.codex/config.local.toml
+
+# Unsupported/local AI clients
 /.cursor/
 /.gemini/
 /.continue/
 /.windsurf/
 /.aider*
-/.vscode/
-/AGENTS.md
-/CLAUDE.md
 /GEMINI.md
-/.github/agents/
-/.github/instructions/
-/.github/prompts/
-/.github/copilot-instructions.md
+
+# Local development tooling
 /.github/workflows/
-/DataverseLabelTranslator.Scripts/check-ai-config.ps1
-/DataverseLabelTranslator.Scripts/sync-ai-config.ps1
 /scripts/
 /analyze-coverage.js
 /dlv-cov.json
