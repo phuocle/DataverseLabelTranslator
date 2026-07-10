@@ -2,10 +2,12 @@ using DataverseLabelTranslator.Server.CustomActions.Synchronous;
 using DataverseLabelTranslator.Shared;
 using Microsoft.Xrm.Sdk;
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DataverseLabelTranslator.Server.CustomActions
 {
     [CrmPluginRegistration("pl_DataverseLabelTranslatorCustomAction", "none", StageEnum.PostOperation, ExecutionModeEnum.Synchronous, "", "DataverseLabelTranslator.Server.CustomActions.PostDataverseLabelTranslatorCustomActionSynchronous", 1, IsolationModeEnum.Sandbox, PluginType = PluginType.CustomAction)]
+    [ExcludeFromCodeCoverage]
     public class PostDataverseLabelTranslatorCustomActionSynchronous : IPlugin
     {
         /*

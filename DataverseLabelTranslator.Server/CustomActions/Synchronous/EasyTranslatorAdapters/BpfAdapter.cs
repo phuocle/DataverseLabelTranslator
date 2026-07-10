@@ -255,13 +255,31 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
             catch (Exception ex)
             {
-                RestoreWorkflow(serviceAdmin, workflowUpdate.WorkflowId, deactivated ? originalXaml : null, wasActive && deactivated);
+                var restoreError = TryRestoreWorkflow(serviceAdmin, workflowUpdate.WorkflowId, deactivated ? originalXaml : null, wasActive && deactivated);
+                var restoreMessage = restoreError == null
+                    ? ". The BPF was restored to its original state."
+                    : ". The BPF restore also failed: " + restoreError.Message;
+
                 throw new InvalidPluginExecutionException(
                     "Failed to save Business Process Flow translations for " +
                     GetWorkflowName(workflow, workflowUpdate.WorkflowId) +
-                    ". The BPF was restored to its original state.\n\nOriginal error: " +
+                    restoreMessage +
+                    "\n\nOriginal error: " +
                     ex.Message,
                     ex);
+            }
+        }
+
+        private static Exception TryRestoreWorkflow(IOrganizationService serviceAdmin, Guid workflowId, string originalXaml, bool reactivate)
+        {
+            try
+            {
+                RestoreWorkflow(serviceAdmin, workflowId, originalXaml, reactivate);
+                return null;
+            }
+            catch (Exception restoreError)
+            {
+                return restoreError;
             }
         }
 

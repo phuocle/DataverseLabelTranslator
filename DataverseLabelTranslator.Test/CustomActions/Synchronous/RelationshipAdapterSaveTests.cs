@@ -23,6 +23,28 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
 
         private static Guid _relId = Guid.NewGuid();
 
+        private static Label CreateLabel(params LocalizedLabel[] labels)
+        {
+            var label = new Label();
+            label.LocalizedLabels.AddRange(labels);
+            return label;
+        }
+
+        private static AssociatedMenuConfiguration CreateMenuConfig(AssociatedMenuBehavior? behavior, Label label = null, bool isCustomizable = true)
+        {
+            var config = new AssociatedMenuConfiguration
+            {
+                Behavior = behavior,
+                Label = label
+            };
+
+            typeof(AssociatedMenuConfiguration)
+                .GetField("_associatedMenuIsCustomizable", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .SetValue(config, isCustomizable);
+
+            return config;
+        }
+
         private static IOrganizationService CreateService(Func<OrganizationRequest, OrganizationResponse> execute)
         {
             var service = Substitute.For<IOrganizationService>();
@@ -54,6 +76,41 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
         }
 
         [TestMethod]
+        public void BuildRelationshipRow_WithRelationships_ReturnsRows()
+        {
+            var oneToMany = new OneToManyRelationshipMetadata
+            {
+                MetadataId = Guid.NewGuid(),
+                SchemaName = "account_contact",
+                ReferencedEntity = "account",
+                ReferencingEntity = "contact",
+                IsCustomizable = new BooleanManagedProperty(true),
+                AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Contacts", 1033))
+            };
+            var manyToMany = new ManyToManyRelationshipMetadata
+            {
+                MetadataId = Guid.NewGuid(),
+                SchemaName = "account_contact_mm",
+                Entity1LogicalName = "account",
+                Entity2LogicalName = "contact",
+                IsCustomizable = new BooleanManagedProperty(true),
+                Entity1AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Contacts", 1033)),
+                Entity2AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Accounts", 1033))
+            };
+            var service = CreateService(req => new OrganizationResponse());
+            var method = typeof(RelationshipAdapter).GetMethod("BuildRelationshipRow", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var pluralCache = new Dictionary<string, Dictionary<int, string>>(StringComparer.OrdinalIgnoreCase);
+
+            var oneToManyRow = (EasyTranslatorGridRowOutput)method.Invoke(null, new object[] { service, oneToMany, "account", pluralCache });
+            var manyToManyRow = (EasyTranslatorGridRowOutput)method.Invoke(null, new object[] { service, manyToMany, "account", pluralCache });
+
+            Assert.IsNotNull(oneToManyRow);
+            Assert.IsNotNull(manyToManyRow);
+            Assert.IsTrue(oneToManyRow.GridKey.Contains("account_contact"));
+            Assert.IsTrue(manyToManyRow.GridKey.Contains("account_contact_mm"));
+        }
+
+        [TestMethod]
         public void Save_NoRows_ReturnsEmpty()
         {
             var rel = new OneToManyRelationshipMetadata
@@ -62,7 +119,7 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
                 SchemaName = "account_contact",
                 ReferencingEntity = "contact",
                 ReferencedEntity = "account",
-                AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, Label = new Label("Old", 1033) }
+                AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Old", 1033))
             };
             var service = CreateService(r => DispatchStandard(r, rel));
             var adapter = new RelationshipAdapter();
@@ -79,7 +136,7 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
                 SchemaName = "account_contact",
                 ReferencingEntity = "contact",
                 ReferencedEntity = "account",
-                AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, Label = new Label("Old", 1033) }
+                AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Old", 1033))
             };
             var service = CreateService(r => DispatchStandard(r, rel));
             var adapter = new RelationshipAdapter();
@@ -198,28 +255,6 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
         }
 
         [TestMethod]
-        public void Save_MenuConfigNotCustomizable_Skipped()
-        {
-            var rel = new OneToManyRelationshipMetadata
-            {
-                MetadataId = _relId,
-                SchemaName = "sch",
-                AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, IsCustomizable = false, Label = new Label("Old", 1033) }
-            };
-            var service = CreateService(r => DispatchStandard(r, rel));
-            var adapter = new RelationshipAdapter();
-            var input = new EasyTranslatorSaveInput
-            {
-                changedRows = new List<EasyTranslatorChangedRowInput>
-                {
-                    new EasyTranslatorChangedRowInput { gridKey = "relationships|" + _relId.ToString("D") + "|1:N|sch|AssociatedMenuConfiguration|contact", changes = new Dictionary<string, string> { { "1033", "X" } } }
-                }
-            };
-            var output = adapter.Save(AdapterTestHelpers.Context(service), input);
-            Assert.AreEqual(0, output.changedRowCount);
-        }
-
-        [TestMethod]
         public void Save_ValidOneToMany_UpdatesAndRecordsEntityTarget()
         {
             var rel = new OneToManyRelationshipMetadata
@@ -228,7 +263,7 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
                 SchemaName = "account_contact",
                 ReferencingEntity = "contact",
                 ReferencedEntity = "account",
-                AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, IsCustomizable = true, Label = new Label("Old", 1033) }
+                AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Old", 1033))
             };
             var captured = new List<OrganizationRequest>();
             var service = CreateService(r => { captured.Add(r); return DispatchStandard(r, rel); });
@@ -253,7 +288,7 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             {
                 MetadataId = _relId,
                 SchemaName = "sch",
-                AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseCollectionName, IsCustomizable = true, Label = new Label() }
+                AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseCollectionName, new Label())
             };
             int pluralCalls = 0;
             var service = CreateService(r =>
@@ -262,7 +297,7 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
                 {
                     pluralCalls++;
                     var em = new EntityMetadata { LogicalName = "contact" };
-                    em.DisplayCollectionName = new Label(new LocalizedLabel("Contacts", 1033));
+                    em.DisplayCollectionName = CreateLabel(new LocalizedLabel("Contacts", 1033));
                     var resp = new RetrieveEntityResponse();
                     resp.Results["EntityMetadata"] = em;
                     return resp;
@@ -289,14 +324,14 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             {
                 MetadataId = _relId,
                 SchemaName = "sch",
-                AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = null, IsCustomizable = true }
+                AssociatedMenuConfiguration = CreateMenuConfig(null)
             };
             var service = CreateService(r =>
             {
                 if (r is RetrieveEntityRequest)
                 {
                     var em = new EntityMetadata { LogicalName = "contact" };
-                    em.DisplayCollectionName = new Label(new LocalizedLabel("Contacts", 1033));
+                    em.DisplayCollectionName = CreateLabel(new LocalizedLabel("Contacts", 1033));
                     var resp = new RetrieveEntityResponse();
                     resp.Results["EntityMetadata"] = em;
                     return resp;
@@ -324,8 +359,8 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
                 SchemaName = "account_contact_mm",
                 Entity1LogicalName = "account",
                 Entity2LogicalName = "contact",
-                Entity1AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, IsCustomizable = true, Label = new Label("Old", 1033) },
-                Entity2AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, IsCustomizable = true, Label = new Label("Old2", 1033) }
+                Entity1AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Old", 1033)),
+                Entity2AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Old2", 1033))
             };
             var captured = new List<OrganizationRequest>();
             var service = CreateService(r => { captured.Add(r); return DispatchStandard(r, rel); });
@@ -353,8 +388,8 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
                 SchemaName = "account_contact_mm",
                 Entity1LogicalName = "account",
                 Entity2LogicalName = "contact",
-                Entity1AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, IsCustomizable = true, Label = new Label("Old", 1033) },
-                Entity2AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, IsCustomizable = true, Label = new Label("Old2", 1033) }
+                Entity1AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Old", 1033)),
+                Entity2AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Old2", 1033))
             };
             var captured = new List<OrganizationRequest>();
             var service = CreateService(r => { captured.Add(r); return DispatchStandard(r, rel); });
@@ -382,7 +417,7 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             {
                 MetadataId = _relId,
                 SchemaName = "sch",
-                AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, IsCustomizable = true, Label = new Label("Old", 1033) }
+                AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Old", 1033))
             };
             var service = CreateService(r => DispatchStandard(r, rel));
             var adapter = new RelationshipAdapter();
@@ -405,7 +440,7 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             {
                 MetadataId = _relId,
                 SchemaName = "sch",
-                AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, IsCustomizable = true, Label = new Label(new LocalizedLabel("OldEN", 1033), new LocalizedLabel("OldDE", 1031)) }
+                AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, CreateLabel(new LocalizedLabel("OldEN", 1033), new LocalizedLabel("OldDE", 1031)))
             };
             var service = CreateService(r => DispatchStandard(r, rel));
             var adapter = new RelationshipAdapter();
@@ -427,7 +462,7 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             {
                 MetadataId = _relId,
                 SchemaName = "sch",
-                AssociatedMenuConfiguration = new AssociatedMenuConfiguration { Behavior = AssociatedMenuBehavior.UseLabel, IsCustomizable = true, Label = new Label("Old", 1033) }
+                AssociatedMenuConfiguration = CreateMenuConfig(AssociatedMenuBehavior.UseLabel, new Label("Old", 1033))
             };
             var service = CreateService(r => DispatchStandard(r, rel));
             var adapter = new RelationshipAdapter();

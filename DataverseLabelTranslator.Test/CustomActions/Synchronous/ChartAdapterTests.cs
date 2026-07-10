@@ -3,6 +3,7 @@ using Microsoft.Crm.Sdk.Messages;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Metadata;
 using Microsoft.Xrm.Sdk.Query;
 using NSubstitute;
 using System;
@@ -48,12 +49,89 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
         }
 
         [TestMethod]
+        public void Load_AllEntities_WithCharts_ReturnsTreeRows()
+        {
+            var adapter = new ChartAdapter();
+            var service = CreateServiceWithBaseLanguage();
+            var chartId = Guid.NewGuid();
+            var chart = new Entity("savedqueryvisualization") { Id = chartId };
+            chart["savedqueryvisualizationid"] = chartId;
+            chart["name"] = "Account Chart";
+            chart["primaryentitytypecode"] = "account";
+
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(call =>
+            {
+                var q = (QueryExpression)call[0];
+                if (q.EntityName == "organization") return AdapterTestHelpers.Entities(AdapterTestHelpers.CreateOrganizationEntity());
+                if (q.EntityName == "savedqueryvisualization") return AdapterTestHelpers.Entities(chart);
+                return AdapterTestHelpers.Entities();
+            });
+            service.Execute(Arg.Any<OrganizationRequest>()).Returns(call =>
+            {
+                if (call[0] is RetrieveAllEntitiesRequest)
+                {
+                    return AdapterTestHelpers.BuildRetrieveAllEntitiesResponse(new EntityMetadata
+                    {
+                        LogicalName = "account",
+                        MetadataId = Guid.NewGuid(),
+                        DisplayName = AdapterTestHelpers.BuildLabel((1033, "Account"))
+                    });
+                }
+                if (call[0] is RetrieveLocLabelsRequest)
+                {
+                    return AdapterTestHelpers.RetrieveLabelsResponse(AdapterTestHelpers.BuildLabel((1033, "Account Chart")));
+                }
+                return new OrganizationResponse();
+            });
+
+            var output = adapter.Load(AdapterTestHelpers.Context(service), new EasyTranslatorLoadInput { entityName = "none", component = "DisplayText", solutionId = "all" });
+
+            Assert.AreEqual("tree", output.grid.mode);
+            Assert.AreEqual(1, output.grid.rows.Count);
+            var children = (List<EasyTranslatorGridRowOutput>)output.grid.rows[0]["children"];
+            Assert.AreEqual(1, children.Count);
+        }
+
+        [TestMethod]
         public void Load_SpecificEntity_NoCharts_ReturnsEmpty()
         {
             var adapter = new ChartAdapter();
             var service = CreateServiceWithBaseLanguage();
             var output = adapter.Load(AdapterTestHelpers.Context(service), new EasyTranslatorLoadInput { entityName = "account", component = "DisplayText", solutionId = "all" });
             Assert.AreEqual(0, output.grid.rows.Count);
+        }
+
+        [TestMethod]
+        public void Load_SpecificEntity_WithChart_ReturnsFlatRow()
+        {
+            var adapter = new ChartAdapter();
+            var service = CreateServiceWithBaseLanguage();
+            var chartId = Guid.NewGuid();
+            var chart = new Entity("savedqueryvisualization") { Id = chartId };
+            chart["savedqueryvisualizationid"] = chartId;
+            chart["name"] = "Account Chart";
+
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(call =>
+            {
+                var q = (QueryExpression)call[0];
+                if (q.EntityName == "organization") return AdapterTestHelpers.Entities(AdapterTestHelpers.CreateOrganizationEntity());
+                if (q.EntityName == "savedqueryvisualization") return AdapterTestHelpers.Entities(chart);
+                return AdapterTestHelpers.Entities();
+            });
+            service.Execute(Arg.Any<OrganizationRequest>()).Returns(call =>
+            {
+                if (call[0] is RetrieveLocLabelsRequest)
+                {
+                    return AdapterTestHelpers.RetrieveLabelsResponse(AdapterTestHelpers.BuildLabel((1033, "Account Chart"), (1031, "Konto")));
+                }
+                return new OrganizationResponse();
+            });
+
+            var output = adapter.Load(AdapterTestHelpers.Context(service), new EasyTranslatorLoadInput { entityName = "account", component = "DisplayText", solutionId = "all" });
+
+            Assert.AreEqual("flat", output.grid.mode);
+            Assert.AreEqual(1, output.grid.rows.Count);
+            Assert.AreEqual("Account Chart", output.grid.rows[0].SchemaName);
         }
 
         [TestMethod]

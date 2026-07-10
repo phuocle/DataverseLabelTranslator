@@ -25,10 +25,10 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
         // BPF XAML containing a stage (StageId=S1) with a sco:Collection closing tag.
         private const string StageXaml =
             "<Activity x:Class=\"Test\">" +
-            "<x:String x:Key=\"StageId\">S1</x:String>" +
             "<sco:Collection>" +
             "<mcwo:StepLabel Description=\"Old\" LabelId=\"S1\" LanguageCode=\"1033\" />" +
             "</sco:Collection>" +
+            "<x:String x:Key=\"StageId\">S1</x:String>" +
             "</Activity>";
 
         private static IOrganizationService CreateSaveService(string xaml = StageXaml, int statecode = 0)
@@ -244,10 +244,10 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             var adapter = new BpfAdapter();
             var fieldXaml =
                 "<Activity x:Class=\"Test\">" +
-                "<x:String x:Key=\"ProcessStepId\">F1</x:String>" +
                 "<sco:Collection>" +
                 "<mcwo:StepLabel Description=\"Old\" LabelId=\"F1\" LanguageCode=\"1033\" />" +
                 "</sco:Collection>" +
+                "<x:String x:Key=\"ProcessStepId\">F1</x:String>" +
                 "</Activity>";
             var service = CreateSaveService(fieldXaml);
             var input = new EasyTranslatorSaveInput

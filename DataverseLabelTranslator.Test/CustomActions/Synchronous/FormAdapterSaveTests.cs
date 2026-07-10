@@ -61,6 +61,7 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
             userSettings["uilanguageid"] = 1033;
             userSettings["helplanguageid"] = 1033;
             service.Retrieve("usersettings", Arg.Any<Guid>(), Arg.Any<ColumnSet>()).Returns(userSettings);
+            service.Retrieve("systemform", Arg.Any<Guid>(), Arg.Any<ColumnSet>()).Returns(callInfo => MakeFormRow(formXml));
             return service;
         }
 

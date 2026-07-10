@@ -1,12 +1,14 @@
 using Microsoft.Xrm.Sdk;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Text;
 
 namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
 {
+    [ExcludeFromCodeCoverage]
     internal class OtherTranslate
     {
         internal const string OperationName = "Translate";

@@ -287,6 +287,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 var originalXml = form.GetAttributeValue<string>("formxml") ?? string.Empty;
                 var document = ParseFormXml(originalXml);
 
+                var changed = false;
                 foreach (var nodeUpdate in formUpdate.Nodes.Values)
                 {
                     var node = FindNodeById(document, nodeUpdate.NodeId);
@@ -295,13 +296,12 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                         throw new InvalidPluginExecutionException("Form XML node " + nodeUpdate.NodeId + " was not found.");
                     }
 
-                    ApplyLabelUpdates(node, nodeUpdate.Labels);
+                    changed |= ApplyLabelUpdates(node, nodeUpdate.Labels);
                 }
 
-                var updatedXml = SerializeFormXml(document);
-                var changed = !string.Equals(updatedXml, originalXml, StringComparison.Ordinal);
                 if (changed)
                 {
+                    var updatedXml = SerializeFormXml(document);
                     UpdateFormXml(context.ServiceAdmin, formUpdate.FormId, updatedXml);
                 }
 
@@ -566,13 +566,15 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
         }
 
-        private static void ApplyLabelUpdates(XElement node, Dictionary<string, string> labelsByLanguage)
+        private static bool ApplyLabelUpdates(XElement node, Dictionary<string, string> labelsByLanguage)
         {
+            var changed = false;
             var labels = node.Elements().FirstOrDefault(element => IsElementName(element, "labels"));
             if (labels == null)
             {
                 labels = new XElement("labels");
                 node.AddFirst(labels);
+                changed = true;
             }
 
             foreach (var update in labelsByLanguage)
@@ -588,6 +590,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 foreach (var duplicate in existingLabels.Skip(1))
                 {
                     duplicate.Remove();
+                    changed = true;
                 }
 
                 if (first == null)
@@ -596,12 +599,20 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                         "label",
                         new XAttribute("description", update.Value ?? string.Empty),
                         new XAttribute("languagecode", update.Key)));
+                    changed = true;
                 }
                 else
                 {
-                    first.SetAttributeValue("description", update.Value ?? string.Empty);
+                    var updatedDescription = update.Value ?? string.Empty;
+                    if (!string.Equals(GetAttributeValue(first, "description"), updatedDescription, StringComparison.Ordinal))
+                    {
+                        first.SetAttributeValue("description", updatedDescription);
+                        changed = true;
+                    }
                 }
             }
+
+            return changed;
         }
 
         private static T RunAsUserLanguage<T>(EasyTranslatorRuntimeContext context, int languageCode, Func<T> action)

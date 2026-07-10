@@ -6,6 +6,7 @@ using Microsoft.Xrm.Sdk.Query;
 using NSubstitute;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
 {
@@ -130,6 +131,81 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
                 }
             };
             AdapterTestHelpers.ExpectException<InvalidPluginExecutionException>(() => adapter.Save(AdapterTestHelpers.Context(service), input));
+        }
+
+        [TestMethod]
+        public void Save_ValidSubAreaTitle_UpdatesSitemapAndAddsPublishTarget()
+        {
+            var adapter = new SitemapAdapter();
+            var sitemapId = Guid.NewGuid();
+            var sitemap = new Entity("sitemap", sitemapId);
+            sitemap["sitemapxml"] = "<SiteMap><Area Id=\"area\"><Group Id=\"group\"><SubArea Id=\"sub\"><Titles><Title LCID=\"1033\" Title=\"Old\" /></Titles></SubArea></Group></Area></SiteMap>";
+            var service = Substitute.For<IOrganizationService>();
+            Entity updated = null;
+            service.Retrieve("sitemap", sitemapId, Arg.Any<ColumnSet>()).Returns(sitemap);
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(AdapterTestHelpers.Entities());
+            service.When(s => s.Update(Arg.Any<Entity>())).Do(call => updated = (Entity)call[0]);
+            var input = new EasyTranslatorSaveInput
+            {
+                changedRows = new List<EasyTranslatorChangedRowInput>
+                {
+                    new EasyTranslatorChangedRowInput
+                    {
+                        gridKey = "sitemap|" + sitemapId.ToString("D") + "|SubArea|area%7Cgroup%7Csub|DisplayText",
+                        changes = new Dictionary<string, string> { { "1033", "New" } }
+                    }
+                }
+            };
+
+            var output = adapter.Save(AdapterTestHelpers.Context(service), input);
+
+            Assert.AreEqual(1, output.changedRowCount);
+            Assert.AreEqual(1, output.publishTargets.Count);
+            Assert.IsNotNull(updated);
+            Assert.IsTrue(updated.GetAttributeValue<string>("sitemapxml").Contains("Title=\"New\""));
+        }
+
+        [TestMethod]
+        public void UpdateSitemapXml_UpdatesNestedSubAreaTitle()
+        {
+            var xml = "<SiteMap><Area Id=\"area\"><Group Id=\"group\"><SubArea Id=\"sub\"><Titles><Title LCID=\"1033\" Title=\"Old\" /></Titles></SubArea></Group></Area></SiteMap>";
+            var updateType = typeof(SitemapAdapter).GetNestedType("SitemapNodeUpdate", BindingFlags.NonPublic);
+            var update = Activator.CreateInstance(updateType, true);
+            updateType.GetProperty("compositeId").SetValue(update, "area|group|sub");
+            updateType.GetProperty("nodeType").SetValue(update, "SubArea");
+            updateType.GetProperty("component").SetValue(update, "DisplayText");
+            updateType.GetProperty("labels").SetValue(update, new List<EasyTranslatorLabelChange>
+            {
+                new EasyTranslatorLabelChange { LanguageCode = 1033, Label = "New" },
+                new EasyTranslatorLabelChange { LanguageCode = 1031, Label = "Neu" }
+            });
+            var method = typeof(SitemapAdapter).GetMethod("UpdateSitemapXml", BindingFlags.NonPublic | BindingFlags.Static);
+
+            var updated = (string)method.Invoke(null, new[] { xml, update });
+
+            Assert.IsTrue(updated.Contains("Title=\"New\""));
+            Assert.IsTrue(updated.Contains("LCID=\"1031\""));
+        }
+
+        [TestMethod]
+        public void ResolveAppModuleIdsForSitemap_ReturnsDistinctAliasedIds()
+        {
+            var sitemapId = Guid.NewGuid();
+            var appId = Guid.NewGuid();
+            var referencedAppId = Guid.NewGuid();
+            var duplicate = new Entity("appmodulecomponent");
+            duplicate["app.appmoduleid"] = new AliasedValue("appmodule", "appmoduleid", appId);
+            var referenced = new Entity("appmodulecomponent");
+            referenced["app.appmoduleid"] = new AliasedValue("appmodule", "appmoduleid", new EntityReference("appmodule", referencedAppId));
+            var service = Substitute.For<IOrganizationService>();
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(AdapterTestHelpers.Entities(duplicate, duplicate, referenced));
+            var method = typeof(SitemapAdapter).GetMethod("ResolveAppModuleIdsForSitemap", BindingFlags.NonPublic | BindingFlags.Static);
+
+            var ids = (List<Guid>)method.Invoke(null, new object[] { service, sitemapId });
+
+            Assert.AreEqual(2, ids.Count);
+            CollectionAssert.Contains(ids, appId);
+            CollectionAssert.Contains(ids, referencedAppId);
         }
 
         [TestMethod]

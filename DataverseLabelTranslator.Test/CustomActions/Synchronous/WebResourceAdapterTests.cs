@@ -242,6 +242,66 @@ namespace DataverseLabelTranslator.Test.CustomActions.Synchronous
         }
 
         [TestMethod]
+        public void SerializeResxContent_UpdatesExistingAndAddsMissingKeys()
+        {
+            var method = typeof(WebResourceAdapter).GetMethod("SerializeResxContent", BindingFlags.NonPublic | BindingFlags.Static);
+            var original = @"<?xml version=""1.0"" encoding=""utf-8""?><root><data name=""hello"" xml:space=""preserve""><value>Hello</value></data><data name=""binary"" type=""System.Byte[]""><value>AA==</value></data></root>";
+            var content = new Dictionary<string, string>
+            {
+                ["hello"] = "Updated",
+                ["bye"] = "Goodbye"
+            };
+
+            var updated = (string)method.Invoke(null, new object[] { original, content });
+
+            Assert.IsTrue(updated.Contains("<value>Updated</value>"));
+            Assert.IsTrue(updated.Contains("name=\"bye\""));
+            Assert.IsTrue(updated.Contains("System.Byte[]"));
+        }
+
+        [TestMethod]
+        public void CreateWebResource_FromBaseResx_CreatesLocalizedResource()
+        {
+            var service = CreateService();
+            var baseId = Guid.NewGuid();
+            var createdId = Guid.NewGuid();
+            var resx = @"<?xml version=""1.0"" encoding=""utf-8""?><root><data name=""hello"" xml:space=""preserve""><value>Hello</value></data></root>";
+            var baseResource = MakeWebResource("strings.1033.resx", 12, B64(resx), baseId);
+            baseResource["displayname"] = "strings.1033.resx";
+            Entity created = null;
+            service.Retrieve("webresource", baseId, Arg.Any<ColumnSet>()).Returns(baseResource);
+            service.Create(Arg.Any<Entity>()).Returns(call =>
+            {
+                created = (Entity)call[0];
+                return createdId;
+            });
+
+            var changeType = typeof(WebResourceAdapter).GetNestedType("WebResourceChangeInfo", BindingFlags.NonPublic);
+            var contentChangeType = typeof(WebResourceAdapter).GetNestedType("WebResourceContentChangeInfo", BindingFlags.NonPublic);
+            var change = Activator.CreateInstance(changeType, true);
+            changeType.GetProperty("baseWebresourceid").SetValue(change, baseId.ToString("D"));
+            changeType.GetProperty("lcid").SetValue(change, "1041");
+            changeType.GetProperty("solutionId").SetValue(change, "all");
+            changeType.GetProperty("hasDescription").SetValue(change, true);
+            changeType.GetProperty("description").SetValue(change, "Japanese strings");
+            var contentChange = Activator.CreateInstance(contentChangeType, true);
+            contentChangeType.GetProperty("key").SetValue(contentChange, "hello");
+            contentChangeType.GetProperty("value").SetValue(contentChange, "こんにちは");
+            var contentChanges = (System.Collections.IList)changeType.GetProperty("contentChanges").GetValue(change);
+            contentChanges.Add(contentChange);
+
+            var method = typeof(WebResourceAdapter).GetMethod("CreateWebResource", BindingFlags.NonPublic | BindingFlags.Static);
+            var result = (string)method.Invoke(null, new[] { service, change });
+
+            Assert.AreEqual(createdId.ToString("D"), result);
+            Assert.IsNotNull(created);
+            Assert.AreEqual("strings.1041.resx", created.GetAttributeValue<string>("name"));
+            Assert.AreEqual("Japanese strings", created.GetAttributeValue<string>("description"));
+            var createdContent = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(created.GetAttributeValue<string>("content")));
+            Assert.IsTrue(createdContent.Contains("こんにちは"));
+        }
+
+        [TestMethod]
         public void Load_ResxResources_BuildsPropertyChildren()
         {
             var adapter = new WebResourceAdapter();
