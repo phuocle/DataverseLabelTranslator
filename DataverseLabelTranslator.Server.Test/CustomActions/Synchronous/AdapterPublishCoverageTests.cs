@@ -18,8 +18,21 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
     /// branch coverage of the common publishing path rises across all adapters.
     /// </summary>
     [TestClass]
+    [DoNotParallelize]
     public class AdapterPublishCoverageTests
     {
+        [TestInitialize]
+        public void Setup()
+        {
+            AdapterTestHelpers.DisableAdapterWaits();
+        }
+
+        [TestCleanup]
+        public void Cleanup()
+        {
+            AdapterTestHelpers.RestoreAdapterWaits();
+        }
+
         private static IOrganizationService CreateService()
         {
             var service = Substitute.For<IOrganizationService>();

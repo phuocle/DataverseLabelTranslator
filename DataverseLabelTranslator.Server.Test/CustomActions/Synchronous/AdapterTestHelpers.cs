@@ -93,6 +93,44 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
             return new EasyTranslatorRuntimeContext { ServiceAdmin = serviceAdmin };
         }
 
+        public static void DisableAdapterWaits()
+        {
+            AttributeAdapter.WaitAction = _ => { };
+            BpfAdapter.WaitAction = _ => { };
+            BusinessRuleAdapter.WaitAction = _ => { };
+            ChartAdapter.WaitAction = _ => { };
+            CommandAdapter.WaitAction = _ => { };
+            DashboardAdapter.WaitAction = _ => { };
+            EntityMetadataAdapter.WaitAction = _ => { };
+            FormAdapter.WaitAction = _ => { };
+            FormMetaAdapter.WaitAction = _ => { };
+            GlobalOptionSetAdapter.WaitAction = _ => { };
+            OptionSetAdapter.WaitAction = _ => { };
+            RelationshipAdapter.WaitAction = _ => { };
+            SitemapAdapter.WaitAction = _ => { };
+            ViewAdapter.WaitAction = _ => { };
+            WebResourceAdapter.WaitAction = _ => { };
+        }
+
+        public static void RestoreAdapterWaits()
+        {
+            AttributeAdapter.WaitAction = System.Threading.Thread.Sleep;
+            BpfAdapter.WaitAction = System.Threading.Thread.Sleep;
+            BusinessRuleAdapter.WaitAction = System.Threading.Thread.Sleep;
+            ChartAdapter.WaitAction = System.Threading.Thread.Sleep;
+            CommandAdapter.WaitAction = System.Threading.Thread.Sleep;
+            DashboardAdapter.WaitAction = System.Threading.Thread.Sleep;
+            EntityMetadataAdapter.WaitAction = System.Threading.Thread.Sleep;
+            FormAdapter.WaitAction = System.Threading.Thread.Sleep;
+            FormMetaAdapter.WaitAction = System.Threading.Thread.Sleep;
+            GlobalOptionSetAdapter.WaitAction = System.Threading.Thread.Sleep;
+            OptionSetAdapter.WaitAction = System.Threading.Thread.Sleep;
+            RelationshipAdapter.WaitAction = System.Threading.Thread.Sleep;
+            SitemapAdapter.WaitAction = System.Threading.Thread.Sleep;
+            ViewAdapter.WaitAction = System.Threading.Thread.Sleep;
+            WebResourceAdapter.WaitAction = System.Threading.Thread.Sleep;
+        }
+
         public static EasyTranslatorLoadInput LoadInput(string entityName, string component = "DisplayText", string solutionId = "all")
         {
             return new EasyTranslatorLoadInput

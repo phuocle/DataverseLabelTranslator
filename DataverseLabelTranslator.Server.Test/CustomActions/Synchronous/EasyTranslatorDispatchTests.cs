@@ -14,6 +14,7 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
     /// Tests the EasyTranslator dispatch logic to all adapter types.
     /// </summary>
     [TestClass]
+    [DoNotParallelize]
     public class EasyTranslatorDispatchTests
     {
         private EasyTranslator _action;
@@ -22,6 +23,7 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
         [TestInitialize]
         public void Setup()
         {
+            AdapterTestHelpers.DisableAdapterWaits();
             _action = new EasyTranslator();
             _service = Substitute.For<IOrganizationService>();
             _service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(call =>
@@ -30,6 +32,12 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
                 if (q.EntityName == "organization") return AdapterTestHelpers.Entities(AdapterTestHelpers.CreateOrganizationEntity());
                 return AdapterTestHelpers.Entities();
             });
+        }
+
+        [TestCleanup]
+        public void Cleanup()
+        {
+            AdapterTestHelpers.RestoreAdapterWaits();
         }
 
         [TestMethod]

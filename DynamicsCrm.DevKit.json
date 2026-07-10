@@ -1,6 +1,6 @@
 ﻿{
   "DefaultCrmConnection": "ClientSecret",
-  "CrmConnections": [    
+  "CrmConnections": [
     {
       "Name": "ClientSecret",
       "Type": "ClientSecret",

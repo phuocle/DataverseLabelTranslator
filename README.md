@@ -33,11 +33,11 @@ Translate UI labels for Dataverse components using the same type menu shown in t
 | **17. Web Resources**         | None   | Text content within web resources                                                                       |
 | **18. Global Option Sets**    | None   | Global option set values independent of an entity                                                       |
 
-There is also a special **14. Content Snippets** type for legacy Dynamics 365 Portals / Power Pages content snippets. It appears only when the selected entity is `Adx_contentsnippet`.
+There is also a special **14. Content Snippets** type for legacy Dynamics 365 Portals / Power Pages content snippets. It appears only when the selected entity is `adx_contentsnippet`.
 
 ### Power Pages Content Snippets
 
-The app still includes legacy content snippet support from the original translator. This is not a general Dataverse label type. It is available only when the environment has the old portal tables and the selected entity is `Adx_contentsnippet`.
+The app still includes legacy content snippet support from the original translator. This is not a general Dataverse label type. It is available only when the environment has the old portal tables and the selected entity is `adx_contentsnippet`.
 
 When available, **14. Content Snippets** loads `adx_contentsnippet` records through the server-side unified handler, grouped by website, uses `adx_websitelanguage` to map portal languages to LCIDs, and saves translated snippet values back to `adx_contentsnippet`. Environments without those portal tables should ignore this type.
 
@@ -131,7 +131,7 @@ Dictionary storage is Dataverse-backed, not browser-only:
 5. Edit cells inline, use **Auto Translate**, or use **Apply Dictionary**.
 6. Click **Save** to write changes back to Dataverse and publish.
 
-For Power Pages content snippets, select entity `Adx_contentsnippet`, choose **14. Content Snippets**, then load and save like the other types.
+For Power Pages content snippets, select entity `adx_contentsnippet`, choose **14. Content Snippets**, then load and save like the other types.
 
 ### Form Translation
 
@@ -143,70 +143,15 @@ The tool also sets the UI language to the base language before publishing to avo
 
 If translating an attribute does not update its form label, the form likely has overridden labels for that field. Use **Remove Overridden Attribute Labels** inside the form translator to clear them. Export a backup solution before applying this change.
 
-## Architecture
-
-The active web resource codebase lives under `DataverseLabelTranslator.WebResource`. It is a DynamicsCrm.DevKit WebResource `.csproj` for fast local web resource deployment, and it also contains the npm lint/test tooling for the plain JavaScript dashboard.
-
-The Dataverse app hosts one main web resource: `pl_/html/App.html`.
-
-Every handler implements:
-
-- **`Load()`**: Fetch metadata from Dataverse APIs and populate the w2ui grid.
-- **`Save()`**: Extract changed grid records, update Dataverse through Web API, and publish.
-
-### Project Structure
-
-```text
-DataverseLabelTranslator.WebResource/
-  DataverseLabelTranslator.WebResource.csproj
-  package.json
-  vitest.config.mjs
-  eslint.config.mjs
-  deploy.debug.bat        # commit-safe DevKit deploy script using root .env
-  html/
-    App.html
-  js/
-    XrmTranslator.js
-    EasyTranslatorHandler.js
-    TranslationHandler.js
-    TranslationDictionaryService.js
-    DialogHelper.js
-  css/
-    w2ui.css
-    style.css
-  img/
-    app-icon.svg
-DataverseLabelTranslator.Scripts/
-  release-appsource.ps1
-  deploy-azure.ps1
-  sync-ai-config.ps1
-DataverseLabelTranslator.Documents/
-  type-convention-from-global-option-sets.md
-```
-
-### Local DevKit Environment
-
-DevKit batch files load local connection settings from the repository root `.env` file. Values in `.env` intentionally override inherited `DEVKIT_*` process environment variables for that batch run. Commit `.env.example`, copy it to `.env`, and fill the local values there. `.env` is ignored by git.
-
 ## Tech Stack
 
-| Library                                                      | Version | Purpose                   |
-| ------------------------------------------------------------ | ------- | ------------------------- |
-| [w2ui](https://github.com/vitmalina/w2ui)                    | 2.0     | Grid UI framework         |
-| [WebApiClient](https://github.com/XRM-OSS/Xrm-WebApi-Client) | 4.1.6   | Dataverse Web API wrapper |
+| Library                                                   | Version | Purpose           |
+| --------------------------------------------------------- | ------- | ----------------- |
+| [w2ui](https://github.com/vitmalina/w2ui)                 | 2.0     | Grid UI framework |
 
-No build step is required. JavaScript files deploy directly as Dataverse web resources.
+The app uses the native Dataverse `Xrm.WebApi.online.execute()` API. No third-party API wrapper or build step is required.
 
 ## License
 
 MIT License
 
-## Release And Deployment Flow
-
-Confirmed on May 29, 2026, the production release flow is:
-
-1. Run `$pl-export-solution` to export `DataverseLabelTranslator`, clean labels, and create final Dataverse solution ZIPs under `DataverseLabelTranslator.Release/<version>/dataverse/solutions/`.
-2. Run `$pl-release-appsource` to build the AppSource Marketplace upload ZIP from the existing managed solution. This step does not export Dataverse again. The final upload file is `DataverseLabelTranslator.Release/<version>/appsource/zip/DataverseLabelTranslator.v.<major.minor.patch>.zip`.
-3. Run `$pl-deploy-azure` to upload only that final AppSource ZIP to Azure Blob Storage and generate Partner Center SAS details in `DataverseLabelTranslator.Release/<version>/appsource/zip/release.md`.
-
-`release.md` contains private SAS details and must stay ignored/uncommitted. Paste the generated SAS package URL into Partner Center, but do not paste it into commits, issues, or chat logs.
