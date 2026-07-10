@@ -1,2 +1,1 @@
-@if exist "%~dp0..\..\.env" for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%~dp0..\..\.env") do @if not "%%~A"=="" set "%%~A=%%~B"
-@cd /d "%~dp0" && devkit generator --json "%~dp0..\..\DynamicsCrm.DevKit.Cli.json" --profile "LATEBOUND"
+devkit generator --json "DynamicsCrm.DevKit.Cli.json" --profile "LATEBOUND"
