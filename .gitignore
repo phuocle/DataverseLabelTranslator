@@ -41,9 +41,12 @@ DynamicsCrm.DevKit.json
 /.github/instructions/
 /.github/prompts/
 /.github/copilot-instructions.md
-/.github/workflows/ai-config.yml
+/.github/workflows/
 /DataverseLabelTranslator.Scripts/check-ai-config.ps1
 /DataverseLabelTranslator.Scripts/sync-ai-config.ps1
+/scripts/
+/analyze-coverage.js
+/dlv-cov.json
 
 # Solution export working folders
 solutions/1.before/
