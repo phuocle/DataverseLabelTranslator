@@ -856,16 +856,34 @@
         }
     }
 
-    function getErrorMessage(error) {
+    function getErrorMessage(error, fallbackMessage) {
+        fallbackMessage = fallbackMessage || "Could not load AI Translate settings.";
+
         if (!error) {
-            return "Could not load AI Translate settings.";
+            return fallbackMessage;
         }
 
         if (typeof error === "string") {
             return error;
         }
 
-        return error.message || error.Message || error.error || "Could not load AI Translate settings.";
+        if (typeof error.message === "string" && error.message) {
+            return error.message;
+        }
+
+        if (typeof error.Message === "string" && error.Message) {
+            return error.Message;
+        }
+
+        if (typeof error.error === "string" && error.error) {
+            return error.error;
+        }
+
+        if (error.error && typeof error.error.message === "string" && error.error.message) {
+            return error.error.message;
+        }
+
+        return fallbackMessage;
     }
 
     function getInitialTarget(languages, baseLcid) {
@@ -1022,67 +1040,81 @@
         updateApplyButtonState();
     }
 
-    function translateRows() {
-        var validationError = validateTranslate();
-        if (validationError) {
-            updateTranslateButtonState();
-            Helper.ShowError(validationError, { title: "AI Translate" });
-            return;
+    function showTranslateError(error) {
+        if (window.console && typeof window.console.error === "function") {
+            window.console.error("AI Translate failed.", error);
         }
 
-        var grid = w2ui[workspaceGridName];
-        var sourceLcid = state.sourceLcid;
-        var targetLcid = state.targetLcid;
-        syncGridRowsToState();
-        var eligibleRows = getTranslatableRows(filterRows(state.allRows || [], { targetOnly: true }));
+        return Helper.ShowError(getErrorMessage(error, "AI translation failed."), { title: "AI Translate" });
+    }
 
-        w2popup.lock("Translating...", true);
-        executeOther("Translate", {
-            provider: state.providerId,
-            fromLanguage: getIso(sourceLcid),
-            toLanguage: getIso(targetLcid),
-            fromLcid: sourceLcid,
-            toLcid: targetLcid,
-            useDictionary: state.useDictionary !== false,
-            items: eligibleRows.map(function (record) {
-                return {
-                    text: decodeValue(getWorkspaceValue(record, sourceLcid))
-                };
+    function translateRows() {
+        try {
+            var validationError = validateTranslate();
+            if (validationError) {
+                updateTranslateButtonState();
+                Helper.ShowError(validationError, { title: "AI Translate" });
+                return;
+            }
+
+            var grid = w2ui[workspaceGridName];
+            var sourceLcid = state.sourceLcid;
+            var targetLcid = state.targetLcid;
+            syncGridRowsToState();
+            var eligibleRows = getTranslatableRows(filterRows(state.allRows || [], { targetOnly: true }));
+
+            w2popup.lock("Translating...", true);
+            executeOther("Translate", {
+                provider: state.providerId,
+                fromLanguage: getIso(sourceLcid),
+                toLanguage: getIso(targetLcid),
+                fromLcid: sourceLcid,
+                toLcid: targetLcid,
+                useDictionary: state.useDictionary !== false,
+                items: eligibleRows.map(function (record) {
+                    return {
+                        text: decodeValue(getWorkspaceValue(record, sourceLcid))
+                    };
+                })
             })
-        })
-            .then(function (output) {
-                var serverResults = output.results || [];
-                var translations = output.translations || [];
-                var results = [];
+                .then(function (output) {
+                    var serverResults = output.results || [];
+                    var translations = output.translations || [];
+                    var results = [];
 
-                for (var i = 0; i < eligibleRows.length; i++) {
-                    var serverResult = serverResults[i] || {};
-                    var translation = Object.prototype.hasOwnProperty.call(serverResult, "translation")
-                        ? serverResult.translation
-                        : translations[i];
+                    for (var i = 0; i < eligibleRows.length; i++) {
+                        var serverResult = serverResults[i] || {};
+                        var translation = Object.prototype.hasOwnProperty.call(serverResult, "translation")
+                            ? serverResult.translation
+                            : translations[i];
 
-                    if (!translation) {
-                        continue;
+                        if (!translation) {
+                            continue;
+                        }
+
+                        results.push({
+                            recid: eligibleRows[i].recid,
+                            translation: encodeValue(translation),
+                            usedDictionary: serverResult.usedDictionary === true
+                        });
                     }
 
-                    results.push({
-                        recid: eligibleRows[i].recid,
-                        translation: encodeValue(translation),
-                        usedDictionary: serverResult.usedDictionary === true
-                    });
-                }
+                    applyTranslationResults(results, targetLcid);
+                })
+                .then(function () {
+                    w2popup.unlock();
+                })
+                .catch(function (error) {
+                    w2popup.unlock();
+                    showTranslateError(error);
+                });
+        } catch (error) {
+            if (window.w2popup) {
+                w2popup.unlock();
+            }
 
-                applyTranslationResults(results, targetLcid);
-            })
-            .then(function () {
-                w2popup.unlock();
-            })
-            .catch(function (error) {
-                w2popup.unlock();
-                if (window.console && typeof window.console.error === "function") {
-                    window.console.error("AI Translate failed.", error);
-                }
-            });
+            showTranslateError(error);
+        }
     }
 
     function applyWorkspaceChanges() {

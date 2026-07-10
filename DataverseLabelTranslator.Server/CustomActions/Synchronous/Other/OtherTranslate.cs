@@ -203,7 +203,6 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous
             {
                 { "model", provider.modelName },
                 { "stream", false },
-                { "temperature", 0 },
                 {
                     "messages",
                     new object[]
