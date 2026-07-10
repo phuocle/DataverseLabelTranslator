@@ -5,9 +5,6 @@
   <IntroducedVersion>1.0.0.0</IntroducedVersion>
   <FileName>/PluginAssemblies/DataverseLabelTranslatorServer-EB1A1A45-7E5E-F111-A826-7CED8DB48ACD/DataverseLabelTranslatorServer.dll</FileName>
   <PluginTypes>
-    <PluginType AssemblyQualifiedName="DataverseLabelTranslator.Server.CustomActions.PostDataverseLabelTranslatorCustomActionAsyncAsynchronous, DataverseLabelTranslator.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f6b5bb82f2d2b826" PluginTypeId="ee1a1a45-7e5e-f111-a826-7ced8db48acd" Name="DataverseLabelTranslator.Server.CustomActions.PostDataverseLabelTranslatorCustomActionAsyncAsynchronous">
-      <FriendlyName>DataverseLabelTranslator.Server.CustomActions.PostDataverseLabelTranslatorCustomActionAsyncAsynchronous</FriendlyName>
-    </PluginType>
     <PluginType AssemblyQualifiedName="DataverseLabelTranslator.Server.CustomActions.PostDataverseLabelTranslatorCustomActionSynchronous, DataverseLabelTranslator.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f6b5bb82f2d2b826" PluginTypeId="f21a1a45-7e5e-f111-a826-7ced8db48acd" Name="DataverseLabelTranslator.Server.CustomActions.PostDataverseLabelTranslatorCustomActionSynchronous">
       <FriendlyName>DataverseLabelTranslator.Server.CustomActions.PostDataverseLabelTranslatorCustomActionSynchronous</FriendlyName>
     </PluginType>

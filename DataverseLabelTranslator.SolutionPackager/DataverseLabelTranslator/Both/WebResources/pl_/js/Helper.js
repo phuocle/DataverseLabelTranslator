@@ -1,6 +1,10 @@
 (function (Helper, undefined) {
     "use strict";
 
+    var otherActionName = "Other";
+    var baseLanguage = null;
+    var languageLocales = null;
+
     function GetXrm() {
         if (typeof Xrm !== "undefined") {
             return Xrm;
@@ -29,12 +33,11 @@
     Helper.UiText = {
         Placeholders: {
             DisplayText: "Add-display-text",
-            DisplayTextBase: "Add-display-text(*)",
             Description: "Add-description",
             Readonly: "-"
         },
         Operations: {
-            Loading: "Loading ...",
+            Loading: "Loading ....",
             Saving: "Saving ...",
             Publishing: "Publishing ...",
             Published: "Published",
@@ -50,16 +53,114 @@
         return Helper.UiText.Placeholders.DisplayText;
     };
 
-    Helper.GetPlaceholderDisplayTextBase = function () {
-        return Helper.UiText.Placeholders.DisplayTextBase;
-    };
-
     Helper.GetPlaceholderDescription = function () {
         return Helper.UiText.Placeholders.Description;
     };
 
     Helper.GetPlaceholderReadonly = function () {
         return Helper.UiText.Placeholders.Readonly;
+    };
+
+    Helper.HasSearchValue = function (value) {
+        return value !== null && typeof value !== "undefined" && String(value).trim() !== "";
+    };
+
+    Helper.GetSimpleGridSearchValue = function (grid) {
+        var gridBox = grid && grid.box ? grid.box : null;
+        var searchInput = gridBox && grid.name ? gridBox.querySelector("#grid_" + grid.name + "_search_all") : null;
+
+        return searchInput ? String(searchInput.value || "") : "";
+    };
+
+    Helper.ClearSimpleGridSearchPlaceholder = function (grid) {
+        var gridBox = grid && grid.box ? grid.box : null;
+        var searchInput = gridBox && grid.name ? gridBox.querySelector("#grid_" + grid.name + "_search_all") : null;
+        var searchName = gridBox && grid.name ? gridBox.querySelector("#grid_" + grid.name + "_search_name") : null;
+        var nameText = searchName ? searchName.querySelector(".name-text") : null;
+
+        if (searchName) {
+            searchName.style.display = "none";
+        }
+
+        if (nameText) {
+            nameText.textContent = "";
+        }
+
+        if (grid) {
+            grid.searchSelected = null;
+            grid.last = grid.last || {};
+            grid.last.field = "all";
+            grid.last.label = "All Fields";
+        }
+
+        if (!searchInput) {
+            return;
+        }
+
+        var searchText = String(searchInput.value || "")
+            .trim()
+            .toLowerCase();
+        if (searchText === "null" || searchText === "undefined" || searchText === "search undefined") {
+            searchInput.value = "";
+        }
+
+        searchInput.placeholder = "";
+        searchInput.setAttribute("placeholder", "");
+        searchInput.removeAttribute("placeholder");
+    };
+
+    Helper.ApplySimpleGridContainsSearch = function (grid) {
+        if (!grid) {
+            return;
+        }
+
+        var searchValue = Helper.GetSimpleGridSearchValue(grid);
+        if (!Helper.HasSearchValue(searchValue)) {
+            if (typeof grid.searchReset === "function") {
+                grid.searchReset(true);
+            } else {
+                grid.searchData = [];
+                if (grid.last) {
+                    grid.last.searchIds = [];
+                }
+            }
+
+            grid.refresh();
+            Helper.ClearSimpleGridSearchPlaceholder(grid);
+            return;
+        }
+
+        var searchData = [];
+        var searches = grid.searches || [];
+        for (var i = 0; i < searches.length; i++) {
+            if (!searches[i] || !searches[i].field) {
+                continue;
+            }
+
+            searchData.push({
+                field: searches[i].field,
+                type: searches[i].type || "text",
+                operator: "contains",
+                value: searchValue
+            });
+        }
+
+        if (searchData.length === 0) {
+            return;
+        }
+
+        grid.searchData = searchData;
+        grid.last = grid.last || {};
+        grid.last.logic = "OR";
+        grid.last.field = "all";
+        grid.last.label = "All Fields";
+
+        if (typeof grid.localSearch === "function") {
+            grid.localSearch(true);
+        }
+
+        grid.refresh();
+        Helper.ClearSimpleGridSearchPlaceholder(grid);
     };
 
     Helper.GetOperationLoading = function () {
@@ -82,13 +183,109 @@
         return Helper.UiText.Operations.ReLoading;
     };
 
-    Helper.GetTranslator = function () {
-        if (window.EasyTranslator) {
-            return window.EasyTranslator;
+    function ExecuteOther(operation, payload) {
+        var input = Object.assign({ operation: operation }, payload || {});
+
+        return Helper.ExecuteTypedCustomAction(otherActionName, Helper.CustomActionTypes.Other, input).then(
+            function (result) {
+                return Helper.GetCustomActionObject(result);
+            }
+        );
+    }
+
+    Helper.GetSolutions = function () {
+        return ExecuteOther("GetSolutions").then(function (output) {
+            return (output && output.solutions) || [];
+        });
+    };
+
+    Helper.GetEntities = function (solutionId) {
+        return ExecuteOther("GetEntities", { solutionId: solutionId || "all" }).then(function (output) {
+            return (output && output.entities) || [];
+        });
+    };
+
+    Helper.GetBaseLanguage = function () {
+        if (baseLanguage) {
+            return Promise.resolve(baseLanguage);
         }
 
-        if (window.XrmTranslator) {
-            return window.XrmTranslator;
+        return ExecuteOther("GetBaseLanguage").then(function (output) {
+            baseLanguage = output && output.languageCode;
+            return baseLanguage;
+        });
+    };
+
+    Helper.GetAllNoneBaseLanguageCodes = function () {
+        return ExecuteOther("GetAllNoneBaseLanguageCodes").then(function (output) {
+            return {
+                LocaleIds: (output && output.LocaleIds) || []
+            };
+        });
+    };
+
+    Helper.GetLanguageLocales = function () {
+        if (languageLocales) {
+            return Promise.resolve(languageLocales);
+        }
+
+        return ExecuteOther("GetLanguageLocales").then(function (output) {
+            languageLocales = {};
+
+            var locales = (output && output.locales) || [];
+            for (var i = 0; i < locales.length; i++) {
+                if (locales[i] && locales[i].localeid) {
+                    languageLocales[String(locales[i].localeid)] = locales[i];
+                }
+            }
+
+            return languageLocales;
+        });
+    };
+
+    Helper.FormatLanguageColumnHeader = function (languageCode, locale) {
+        var lcid = String(languageCode || "");
+        var resolvedLocale = locale || (languageLocales && languageLocales[lcid]);
+        var languageName = (resolvedLocale && resolvedLocale.language) || lcid;
+
+        return languageName + " (" + lcid + ")";
+    };
+
+    Helper.GetLanguageColumnCode = function (languageCode) {
+        var lcid = String(languageCode || "");
+        var locale = languageLocales && languageLocales[lcid];
+
+        return locale ? locale.code || "" : "";
+    };
+
+    Helper.BuildLanguageColumns = function (languageCodes) {
+        languageCodes = languageCodes || [];
+
+        return Helper.GetLanguageLocales().then(function (locales) {
+            var columns = [];
+            var seen = {};
+
+            for (var i = 0; i < languageCodes.length; i++) {
+                var field = String(languageCodes[i] || "");
+                if (!field || seen[field]) {
+                    continue;
+                }
+
+                seen[field] = true;
+                columns.push({
+                    field: field,
+                    text: Helper.FormatLanguageColumnHeader(field, locales[field]),
+                    code: locales[field] ? locales[field].code || "" : ""
+                });
+            }
+
+            return columns;
+        });
+    };
+
+    Helper.GetTranslator = function () {
+        if (window.DataverseLabelTranslator) {
+            return window.DataverseLabelTranslator;
         }
 
         throw new Error("Translator is not available.");
@@ -99,10 +296,6 @@
 
         if (app && app.baseLanguage) {
             return app.baseLanguage;
-        }
-
-        if (window.XrmTranslator && window.XrmTranslator.baseLanguage) {
-            return window.XrmTranslator.baseLanguage;
         }
 
         if (typeof app.GetBaseLanguage === "function") {
@@ -127,18 +320,12 @@
         return field;
     };
 
-    Helper.ApplyPlaceholder = function (record, editablePlaceholder, basePlaceholder, app) {
+    Helper.ApplyPlaceholder = function (record, editablePlaceholder) {
         if (!editablePlaceholder) {
             return;
         }
 
         record._emptyEditablePlaceholder = editablePlaceholder;
-
-        var baseLanguage = GetBaseLanguage(app);
-        if (basePlaceholder && baseLanguage) {
-            record._emptyEditablePlaceholders = record._emptyEditablePlaceholders || {};
-            record._emptyEditablePlaceholders[String(baseLanguage)] = basePlaceholder;
-        }
     };
 
     Helper.AddLocalizedLabelsToRecord = function (record, localizedLabels) {
@@ -240,45 +427,10 @@
         return AddBaseDisplayTextLabel(labels, options);
     };
 
-    Helper.ValidateBaseLanguageNotEmpty = function (record, changes, options) {
-        options = options || {};
-        var app = options.app || Helper.GetTranslator();
-
-        if (!app.IsDisplayTextComponent || !app.IsDisplayTextComponent()) {
-            return;
-        }
-
-        var baseLanguage = GetBaseLanguage(app);
-        if (!baseLanguage) {
-            return;
-        }
-
-        baseLanguage = String(baseLanguage);
-        if (!Object.prototype.hasOwnProperty.call(changes, baseLanguage)) {
-            return;
-        }
-
-        if (!Helper.IsEmptyLabelValue(changes[baseLanguage])) {
-            return;
-        }
-
-        var rowPath =
-            typeof options.getRowPath === "function" ? options.getRowPath(record) : record && record.schemaName;
-
-        throw new Error(
-            "Display Text in the base language (" +
-                Helper.GetLanguageColumnText(baseLanguage) +
-                ") cannot be empty.\n" +
-                "Row: " +
-                (rowPath || "(unknown)")
-        );
-    };
-
     Helper.FinalizeGrid = function (records, app) {
         app = app || Helper.GetTranslator();
         var grid = app.GetGrid();
 
-        app.AddSummary(records);
         grid.add(records);
 
         if (typeof app.UnlockGrid === "function") {
@@ -408,6 +560,13 @@
         return Helper.ExecuteTypedCustomAction(options.actionName, Helper.CustomActionTypes.Saving, savePayload)
             .then(function (saveResult) {
                 var saveOutput = Helper.GetCustomActionObject(saveResult);
+                if (typeof options.afterSave === "function" && options.afterSave(saveOutput, saveResult) === true) {
+                    return {
+                        skipPostSaveFlow: true,
+                        result: saveResult
+                    };
+                }
+
                 var publishPayload =
                     typeof options.getPublishPayload === "function"
                         ? options.getPublishPayload(saveOutput, saveResult)
@@ -444,6 +603,10 @@
                 });
             })
             .then(function (result) {
+                if (result && result.skipPostSaveFlow) {
+                    return result.result;
+                }
+
                 var output = Helper.GetCustomActionObject(result);
                 var shouldReload =
                     typeof options.shouldReload === "function" ? options.shouldReload(output, result) : false;

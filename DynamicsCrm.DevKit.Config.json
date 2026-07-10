@@ -1,13 +1,96 @@
 ﻿{
     "WebResources": [
         {
+            "File": "\\DataverseLabelTranslator.WebResource\\css\\style.css",
+            "WebResource": "pl_/css/style.css",
+            "WebResourceId": "37eb553a-ee5e-f111-a826-7ced8db48acd",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/css/style.css",
+            "SolutionUniqueName": "DataverseLabelTranslator"
+        },
+        {
+            "File": "\\DataverseLabelTranslator.WebResource\\css\\w2ui.css",
+            "WebResource": "pl_/css/w2ui.css",
+            "WebResourceId": "3aeb553a-ee5e-f111-a826-7ced8db48acd",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/css/w2ui.css",
+            "SolutionUniqueName": "DataverseLabelTranslator"
+        },
+        {
             "File": "\\DataverseLabelTranslator.WebResource\\html\\App.html",
             "WebResource": "pl_/html/App.html",
             "WebResourceId": "53d26340-ee5e-f111-a826-7ced8db48acd",
             "IsManaged": false,
             "DisplayWebResourceName": "pl_/html/App.html",
-            "SolutionUniqueName": null
+            "SolutionUniqueName": "DataverseLabelTranslator"
+        },
+        {
+            "File": "\\DataverseLabelTranslator.WebResource\\img\\app-icon.svg",
+            "WebResource": "pl_/img/app-icon.svg",
+            "WebResourceId": "a2212250-a22d-f111-88b5-7ced8de5c223",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/img/app-icon.svg",
+            "SolutionUniqueName": "DataverseLabelTranslator"
+        },
+        {
+            "File": "\\DataverseLabelTranslator.WebResource\\js\\AIService.js",
+            "WebResource": "pl_/js/AIService.js",
+            "WebResourceId": "529238a0-5d65-f111-ab0d-7ced8db48acd",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/js/AIService.js",
+            "SolutionUniqueName": "DataverseLabelTranslator"
+        },
+        {
+            "File": "\\DataverseLabelTranslator.WebResource\\js\\AppService.js",
+            "WebResource": "pl_/js/AppService.js",
+            "WebResourceId": "e88a8843-e463-f111-ab0d-7ced8db48acd",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/js/AppService.js",
+            "SolutionUniqueName": "DataverseLabelTranslator"
+        },
+        {
+            "File": "\\DataverseLabelTranslator.WebResource\\js\\DataverseLabelTranslator.js",
+            "WebResource": "pl_/js/DataverseLabelTranslator.js",
+            "WebResourceId": "723f4642-6a64-f111-ab0d-7ced8db48acd",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/js/DataverseLabelTranslator.js",
+            "SolutionUniqueName": "DataverseLabelTranslator"
+        },
+        {
+            "File": "\\DataverseLabelTranslator.WebResource\\js\\DialogHelper.js",
+            "WebResource": "pl_/js/DialogHelper.js",
+            "WebResourceId": "75d26340-ee5e-f111-a826-7ced8db48acd",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/js/DialogHelper.js",
+            "SolutionUniqueName": "DataverseLabelTranslator"
+        },
+        {
+            "File": "\\DataverseLabelTranslator.WebResource\\js\\DictionaryService.js",
+            "WebResource": "pl_/js/DictionaryService.js",
+            "WebResourceId": "eb8a8843-e463-f111-ab0d-7ced8db48acd",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/js/DictionaryService.js",
+            "SolutionUniqueName": "DataverseLabelTranslator"
+        },
+        {
+            "File": "\\DataverseLabelTranslator.WebResource\\js\\Helper.js",
+            "WebResource": "pl_/js/Helper.js",
+            "WebResourceId": "0340035a-195f-f111-a826-7ced8db48acd",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/js/Helper.js",
+            "SolutionUniqueName": "DataverseLabelTranslator"
+        },
+        {
+            "File": "\\DataverseLabelTranslator.WebResource\\js\\lib\\w2ui.js",
+            "WebResource": "pl_/js/lib/w2ui.js",
+            "WebResourceId": "41883db1-ab5f-f111-a826-7ced8db48acd",
+            "IsManaged": false,
+            "DisplayWebResourceName": "pl_/js/lib/w2ui.js",
+            "SolutionUniqueName": "DataverseLabelTranslator"
         }
+    ],
+    "Reports": [
+        
     ],
     "CustomTemplates": [
         

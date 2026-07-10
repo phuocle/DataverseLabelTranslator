@@ -1,28 +1,10 @@
-(function (TranslationDictionaryService, undefined) {
+(function (DictionaryService, undefined) {
     "use strict";
 
-    var DICTIONARY_WEBRESOURCE_UNIQUE_NAME = "pl_/DataverseLabelTranslator/data/TranslationDictionary.xml";
-    var DICTIONARY_WEBRESOURCE_DISPLAY_NAME = "Translation Dictionary";
-    var DICTIONARY_WEBRESOURCE_DESCRIPTION = "Stores customer dictionary whitelist for Dataverse Label Translator.";
-    var dictionaryStorageOptions = {
-        uniqueName: DICTIONARY_WEBRESOURCE_UNIQUE_NAME,
-        displayName: DICTIONARY_WEBRESOURCE_DISPLAY_NAME,
-        description: DICTIONARY_WEBRESOURCE_DESCRIPTION,
-        webResourceType: 4,
-        defaultContent: getDefaultDictionaryXml()
-    };
-
+    var actionName = "Other";
     var dictionaryGridContext = null;
     var dictionaryBaselineSignature = null;
     var dictionaryAllowCloseWithoutPrompt = false;
-
-    function logWarn(message, error) {
-        return;
-    }
-
-    function logDebug(message, payload) {
-        return;
-    }
 
     function getDefaultDictionaryXml() {
         return [
@@ -34,8 +16,18 @@
         ].join("\n");
     }
 
+    function executeOther(operation, payload) {
+        var input = Object.assign({ operation: operation }, payload || {});
+
+        return Helper.ExecuteTypedCustomAction(actionName, Helper.CustomActionTypes.Other, input).then(
+            function (result) {
+                return Helper.GetCustomActionObject(result);
+            }
+        );
+    }
+
     function runEnsureInitialized(forceRefresh) {
-        return DataverseDataWebResourceService.EnsureTextWebResource(dictionaryStorageOptions);
+        return executeOther("ReadDictionary");
     }
 
     function ensureInitialized(forceRefresh) {
@@ -73,9 +65,10 @@
 
     function getLanguageNameByLcid(lcid) {
         var lookup = String(lcid || "");
+        var app = window.DataverseLabelTranslator;
 
-        if (window.XrmTranslator && XrmTranslator.GetGrid) {
-            var columns = XrmTranslator.GetGrid().columns || [];
+        if (app && app.GetGrid) {
+            var columns = app.GetGrid().columns || [];
 
             for (var i = 0; i < columns.length; i++) {
                 var column = columns[i];
@@ -93,24 +86,21 @@
     }
 
     function buildDictionaryGridContext() {
-        return XrmTranslator.GetBaseLanguage().then(function (baseLanguage) {
+        return Helper.GetBaseLanguage().then(function (baseLanguage) {
             var baseLcid = String(baseLanguage);
             var localeIds = [];
+            var gridColumns =
+                window.DataverseLabelTranslator && DataverseLabelTranslator.GetColumns
+                    ? DataverseLabelTranslator.GetColumns(false)
+                    : [];
 
-            if (XrmTranslator.installedLanguages && XrmTranslator.installedLanguages.LocaleIds) {
-                localeIds = XrmTranslator.installedLanguages.LocaleIds.map(function (lcid) {
-                    return String(lcid);
+            localeIds = gridColumns
+                .filter(function (field) {
+                    return /^\d+$/.test(String(field));
+                })
+                .map(function (field) {
+                    return String(field);
                 });
-            } else {
-                var gridColumns = XrmTranslator.GetColumns(false);
-                localeIds = gridColumns
-                    .filter(function (field) {
-                        return /^\d+$/.test(String(field));
-                    })
-                    .map(function (field) {
-                        return String(field);
-                    });
-            }
 
             if (localeIds.indexOf(baseLcid) === -1) {
                 localeIds.unshift(baseLcid);
@@ -149,11 +139,6 @@
             entries: []
         };
 
-        logDebug("parseDictionaryXml:start", {
-            sourceLcid: model.sourceLcid,
-            xmlLength: (xmlContent || "").length
-        });
-
         if (!xmlContent) {
             return model;
         }
@@ -163,7 +148,6 @@
             var xml = parser.parseFromString(xmlContent, "application/xml");
 
             if (xml.getElementsByTagName("parsererror").length > 0) {
-                logDebug("parseDictionaryXml:parsererror", String(xmlContent || "").substring(0, 500));
                 throw new Error("Invalid dictionary XML format.");
             }
 
@@ -239,15 +223,8 @@
                 return entriesBySource[key];
             });
 
-            logDebug("parseDictionaryXml:done", {
-                sourceLcid: model.sourceLcid,
-                entries: model.entries.length,
-                sample: model.entries.length ? model.entries[0] : null
-            });
-
             return model;
-        } catch (e) {
-            logWarn("Failed to parse dictionary XML, starting with empty dictionary.", e);
+        } catch {
             return model;
         }
     }
@@ -313,10 +290,6 @@
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
 
-            if (record.w2ui && record.w2ui.summary) {
-                continue;
-            }
-
             var sourceText = String(getDictionaryRecordFieldValue(record, "sourceText") || "").trim();
 
             if (!sourceText) {
@@ -376,7 +349,7 @@
     }
 
     function isDictionaryInputRowEmpty(record, context) {
-        if (!record || (record.w2ui && record.w2ui.summary)) {
+        if (!record) {
             return false;
         }
 
@@ -480,17 +453,11 @@
     }
 
     function refreshDictionaryFromWebResource(context) {
-        return loadDictionaryModel(true, context || {})
+        return loadDictionaryModel(context || {})
             .then(function (latestModel) {
-                logDebug("refreshDictionaryFromWebResource:done", {
-                    sourceLcid: latestModel && latestModel.sourceLcid,
-                    entries: latestModel && latestModel.entries ? latestModel.entries.length : 0
-                });
-
                 return latestModel;
             })
-            .catch(function (error) {
-                logWarn("Failed to refresh dictionary from web resource on close.", error);
+            .catch(function () {
                 return null;
             });
     }
@@ -511,7 +478,7 @@
 
         return askConfirm("You have unsaved dictionary changes. Save before closing?").then(function (saveBeforeClose) {
             if (saveBeforeClose) {
-                return TranslationDictionaryService.SaveFromGrid();
+                return DictionaryService.SaveFromGrid();
             }
 
             return askConfirm("Discard unsaved dictionary changes and close?").then(function (discardChanges) {
@@ -525,14 +492,9 @@
         });
     }
 
-    function loadDictionaryModel(forceRefresh, context) {
+    function loadDictionaryModel(context) {
         function tryParseWithFallbacks(content, parseContext) {
             var parsed = parseDictionaryXml(content, parseContext);
-
-            logDebug("loadDictionaryModel:parse-primary", {
-                entries: parsed.entries ? parsed.entries.length : 0,
-                sourceLcid: parsed.sourceLcid
-            });
 
             if (parsed.entries && parsed.entries.length > 0) {
                 return parsed;
@@ -547,10 +509,6 @@
 
             if (unescaped !== content) {
                 var reparsed = parseDictionaryXml(unescaped, parseContext);
-                logDebug("loadDictionaryModel:parse-unescaped", {
-                    entries: reparsed.entries ? reparsed.entries.length : 0,
-                    sourceLcid: reparsed.sourceLcid
-                });
                 if (reparsed.entries && reparsed.entries.length > 0) {
                     return reparsed;
                 }
@@ -560,27 +518,14 @@
         }
 
         return ensureInitialized(false)
-            .then(function (info) {
-                logDebug("loadDictionaryModel:storage", info);
-                return DataverseDataWebResourceService.ReadText(dictionaryStorageOptions);
-            })
             .then(function (content) {
+                content = content && content.content;
                 content = content || getDefaultDictionaryXml();
-                logDebug("loadDictionaryModel:content", {
-                    contentLength: content.length,
-                    contentPreview: content.substring(0, 400)
-                });
 
                 var primaryModel = tryParseWithFallbacks(content, context || {});
                 return primaryModel;
             })
             .then(function (finalModel) {
-                logDebug("loadDictionaryModel:final-model", {
-                    sourceLcid: finalModel.sourceLcid,
-                    entries: finalModel.entries ? finalModel.entries.length : 0,
-                    mode: forceRefresh ? "force-refresh-fixed-name" : "normal-fixed-name"
-                });
-
                 return finalModel;
             });
     }
@@ -589,34 +534,9 @@
         var model = sanitizeDictionaryModel(records, context || {});
         var xml = serializeDictionaryXml(model);
 
-        logDebug("saveDictionaryModel:input", {
-            recordCount: records ? records.length : 0,
-            sourceLcid: model.sourceLcid,
-            entries: model.entries ? model.entries.length : 0,
-            firstEntry: model.entries && model.entries.length ? model.entries[0] : null,
-            xmlLength: xml.length,
-            xmlPreview: xml.substring(0, 400)
+        return executeOther("WriteDictionary", { content: xml }).then(function () {
+            return model;
         });
-
-        return ensureInitialized(false)
-            .then(function (info) {
-                logDebug("saveDictionaryModel:storage", info);
-                return DataverseDataWebResourceService.WriteText(dictionaryStorageOptions, xml).then(
-                    function (updatedWebResource) {
-                        logDebug("saveDictionaryModel:readback", {
-                            id: updatedWebResource && updatedWebResource.webresourceid,
-                            name: updatedWebResource && updatedWebResource.name,
-                            contentLength:
-                                updatedWebResource && updatedWebResource.content
-                                    ? String(updatedWebResource.content).length
-                                    : 0
-                        });
-                    }
-                );
-            })
-            .then(function () {
-                return model;
-            });
     }
 
     function flushActiveDictionaryCellEdit() {
@@ -630,9 +550,7 @@
             if (active && typeof active.blur === "function" && grid.box.contains(active)) {
                 active.blur();
             }
-        } catch (e) {
-            logWarn("Could not flush active dictionary editor before save.", e);
-        }
+        } catch {}
     }
 
     function removeDictionarySearchPanel(gridBox) {
@@ -681,35 +599,113 @@
             }
         }
 
-        var searchName = gridBox.querySelector("#grid_" + grid.name + "_search_name");
         var searchInput = gridBox.querySelector("#grid_" + grid.name + "_search_all");
-        var nameText = searchName ? searchName.querySelector(".name-text") : null;
-
-        if (searchName) {
-            searchName.style.display = "none";
-        }
-        if (nameText) {
-            nameText.textContent = "";
-        }
-
-        grid.searchSelected = null;
-
         if (searchInput) {
             searchInput.readOnly = false;
-            var searchValueText = String(searchInput.value || "")
-                .trim()
-                .toLowerCase();
-            if (searchValueText === "null" || searchValueText === "undefined" || searchInput.value === " ") {
-                searchInput.value = "";
-            }
-            searchInput.placeholder = "";
-            searchInput.removeAttribute("placeholder");
+        }
+        Helper.ClearSimpleGridSearchPlaceholder(grid);
+
+        resetDictionaryGridBodyOffset(grid, gridBox);
+    }
+
+    function resetDictionaryGridBodyOffset(grid, gridBox) {
+        var toolbar = gridBox.querySelector(".w2ui-grid-toolbar");
+        var body = gridBox.querySelector(".w2ui-grid-body");
+        var toolbarBounds = getVisibleToolbarContentBounds(toolbar);
+        var toolbarHeight = toolbarBounds.height;
+
+        if (!body || !toolbarHeight) {
+            return;
         }
 
-        if (grid.last) {
-            grid.last.field = "all";
-            grid.last.label = "All Fields";
+        normalizeToolbarLineOffset(toolbar, toolbarBounds.topGap);
+
+        if (grid && grid.last) {
+            grid.last.toolbar_height = toolbarHeight;
         }
+
+        toolbar.style.setProperty("height", toolbarHeight + "px", "important");
+        body.style.setProperty("top", toolbarHeight + "px", "important");
+        body.style.setProperty("height", "auto", "important");
+        body.style.setProperty("inset", toolbarHeight + "px 0 24px 0", "important");
+    }
+
+    function normalizeToolbarLineOffset(toolbar, topGap) {
+        var toolbarLine = toolbar ? toolbar.querySelector(".w2ui-tb-line") : null;
+
+        if (!toolbarLine) {
+            return;
+        }
+
+        toolbarLine.style.removeProperty("top");
+        toolbarLine.style.removeProperty("position");
+
+        if (topGap <= 0) {
+            return;
+        }
+
+        toolbarLine.style.setProperty("position", "relative", "important");
+        toolbarLine.style.setProperty("top", "-" + topGap + "px", "important");
+    }
+
+    function getVisibleToolbarContentBounds(toolbar) {
+        if (!toolbar) {
+            return {
+                height: 0,
+                topGap: 0
+            };
+        }
+
+        resetToolbarLineOffset(toolbar);
+
+        var toolbarRect = toolbar.getBoundingClientRect();
+        var items = toolbar.querySelectorAll(
+            ".w2ui-grid-search-input, .w2ui-tb-button:not(.w2ui-tb-spacer), .w2ui-tb-break"
+        );
+        var top = Number.MAX_VALUE;
+        var bottom = 0;
+
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var style = window.getComputedStyle(item);
+            if (style.display === "none" || style.visibility === "hidden") {
+                continue;
+            }
+
+            var rect = item.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) {
+                continue;
+            }
+
+            top = Math.min(top, rect.top - toolbarRect.top);
+            bottom = Math.max(bottom, rect.bottom - toolbarRect.top);
+        }
+
+        if (!bottom) {
+            return {
+                height: toolbar.offsetHeight,
+                topGap: 0
+            };
+        }
+
+        var topGap = Math.max(0, Math.floor(top) - 2);
+        var height = Math.max(36, Math.ceil(bottom - topGap) + 4);
+
+        return {
+            height: height,
+            topGap: topGap
+        };
+    }
+
+    function resetToolbarLineOffset(toolbar) {
+        var toolbarLine = toolbar ? toolbar.querySelector(".w2ui-tb-line") : null;
+
+        if (!toolbarLine) {
+            return;
+        }
+
+        toolbarLine.style.removeProperty("top");
+        toolbarLine.style.removeProperty("position");
     }
 
     function normalizeDictionarySearchUiSoon() {
@@ -731,7 +727,7 @@
         var columns = [
             {
                 field: "sourceText",
-                text: "Source " + context.baseName,
+                text: "Source " + context.baseName + " (" + context.baseLcid + ")",
                 size: sourceSize + "%",
                 sortable: true,
                 searchable: true,
@@ -743,7 +739,7 @@
             var target = context.targetLanguages[i];
             columns.push({
                 field: target.field,
-                text: "Target " + target.name,
+                text: "Target " + target.name + " (" + target.lcid + ")",
                 size: targetSize.toFixed(2) + "%",
                 sortable: true,
                 searchable: true,
@@ -793,7 +789,7 @@
                     }
 
                     if (event.target === "save") {
-                        TranslationDictionaryService.SaveFromGrid();
+                        DictionaryService.SaveFromGrid();
                     }
 
                     if (event.target === "close") {
@@ -807,7 +803,10 @@
                 };
             },
             onSearch: function (event) {
-                event.onComplete = normalizeDictionarySearchUiSoon;
+                event.onComplete = function () {
+                    Helper.ApplySimpleGridContainsSearch(w2ui.translationDictionaryGrid);
+                    normalizeDictionarySearchUiSoon();
+                };
             },
             columns: columns,
             records: []
@@ -853,15 +852,15 @@
         return normalizeLookupText(sourceText);
     }
 
-    TranslationDictionaryService.EnsureInitialized = function (forceRefresh) {
+    DictionaryService.EnsureInitialized = function (forceRefresh) {
         return ensureInitialized(!!forceRefresh);
     };
 
-    TranslationDictionaryService.GetStorageInfo = function () {
+    DictionaryService.GetStorageInfo = function () {
         return null;
     };
 
-    TranslationDictionaryService.UpsertEntries = function (entries) {
+    DictionaryService.UpsertEntries = function (entries) {
         entries = entries || [];
 
         return buildDictionaryGridContext().then(function (context) {
@@ -869,7 +868,7 @@
             var modelPromise =
                 w2ui.translationDictionaryGrid && dictionaryGridContext
                     ? Promise.resolve(getCurrentDictionaryGridModel())
-                    : loadDictionaryModel(true, activeContext);
+                    : loadDictionaryModel(activeContext);
 
             return modelPromise.then(function (model) {
                 model = model || {};
@@ -940,7 +939,12 @@
                 }
 
                 if (targetCount === 0) {
-                    throw new Error("No dictionary target translations to save.");
+                    return {
+                        addedEntries: 0,
+                        updatedEntries: 0,
+                        targetCount: 0,
+                        model: model
+                    };
                 }
 
                 return saveDictionaryModel(toGridRecords(model, activeContext), activeContext).then(
@@ -966,20 +970,12 @@
         });
     };
 
-    TranslationDictionaryService.ShowDictionaryPrompt = function () {
-        XrmTranslator.LockGrid("Loading dictionary ...");
-        logDebug("ShowDictionaryPrompt:start", null);
+    DictionaryService.ShowDictionaryPrompt = function () {
+        DataverseLabelTranslator.LockGrid("Loading dictionary ...");
 
         return buildDictionaryGridContext()
             .then(function (context) {
-                logDebug("ShowDictionaryPrompt:context", context);
-                return loadDictionaryModel(true, context).then(function (model) {
-                    logDebug("ShowDictionaryPrompt:model", {
-                        sourceLcid: model.sourceLcid,
-                        entries: model.entries ? model.entries.length : 0,
-                        sample: model.entries && model.entries.length ? model.entries[0] : null
-                    });
-
+                return loadDictionaryModel(context).then(function (model) {
                     var modelSourceLcid = String(model.sourceLcid || context.baseLcid);
                     if (modelSourceLcid !== context.baseLcid) {
                         context.baseLcid = modelSourceLcid;
@@ -996,19 +992,10 @@
                     var grid = ensureDictionaryGrid(context);
                     grid.clear();
                     var gridRecords = toGridRecords(model, context);
-                    logDebug("ShowDictionaryPrompt:grid-bind", {
-                        columns: grid.columns
-                            ? grid.columns.map(function (c) {
-                                  return c.field;
-                              })
-                            : [],
-                        recordCount: gridRecords.length,
-                        firstRecord: gridRecords.length ? gridRecords[0] : null
-                    });
 
                     grid.add(gridRecords);
                     ensureDictionaryInputRow(grid, context);
-                    XrmTranslator.UnlockGrid();
+                    DataverseLabelTranslator.UnlockGrid();
 
                     w2popup.open({
                         title: "Dictionary",
@@ -1073,12 +1060,12 @@
                 });
             })
             .catch(function (error) {
-                XrmTranslator.UnlockGrid();
-                XrmTranslator.errorHandler(error);
+                DataverseLabelTranslator.UnlockGrid();
+                DataverseLabelTranslator.errorHandler(error);
             });
     };
 
-    TranslationDictionaryService.SaveFromGrid = function () {
+    DictionaryService.SaveFromGrid = function () {
         if (!w2ui.translationDictionaryGrid || !dictionaryGridContext) {
             return;
         }
@@ -1093,20 +1080,6 @@
                 });
             })
             .then(function () {
-                logDebug("SaveFromGrid:start", {
-                    gridRecordCount: w2ui.translationDictionaryGrid.records
-                        ? w2ui.translationDictionaryGrid.records.length
-                        : 0,
-                    firstGridRecord:
-                        w2ui.translationDictionaryGrid.records && w2ui.translationDictionaryGrid.records.length
-                            ? w2ui.translationDictionaryGrid.records[0]
-                            : null,
-                    gridChanges: w2ui.translationDictionaryGrid.getChanges
-                        ? w2ui.translationDictionaryGrid.getChanges()
-                        : null,
-                    context: dictionaryGridContext
-                });
-
                 w2popup.lock("Saving ......", true);
 
                 return saveDictionaryModel(w2ui.translationDictionaryGrid.records, dictionaryGridContext);
@@ -1129,10 +1102,10 @@
             });
     };
 
-    TranslationDictionaryService.SplitRecordsByDictionary = function (fromLcid, targetLcid, records) {
+    DictionaryService.SplitRecordsByDictionary = function (fromLcid, targetLcid, records) {
         return buildDictionaryGridContext()
             .then(function (context) {
-                return loadDictionaryModel(false, context).then(function (model) {
+                return loadDictionaryModel(context).then(function (model) {
                     var sourceLcid = String(model.sourceLcid || context.baseLcid || "");
                     if (String(fromLcid) !== sourceLcid) {
                         return {
@@ -1193,12 +1166,11 @@
                     };
                 });
             })
-            .catch(function (error) {
-                logWarn("Dictionary lookup failed, fallback to AI only.", error);
+            .catch(function () {
                 return {
                     matchedResults: [],
                     unmatchedRecords: records
                 };
             });
     };
-})((window.TranslationDictionaryService = window.TranslationDictionaryService || {}));
+})((window.DictionaryService = window.DictionaryService || {}));

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<ImportExportXml version="9.2.26053.140" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26053.140" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.26053.00140">
+<ImportExportXml version="9.2.26063.147" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26063.147" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.26063.00147">
   <SolutionManifest>
     <UniqueName>DataverseLabelTranslator</UniqueName>
     <LocalizedNames>
@@ -78,49 +78,21 @@
       </Addresses>
     </Publisher>
     <RootComponents>
-      <RootComponent type="29" id="{0d6f3c34-7b5e-f111-a826-7ced8db48acd}" behavior="0" />
       <RootComponent type="29" id="{9a5417e0-7a5e-f111-a826-7ced8db48acd}" behavior="0" />
       <RootComponent type="61" schemaName="pl_/css/style.css" behavior="0" />
       <RootComponent type="61" schemaName="pl_/css/w2ui.css" behavior="0" />
       <RootComponent type="61" schemaName="pl_/html/App.html" behavior="0" />
       <RootComponent type="61" schemaName="pl_/img/app-icon.svg" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/AiTranslate.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/AppSettingsService.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/DataverseDataWebResourceService.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/AIService.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/AppService.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/DataverseLabelTranslator.js" behavior="0" />
       <RootComponent type="61" schemaName="pl_/js/DialogHelper.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/EasyTranslator.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/EasyTranslatorHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/AttributeHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/BpfHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/BusinessRuleHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/ChartHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/ContentSnippetHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/DashboardHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/EntityHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/EntityMessageHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/FormHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/FormMetaHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/GlobalOptionSetHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/ModernCommandHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/OptionSetHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/RelationshipHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/RibbonHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/SiteMapHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/ViewHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/Handler/WebResourceHandler.js" behavior="0" />
+      <RootComponent type="61" schemaName="pl_/js/DictionaryService.js" behavior="0" />
       <RootComponent type="61" schemaName="pl_/js/Helper.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/lib/jszip.min.js" behavior="0" />
       <RootComponent type="61" schemaName="pl_/js/lib/w2ui.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/lib/WebApiClient.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/RibbonTestButton.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/TranslationDictionaryService.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/TranslationHandler.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/TranslationPackageService.js" behavior="0" />
-      <RootComponent type="61" schemaName="pl_/js/XrmTranslator.js" behavior="0" />
       <RootComponent type="62" schemaName="pl_DataverseLabelTranslator" behavior="0" />
       <RootComponent type="80" schemaName="pl_DataverseLabelTranslator" behavior="0" />
       <RootComponent type="91" id="{eb1a1a45-7e5e-f111-a826-7ced8db48acd}" schemaName="DataverseLabelTranslator.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f6b5bb82f2d2b826" behavior="0" />
-      <RootComponent type="92" id="{ef1a1a45-7e5e-f111-a826-7ced8db48acd}" behavior="0" />
       <RootComponent type="92" id="{f31a1a45-7e5e-f111-a826-7ced8db48acd}" behavior="0" />
     </RootComponents>
     <MissingDependencies>
