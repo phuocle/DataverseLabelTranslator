@@ -15,12 +15,10 @@ namespace DataverseLabelTranslator.UiTest.Tests
             TranslatorApp.SelectType("Global Option Set");
             TranslatorApp.Load();
 
-            Assert.AreEqual("PHUOC LE (PHUOCLE)", TranslatorApp.GetSelectedSolutionText());
-            Assert.AreEqual("globalOptionSet", TranslatorApp.GetSelectedType());
             Assert.IsTrue(TranslatorApp.GetRecordCount() > 0, "Expected at least one Global Option Set record.");
 
-            var recordKey = TranslatorApp.GetFirstEditableRecordKey();
-            var backup = TranslatorApp.GetTranslations(recordKey);
+            var recordId = TranslatorApp.GetFirstEditableRecordId();
+            var backup = TranslatorApp.GetTranslations(recordId);
             var token = Guid.NewGuid().ToString("N").Substring(0, 8);
             var randomValues = new TranslationValues(
                 $"UI-TEST-EN-{token}",
@@ -29,14 +27,14 @@ namespace DataverseLabelTranslator.UiTest.Tests
 
             try
             {
-                TranslatorApp.SetTranslations(recordKey, randomValues);
-                TranslatorApp.SaveAndWaitForTranslations(recordKey, randomValues);
-                TranslatorApp.AssertTranslations(recordKey, randomValues, "Saved value mismatch for");
+                TranslatorApp.SetTranslations(recordId, randomValues);
+                TranslatorApp.SaveAndWaitForTranslations(recordId, randomValues);
+                TranslatorApp.AssertTranslations(recordId, randomValues, "Saved value mismatch for");
             }
             finally
             {
-                TranslatorApp.RestoreTranslations(recordKey, backup);
-                TranslatorApp.AssertTranslations(recordKey, backup, "Restored value mismatch for");
+                TranslatorApp.RestoreTranslations(recordId, backup);
+                TranslatorApp.AssertTranslations(recordId, backup, "Restored value mismatch for");
             }
         }
     }

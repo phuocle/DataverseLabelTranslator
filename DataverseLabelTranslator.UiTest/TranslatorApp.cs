@@ -1,6 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Interactions;
 using System;
+using System.Linq;
 using System.Threading;
 
 namespace DataverseLabelTranslator.UiTest
@@ -16,9 +18,6 @@ namespace DataverseLabelTranslator.UiTest
             WaitUntil(
                 "Dataverse Label Translator toolbar was not initialized.",
                 TrySwitchToDashboardContext);
-            WaitUntil(
-                "Dataverse solutions were not loaded.",
-                () => ExecuteBoolean("var t=w2ui.grid_toolbar; var i=t.get('solutionSelect'); return !!(i && i.items && i.items.length);"));
         }
 
         private static void ContinueSignInIfPrompted()
@@ -98,211 +97,125 @@ namespace DataverseLabelTranslator.UiTest
 
         private static bool HasDashboardToolbar()
         {
-            return ExecuteBoolean("return !!(window.w2ui && w2ui.grid_toolbar && w2ui.grid_toolbar.get('solutionSelect'));");
+            return FindVisibleElements(By.Id("tb_grid_toolbar_item_solutionSelect")).Count > 0;
         }
 
         public static void SelectSolution(string solutionName)
         {
-            var available = ExecuteBoolean(
-                "var t=w2ui.grid_toolbar;" +
-                "var i=t.get('solutionSelect');" +
-                "var normalize=function(v){return (v||'').toLowerCase().replace(/[^a-z0-9]/g,'');};" +
-                "var n=normalize(arguments[0]);" +
-                "var x=i.items.find(function(v){" +
-                "return normalize(v.text).indexOf(n)!==-1;" +
-                "});" +
-                "if(!x){return false;}" +
-                "t.click('solutionSelect:'+x.id);" +
-                "return true;",
-                solutionName);
-
-            Assert.IsTrue(
-                available,
-                $"Solution '{solutionName}' was not available in the toolbar. Available solutions: {GetAvailableSolutionTexts()}");
-            WaitForGridUnlock("The app did not finish selecting the solution.");
+            SelectToolbarMenuItem("solutionSelect", solutionName);
+            WaitForToolbarText("solutionSelect", "PHUOC LE");
+            WaitUntil(
+                "Entity selector did not become ready after selecting the solution.",
+                () =>
+                    !FindToolbarButton("entitySelect").GetAttribute("class").Contains("disabled") &&
+                    FindVisibleElements(By.CssSelector(".w2ui-lock")).Count == 0,
+                TimeSpan.FromSeconds(30));
         }
 
         public static void SelectType(string typeText)
         {
-            var available = ExecuteBoolean(
-                "var t=w2ui.grid_toolbar;" +
-                "var i=t.get('type');" +
-                "var text=arguments[0].toLowerCase();" +
-                "var x=i.items.find(function(v){return (v.text||'').toLowerCase()===text;});" +
-                "if(!x){return false;}" +
-                "t.click('type:'+x.id);" +
-                "return true;",
-                typeText);
-
-            Assert.IsTrue(available, $"Translation type '{typeText}' was not available.");
-            WaitUntil(
-                $"Translation type '{typeText}' was not selected.",
-                () => ExecuteBoolean(
-                    "var i=w2ui.grid_toolbar.get('type');" +
-                    "var text=arguments[0].toLowerCase();" +
-                    "var x=i.items.find(function(v){return (v.text||'').toLowerCase()===text;});" +
-                    "return !!x && i.selected===x.id;",
-                    typeText),
-                TimeSpan.FromSeconds(15));
+            SelectToolbarMenuItem("type", typeText);
+            WaitForToolbarText("type", typeText);
         }
 
         public static void SelectEntity(string entityText)
         {
-            var available = ExecuteBoolean(
-                "var t=w2ui.grid_toolbar;" +
-                "var i=t.get('entitySelect');" +
-                "var text=arguments[0].toLowerCase();" +
-                "var x=i.items.find(function(v){return (v.text||'').toLowerCase()===text;});" +
-                "if(!x){return false;}" +
-                "t.click('entitySelect:'+x.id);" +
-                "return true;",
-                entityText);
-
-            Assert.IsTrue(available, $"Entity '{entityText}' was not available.");
-            WaitUntil(
-                $"Entity '{entityText}' was not selected.",
-                () => ExecuteBoolean(
-                    "var i=w2ui.grid_toolbar.get('entitySelect');" +
-                    "var text=arguments[0].toLowerCase();" +
-                    "var x=i.items.find(function(v){return (v.text||'').toLowerCase()===text;});" +
-                    "return !!x && i.selected===x.id;",
-                    entityText),
-                TimeSpan.FromSeconds(15));
-
-            if (string.Equals(entityText, "None", StringComparison.OrdinalIgnoreCase))
-            {
-                WaitUntil(
-                    "Global Option Set did not become available after selecting Entity None.",
-                    () => ExecuteBoolean(
-                        "var i=w2ui.grid_toolbar.get('type:globalOptionSet');" +
-                        "return !!i && i.hidden!==true;"),
-                    TimeSpan.FromSeconds(15));
-            }
+            SelectToolbarMenuItem("entitySelect", entityText);
+            WaitForToolbarText("entitySelect", entityText);
         }
 
         public static void Load()
         {
-            Execute("w2ui.grid_toolbar.click('load');");
+            ClickDomElement(FindToolbarButton("load"));
             WaitUntil(
                 "No Global Option Set records were loaded.",
-                () => ExecuteBoolean(
-                    "var g=w2ui.grid;" +
-                    "var b=w2ui.grid_toolbar.get('load');" +
-                    "return !!g && !g.locked && !(b && b.disabled) && g.records && g.records.length>0;"),
+                () => FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]")).Count > 0,
                 TimeSpan.FromSeconds(15));
-        }
-
-        public static string GetSelectedSolutionText()
-        {
-            return Convert.ToString(Execute(
-                "var t=w2ui.grid_toolbar;" +
-                "var i=t.get('solutionSelect');" +
-                "var x=i.items.find(function(v){return v.id===i.selected;});" +
-                "return x ? x.text : '';"));
-        }
-
-        private static string GetAvailableSolutionTexts()
-        {
-            return Convert.ToString(Execute(
-                "var i=w2ui.grid_toolbar.get('solutionSelect');" +
-                "return i.items.map(function(v){return v.text||'';}).filter(Boolean).join(', ');"));
-        }
-
-        public static string GetSelectedType()
-        {
-            return Convert.ToString(Execute("return w2ui.grid_toolbar.get('type').selected;"));
         }
 
         public static long GetRecordCount()
         {
-            return Convert.ToInt64(Execute("return w2ui.grid.records.length;"));
+            return FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]")).Count;
         }
 
-        public static string GetFirstEditableRecordKey()
+        public static string CaptureDomDiagnostics()
         {
-            var recordKey = Convert.ToString(Execute(
-                "var records=DataverseLabelTranslator.GetAllRecords();" +
-                "var record=records.find(function(r){" +
-                "return !!r.gridKey && r.w2ui && r.w2ui.editable!==false;" +
-                "});" +
-                "return record ? String(record.gridKey) : '';"));
-
-            Assert.IsFalse(string.IsNullOrWhiteSpace(recordKey), "No editable Global Option Set record was available.");
-            return recordKey;
+            return Convert.ToString(Execute(
+                "var ids=['solutionSelect','entitySelect','type','load','w2ui-save'];" +
+                "var toolbar=ids.map(function(id){var e=document.getElementById('tb_grid_toolbar_item_'+id);return e?e.outerHTML:'';}).join('\\n');" +
+                "var headers=Array.from(document.querySelectorAll('.w2ui-grid-columns td')).slice(0,8).map(function(e){return e.outerHTML;}).join('\\n');" +
+                "var row=document.querySelector('.w2ui-grid-records tr[recid]');" +
+                "return 'TOOLBAR\\n'+toolbar+'\\nHEADERS\\n'+headers+'\\nROW\\n'+(row?row.outerHTML:'');"));
         }
 
-        public static TranslationValues GetTranslations(string recordKey)
+        public static string CaptureToolbarMenuDiagnostics(string toolbarId)
+        {
+            ClickDomElement(FindToolbarButton(toolbarId));
+            Thread.Sleep(500);
+            return Convert.ToString(Execute(
+                "return Array.from(document.querySelectorAll('.w2ui-overlay')).map(function(e){return e.outerHTML;}).join('\\n');"));
+        }
+
+        public static string GetFirstEditableRecordId()
+        {
+            ExpandAllRecords();
+            var row = WaitForVisibleElement(
+                By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"),
+                "No editable Global Option Set row was visible.");
+            return row.GetAttribute("recid");
+        }
+
+        public static TranslationValues GetTranslations(string recordId)
         {
             return new TranslationValues(
-                GetTranslation(recordKey, "1033"),
-                GetTranslation(recordKey, "1041"),
-                GetTranslation(recordKey, "1066"));
+                ReadCellEditorValue(recordId, "1"),
+                ReadCellEditorValue(recordId, "2"),
+                ReadCellEditorValue(recordId, "3"));
         }
 
-        public static void SetTranslations(string recordKey, TranslationValues values)
+        public static void SetTranslations(string recordId, TranslationValues values)
         {
-            var changed = ExecuteBoolean(
-                "var records=DataverseLabelTranslator.GetAllRecords();" +
-                "var key=String(arguments[0]);" +
-                "var record=records.find(function(r){return String(r.gridKey)===key;});" +
-                "if(!record){return false;}" +
-                "DataverseLabelTranslator.ApplyGridChangeValue(record,'1033',arguments[1]);" +
-                "DataverseLabelTranslator.ApplyGridChangeValue(record,'1041',arguments[2]);" +
-                "DataverseLabelTranslator.ApplyGridChangeValue(record,'1066',arguments[3]);" +
-                "DataverseLabelTranslator.RefreshGridRow(record.recid);" +
-                "DataverseLabelTranslator.SetSaveButtonDisabled(!DataverseLabelTranslator.HasPendingChanges());" +
-                "return DataverseLabelTranslator.HasPendingChanges();",
-                recordKey,
-                values.English,
-                values.Japanese,
-                values.Vietnamese);
-
-            Assert.IsTrue(changed, "The requested translations did not create any pending changes.");
+            EditCell(recordId, "1", values.English);
+            EditCell(recordId, "2", values.Japanese);
+            EditCell(recordId, "3", values.Vietnamese);
         }
 
-        public static void SaveAndWaitForTranslations(string recordKey, TranslationValues expected)
+        public static void SaveAndWaitForTranslations(string recordId, TranslationValues expected)
         {
-            Execute("w2ui.grid.toolbar.click('w2ui-save');");
+            var previousCell = FindCell(recordId, "1");
+            ClickDomElement(FindToolbarButton("w2ui-save"));
             WaitUntil(
-                "The translations were not saved and reloaded with the expected values.",
-                () =>
-                    !HasPendingChanges() &&
-                    TranslationValuesEqual(GetTranslations(recordKey), expected),
+                "The grid did not reload after Save.",
+                () => IsStale(previousCell),
                 TimeSpan.FromMinutes(2));
+            WaitForVisibleElement(
+                By.CssSelector(".w2ui-grid-records tr[recid]"),
+                "Global Option Set rows were not displayed after Save.",
+                TimeSpan.FromMinutes(2));
+            ExpandAllRecords();
+            WaitUntil(
+                "The translations were not reloaded with the expected values.",
+                () => TryGetVisibleTranslations(recordId, out var actual) && TranslationValuesEqual(actual, expected),
+                TimeSpan.FromSeconds(15));
         }
 
-        public static void RestoreTranslations(string recordKey, TranslationValues backup)
+        public static void RestoreTranslations(string recordId, TranslationValues backup)
         {
-            if (TranslationValuesEqual(GetTranslations(recordKey), backup) && !HasPendingChanges()) return;
+            ExpandAllRecords();
+            if (TryGetVisibleTranslations(recordId, out var actual) && TranslationValuesEqual(actual, backup)) return;
 
-            SetTranslations(recordKey, backup);
-            SaveAndWaitForTranslations(recordKey, backup);
+            SetTranslations(recordId, backup);
+            SaveAndWaitForTranslations(recordId, backup);
         }
 
-        public static void AssertTranslations(string recordKey, TranslationValues expected, string message)
+        public static void AssertTranslations(string recordId, TranslationValues expected, string message)
         {
-            var actual = GetTranslations(recordKey);
+            ExpandAllRecords();
+            var actual = GetVisibleTranslations(recordId);
 
             Assert.AreEqual(NormalizeValue(expected.English), NormalizeValue(actual.English), $"{message} English (1033).");
             Assert.AreEqual(NormalizeValue(expected.Japanese), NormalizeValue(actual.Japanese), $"{message} Japanese (1041).");
             Assert.AreEqual(NormalizeValue(expected.Vietnamese), NormalizeValue(actual.Vietnamese), $"{message} Vietnamese (1066).");
-        }
-
-        private static object GetTranslation(string recordKey, string languageCode)
-        {
-            return Execute(
-                "var records=DataverseLabelTranslator.GetAllRecords();" +
-                "var key=String(arguments[0]);" +
-                "var record=records.find(function(r){return String(r.gridKey)===key;});" +
-                "if(!record){throw new Error('Global Option Set record not found: '+key);}" +
-                "return Object.prototype.hasOwnProperty.call(record,arguments[1]) ? record[arguments[1]] : null;",
-                recordKey,
-                languageCode);
-        }
-
-        private static bool HasPendingChanges()
-        {
-            return ExecuteBoolean("return DataverseLabelTranslator.HasPendingChanges();");
         }
 
         private static bool TranslationValuesEqual(TranslationValues left, TranslationValues right)
@@ -318,11 +231,194 @@ namespace DataverseLabelTranslator.UiTest
             return value == null ? string.Empty : Convert.ToString(value);
         }
 
-        private static void WaitForGridUnlock(string timeoutMessage)
+        private static void SelectToolbarMenuItem(string toolbarId, string visibleText)
+        {
+            ClickDomElement(FindToolbarButton(toolbarId));
+            var normalizedText = visibleText.ToLowerInvariant();
+            var item = WaitForVisibleElement(
+                By.XPath(
+                    "//*[contains(@class,'w2ui-overlay')]" +
+                    "//*[contains(@class,'w2ui-menu-item') and " +
+                    $"contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),{ToXPathLiteral(normalizedText)})]"),
+                $"Toolbar option '{visibleText}' was not displayed.",
+                TimeSpan.FromSeconds(15));
+            ClickDomElement(item);
+        }
+
+        private static void WaitForToolbarText(string toolbarId, string expectedText)
         {
             WaitUntil(
+                $"Toolbar '{toolbarId}' did not display '{expectedText}'.",
+                () => FindToolbarButton(toolbarId).Text.IndexOf(expectedText, StringComparison.OrdinalIgnoreCase) >= 0,
+                TimeSpan.FromSeconds(15));
+        }
+
+        private static IWebElement FindToolbarButton(string toolbarId)
+        {
+            return WaitForVisibleElement(
+                By.Id($"tb_grid_toolbar_item_{toolbarId}"),
+                $"Toolbar button '{toolbarId}' was not visible.");
+        }
+
+        private static void ClickDomElement(IWebElement element)
+        {
+            ((IJavaScriptExecutor)UiTestSession.Driver).ExecuteScript("arguments[0].click();", element);
+        }
+
+        private static void ExpandAllRecords()
+        {
+            if (FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0) return;
+            SelectToolbarMenuItem("toggle", "Expand all records");
+            WaitForVisibleElement(
+                By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"),
+                "No editable Global Option Set row appeared after expanding records.",
+                TimeSpan.FromSeconds(15));
+        }
+
+        private static object ReadCellEditorValue(string recordId, string column)
+        {
+            var input = OpenCellEditor(recordId, column);
+            var value = input.GetAttribute("value") ?? string.Empty;
+            input.SendKeys(Keys.Escape);
+            WaitUntil("The cell editor did not close.", () => FindCell(recordId, column).FindElements(By.TagName("input")).Count == 0);
+            return value;
+        }
+
+        private static void EditCell(string recordId, string column, object value)
+        {
+            var input = OpenCellEditor(recordId, column);
+            input.SendKeys(Keys.Control + "a");
+            input.SendKeys(NormalizeValue(value));
+            input.SendKeys(Keys.Enter);
+            CloseAnyCellEditor();
+        }
+
+        private static IWebElement OpenCellEditor(string recordId, string column)
+        {
+            CloseAnyCellEditor();
+            var cell = FindCell(recordId, column);
+            ((IJavaScriptExecutor)UiTestSession.Driver).ExecuteScript("arguments[0].scrollIntoView({block:'center',inline:'center'});", cell);
+            try
+            {
+                new Actions(UiTestSession.Driver).MoveToElement(cell).DoubleClick().Perform();
+            }
+            catch (WebDriverException)
+            {
+            }
+
+            var editorSelector = By.XPath(
+                $"//tr[@recid={ToXPathLiteral(recordId)}]/td[@col={ToXPathLiteral(column)}]//input");
+            var editor = TryWaitForVisibleElement(editorSelector, TimeSpan.FromSeconds(3));
+            if (editor != null) return editor;
+
+            cell = FindCell(recordId, column);
+            ((IJavaScriptExecutor)UiTestSession.Driver).ExecuteScript(
+                "arguments[0].dispatchEvent(new MouseEvent('dblclick',{bubbles:true,cancelable:true,view:window}));",
+                cell);
+            return WaitForVisibleElement(
+                editorSelector,
+                $"Cell editor did not open for record '{recordId}', column '{column}'.",
+                TimeSpan.FromSeconds(15));
+        }
+
+        private static void CloseAnyCellEditor()
+        {
+            var editors = FindVisibleElements(By.CssSelector(".w2ui-grid-records input"));
+            if (editors.Count > 0) editors[0].SendKeys(Keys.Escape);
+            WaitUntil(
+                "The active grid editor did not close.",
+                () => FindVisibleElements(By.CssSelector(".w2ui-grid-records input")).Count == 0,
+                TimeSpan.FromSeconds(15));
+        }
+
+        private static IWebElement FindCell(string recordId, string column)
+        {
+            return WaitForVisibleElement(
+                By.XPath($"//div[contains(@class,'w2ui-grid-records')]//tr[@recid={ToXPathLiteral(recordId)}]/td[@col={ToXPathLiteral(column)}]"),
+                $"Cell was not visible for record '{recordId}', column '{column}'.");
+        }
+
+        private static TranslationValues GetVisibleTranslations(string recordId)
+        {
+            return new TranslationValues(
+                NormalizeCellText(FindCell(recordId, "1").Text),
+                NormalizeCellText(FindCell(recordId, "2").Text),
+                NormalizeCellText(FindCell(recordId, "3").Text));
+        }
+
+        private static bool TryGetVisibleTranslations(string recordId, out TranslationValues values)
+        {
+            values = null;
+            try
+            {
+                values = GetVisibleTranslations(recordId);
+                return true;
+            }
+            catch (WebDriverException)
+            {
+                return false;
+            }
+            catch (AssertFailedException)
+            {
+                return false;
+            }
+        }
+
+        private static string NormalizeCellText(string value)
+        {
+            return value == "-" ? string.Empty : value ?? string.Empty;
+        }
+
+        private static bool IsStale(IWebElement element)
+        {
+            try
+            {
+                _ = element.Enabled;
+                return false;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return true;
+            }
+        }
+
+        private static IWebElement WaitForVisibleElement(By selector, string timeoutMessage, TimeSpan? timeout = null)
+        {
+            IWebElement result = null;
+            WaitUntil(
                 timeoutMessage,
-                () => ExecuteBoolean("return !!w2ui.grid && !w2ui.grid.locked;"));
+                () =>
+                {
+                    result = FindVisibleElements(selector).FirstOrDefault();
+                    return result != null;
+                },
+                timeout);
+            return result;
+        }
+
+        private static IWebElement TryWaitForVisibleElement(By selector, TimeSpan timeout)
+        {
+            var deadline = DateTime.UtcNow.Add(timeout);
+            while (DateTime.UtcNow < deadline)
+            {
+                var element = FindVisibleElements(selector).FirstOrDefault();
+                if (element != null) return element;
+                Thread.Sleep(200);
+            }
+
+            return null;
+        }
+
+        private static System.Collections.Generic.List<IWebElement> FindVisibleElements(By selector)
+        {
+            return UiTestSession.Driver.FindElements(selector).Where(element => element.Displayed).ToList();
+        }
+
+        private static string ToXPathLiteral(string value)
+        {
+            if (!value.Contains("'")) return $"'{value}'";
+            if (!value.Contains("\"")) return $"\"{value}\"";
+            return "concat('" + value.Replace("'", "',\"'\",'") + "')";
         }
 
         private static void WaitUntil(string timeoutMessage, Func<bool> condition, TimeSpan? timeout = null)
@@ -345,11 +441,6 @@ namespace DataverseLabelTranslator.UiTest
             }
 
             Assert.Fail(lastError == null ? timeoutMessage : $"{timeoutMessage} Last WebDriver error: {lastError.Message}");
-        }
-
-        private static bool ExecuteBoolean(string script, params object[] arguments)
-        {
-            return Convert.ToBoolean(Execute(script, arguments));
         }
 
         private static object Execute(string script, params object[] arguments)
