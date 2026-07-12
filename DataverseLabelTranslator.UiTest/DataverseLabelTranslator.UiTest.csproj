@@ -38,8 +38,9 @@
 		</PackageReference>
 		<PackageReference Include="Dynamics365.UIAutomation.Api" Version="9.2.21084.148" />
 		<PackageReference Include="Microsoft.PowerPlatform.Dataverse.Client" Version="1.2.26" />
-		<PackageReference Include="MSTest.TestAdapter" Version="4.2.3" />
-		<PackageReference Include="MSTest.TestFramework" Version="4.2.3" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+		<PackageReference Include="MSTest.TestAdapter" Version="4.3.0" />
+		<PackageReference Include="MSTest.TestFramework" Version="4.3.0" />
 		<PackageReference Include="Selenium.WebDriver" Version="3.141.0" />
 		<PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="149.0.7827.15500" />
 		<PackageReference Include="Selenium.Support" Version="3.141.0" />
