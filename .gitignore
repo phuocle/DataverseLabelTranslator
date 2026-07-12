@@ -51,3 +51,6 @@ DataverseLabelTranslator.Release/*/appsource/zip/url.txt
 DataverseLabelTranslator.Release/*/appsource/zip/release.md
 DataverseLabelTranslator.Release/*/appsource/package-project/**/bin/
 DataverseLabelTranslator.Release/*/appsource/package-project/**/obj/
+
+# DynamicsCrm.DevKit local project environment
+D:/github/DataverseLabelTranslator/.env

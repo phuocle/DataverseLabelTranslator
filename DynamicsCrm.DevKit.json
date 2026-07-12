@@ -1,5 +1,5 @@
 ﻿{
-  "DefaultCrmConnection": "ClientSecret",
+  "DefaultCrmConnection": "OAuth",
   "CrmConnections": [
     {
       "Name": "ClientSecret",
@@ -7,6 +7,13 @@
       "UseProjectEnvironment": true,
       "CreatedAt": "2026-06-24T02:27:57.6670972Z",
       "ModifiedAt": "2026-06-24T02:27:59.6390948Z"
+    },
+    {
+      "Name": "OAuth",
+      "Type": "OAuth",
+      "UseProjectEnvironment": true,
+      "CreatedAt": "2026-07-12T03:25:48.3240839Z",
+      "ModifiedAt": "2026-07-12T03:25:50.5521337Z"
     }
   ]
 }
