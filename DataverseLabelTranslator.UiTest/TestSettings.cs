@@ -15,6 +15,8 @@ namespace DataverseLabelTranslator.UiTest
             PrivateMode = false,
             FireEvents = false,
             Headless = false,
+            DisableInfoBars = true,
+            EnableAutomation = false,
             UserAgent = false,
             DefaultThinkTime = 2000,
             RemoteBrowserType = (BrowserType)Enum.Parse(typeof(BrowserType), RemoteType),

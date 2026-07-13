@@ -17,9 +17,60 @@ namespace DataverseLabelTranslator.UiTest
         {
             UiTestSession.Driver.Navigate().GoToUrl(UiTestSession.TranslatorAppUrl);
             ContinueSignInIfPrompted();
+            CollapseSitemapIfExpanded();
             WaitUntil(
                 "Dataverse Label Translator toolbar was not initialized.",
                 TrySwitchToDashboardContext);
+        }
+
+        private static void CollapseSitemapIfExpanded()
+        {
+            UiTestSession.Driver.SwitchTo().DefaultContent();
+
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (DateTime.UtcNow < deadline)
+            {
+                var button = FindSitemapButtonInCurrentContext();
+                if (button != null)
+                {
+                    ClickDomElement(button);
+                    Thread.Sleep(500);
+                    UiTestSession.Driver.SwitchTo().DefaultContent();
+                    return;
+                }
+
+                Thread.Sleep(500);
+            }
+        }
+
+        private static IWebElement FindSitemapButtonInCurrentContext()
+        {
+            var buttons = UiTestSession.Driver.FindElements(
+                By.XPath(
+                    "//button[" +
+                    "contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sitemap') or " +
+                    "contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'site map') or " +
+                    "contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sitemap') or " +
+                    "contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'site map') or " +
+                    "contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sitemap')" +
+                    "] | //*[@role='button' and (" +
+                    "contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sitemap') or " +
+                    "contains(translate(@aria-label,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'site map') or " +
+                    "contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sitemap') or " +
+                    "contains(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'site map')" +
+                    ")]"));
+
+            return buttons.FirstOrDefault(button =>
+            {
+                try
+                {
+                    return button.Displayed && button.Enabled;
+                }
+                catch (StaleElementReferenceException)
+                {
+                    return false;
+                }
+            });
         }
 
         private static void ContinueSignInIfPrompted()
@@ -136,9 +187,12 @@ namespace DataverseLabelTranslator.UiTest
         {
             ClickDomElement(FindToolbarButton("load"));
             WaitUntil(
-                "No Global Option Set records were loaded.",
-                () => FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]")).Count > 0,
+                "No records were loaded.",
+                () =>
+                    FindVisibleElements(By.CssSelector(".w2ui-lock")).Count == 0 &&
+                    FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-'])")).Count > 0,
                 TimeSpan.FromSeconds(15));
+            ExpandAllRecordsIfAvailable();
         }
 
         public static long GetRecordCount()
@@ -350,14 +404,65 @@ namespace DataverseLabelTranslator.UiTest
 
         private static void ExpandAllRecords()
         {
-            var visibleRows = FindVisibleElements(
-                By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-'])"));
-            if (visibleRows.Any(row => row.GetAttribute("recid").Split(':').Length >= 3)) return;
-            SelectToolbarMenuItem("toggle", "Expand all records");
+            if (FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0) return;
+            ExpandAllRecordsIfAvailable();
             WaitForVisibleElement(
                 By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"),
-                "No editable Global Option Set row appeared after expanding records.",
+                "No editable row appeared after expanding records.",
                 TimeSpan.FromSeconds(15));
+        }
+
+        private static void ExpandAllRecordsIfAvailable()
+        {
+            if (FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0) return;
+
+            WaitUntil(
+                "Grid rows were not ready before expanding records.",
+                () =>
+                    FindVisibleElements(By.CssSelector(".w2ui-lock")).Count == 0 &&
+                    FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-'])")).Count > 0,
+                TimeSpan.FromSeconds(15));
+
+            var toggle = FindToolbarButton("toggle");
+            ClickDomElement(toggle);
+            var item = TryWaitForVisibleElement(
+                By.XPath(
+                    "//*[contains(@class,'w2ui-overlay')]" +
+                    "//*[contains(@class,'w2ui-menu-item') and " +
+                    "contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'expand all records')]"),
+                TimeSpan.FromSeconds(3));
+            if (item == null)
+            {
+                CloseToolbarOverlay();
+                return;
+            }
+            ClickUserElement(item);
+
+            if (!WaitUntilOrFalse(
+                    () =>
+                        FindVisibleElements(By.CssSelector(".w2ui-lock")).Count == 0 &&
+                        FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0,
+                    TimeSpan.FromSeconds(15)))
+            {
+                Assert.Fail("Expand all records did not complete.\n" + CaptureGridDiagnostics());
+            }
+        }
+
+        private static void ClickUserElement(IWebElement element)
+        {
+            try
+            {
+                new Actions(UiTestSession.Driver).MoveToElement(element).Click().Perform();
+            }
+            catch (WebDriverException)
+            {
+                ClickDomElement(element);
+            }
+        }
+
+        private static void CloseToolbarOverlay()
+        {
+            Execute("document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));");
         }
 
         private static object ReadCellEditorValue(string recordId, string column)
@@ -402,8 +507,18 @@ namespace DataverseLabelTranslator.UiTest
                 cell);
             return WaitForVisibleElement(
                 editorSelector,
-                $"Cell editor did not open for record '{recordId}', column '{column}'.",
+                $"Cell editor did not open for record '{recordId}', column '{column}'.\n" + CaptureCellDiagnostics(recordId, column),
                 TimeSpan.FromSeconds(15));
+        }
+
+        private static string CaptureCellDiagnostics(string recordId, string column)
+        {
+            return Convert.ToString(Execute(
+                "var row=document.querySelector('.w2ui-grid-records tr[recid='+JSON.stringify(arguments[0])+']');" +
+                "var cell=row?row.querySelector('td[col='+JSON.stringify(arguments[1])+']'):null;" +
+                "return JSON.stringify({row:row?{recid:row.getAttribute('recid'),className:row.className,text:row.innerText}:null,cell:cell?{className:cell.className,html:cell.outerHTML}:null,active:document.activeElement?document.activeElement.outerHTML:null});",
+                recordId,
+                column));
         }
 
         private static void CloseAnyCellEditor()
@@ -494,9 +609,52 @@ namespace DataverseLabelTranslator.UiTest
             return null;
         }
 
+        private static bool WaitUntilOrFalse(Func<bool> condition, TimeSpan timeout)
+        {
+            var deadline = DateTime.UtcNow.Add(timeout);
+            while (DateTime.UtcNow < deadline)
+            {
+                try
+                {
+                    if (condition()) return true;
+                }
+                catch (WebDriverException)
+                {
+                }
+
+                Thread.Sleep(500);
+            }
+
+            return false;
+        }
+
+        private static string CaptureGridDiagnostics()
+        {
+            return Convert.ToString(Execute(
+                "var rows=Array.from(document.querySelectorAll('.w2ui-grid-records tr[recid]')).slice(0,12).map(function(row){" +
+                "return {recid:row.getAttribute('recid'), className:row.className, text:row.innerText.slice(0,180)};" +
+                "});" +
+                "var overlays=Array.from(document.querySelectorAll('.w2ui-overlay')).map(function(e){return e.innerText.slice(0,300);});" +
+                "var toggle=document.getElementById('tb_grid_toolbar_item_toggle');" +
+                "return JSON.stringify({rowCount:document.querySelectorAll('.w2ui-grid-records tr[recid]').length,editableCount:document.querySelectorAll('.w2ui-grid-records tr[recid]:not([recid=\"-none-\"]):not(.w2ui-no-edit)').length,rows:rows,overlays:overlays,toggle:toggle?toggle.outerHTML:null});"));
+        }
+
         private static System.Collections.Generic.List<IWebElement> FindVisibleElements(By selector)
         {
-            return UiTestSession.Driver.FindElements(selector).Where(element => element.Displayed).ToList();
+            return UiTestSession.Driver
+                .FindElements(selector)
+                .Where(element =>
+                {
+                    try
+                    {
+                        return element.Displayed;
+                    }
+                    catch (StaleElementReferenceException)
+                    {
+                        return false;
+                    }
+                })
+                .ToList();
         }
 
         private static string ToXPathLiteral(string value)

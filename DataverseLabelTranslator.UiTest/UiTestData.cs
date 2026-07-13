@@ -5,16 +5,17 @@ namespace DataverseLabelTranslator.UiTest
     public static class UiTestData
     {
         public const string GlobalOptionSet = "GlobalOptionSet";
+        public const string View = "View";
         public const string WebResource = "WebResource";
         public const string ParentNode = "Parent";
         public const string ChildNode = "Child";
 
-        private const string EnglishDisplayText = "UiTest English {0} {1}";
-        private const string JapaneseDisplayText = "UiTest 日本語 {0} {1}";
-        private const string VietnameseDisplayText = "UiTest Tiếng Việt {0} {1}";
-        private const string EnglishDescription = "UiTest Description English {0} {1} {2}";
-        private const string JapaneseDescription = "UiTest 説明 日本語 {0} {1} {2}";
-        private const string VietnameseDescription = "UiTest Mô tả Tiếng Việt {0} {1} {2}";
+        private const string EnglishDisplayText = "000 UiTest English {0} {1}";
+        private const string JapaneseDisplayText = "000 UiTest 日本語 {0} {1}";
+        private const string VietnameseDisplayText = "000 UiTest Tiếng Việt {0} {1}";
+        private const string EnglishDescription = "000 UiTest Description English {0} {1} {2}";
+        private const string JapaneseDescription = "000 UiTest 説明 日本語 {0} {1} {2}";
+        private const string VietnameseDescription = "000 UiTest Mô tả Tiếng Việt {0} {1} {2}";
 
         private static readonly object SyncRoot = new object();
         private static DateTime _lastTimestamp = DateTime.MinValue;
