@@ -9,6 +9,8 @@ namespace DataverseLabelTranslator.UiTest
 {
     public static class TranslatorApp
     {
+        public const string BrowserConsoleFilterKey = "DLT_UI_TEST";
+
         private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(3);
 
         public static void Open()
@@ -124,6 +126,12 @@ namespace DataverseLabelTranslator.UiTest
             WaitForToolbarText("entitySelect", entityText);
         }
 
+        public static void SelectComponent(string componentText)
+        {
+            SelectToolbarMenuItem("component", componentText);
+            WaitForToolbarText("component", componentText);
+        }
+
         public static void Load()
         {
             ClickDomElement(FindToolbarButton("load"));
@@ -156,6 +164,31 @@ namespace DataverseLabelTranslator.UiTest
                 "return Array.from(document.querySelectorAll('.w2ui-overlay')).map(function(e){return e.outerHTML;}).join('\\n');"));
         }
 
+        public static void ClearBrowserConsole(string testName)
+        {
+            Execute(
+                "console.clear();" +
+                "console.log('%c['+arguments[0]+'] START%c '+arguments[1]," +
+                "'background:#2563eb;color:white;font-weight:bold;padding:2px 6px;border-radius:3px'," +
+                "'color:#2563eb;font-weight:bold');",
+                BrowserConsoleFilterKey,
+                testName);
+        }
+
+        public static void WriteBrowserConsole(string level, string message)
+        {
+            Execute(
+                "var level=String(arguments[0]||'INFO').toUpperCase();" +
+                "var colors={INFO:'#0369a1',PASS:'#15803d',ERROR:'#b91c1c',RESTORE:'#7e22ce'};" +
+                "var color=colors[level]||'#374151';" +
+                "console.log('%c['+arguments[2]+'] '+level+'%c '+arguments[1]," +
+                "'background:'+color+';color:white;font-weight:bold;padding:2px 6px;border-radius:3px'," +
+                "'color:'+color+';font-weight:bold');",
+                level,
+                message,
+                BrowserConsoleFilterKey);
+        }
+
         public static string GetFirstEditableRecordId()
         {
             ExpandAllRecords();
@@ -163,6 +196,29 @@ namespace DataverseLabelTranslator.UiTest
                 By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"),
                 "No editable Global Option Set row was visible.");
             return row.GetAttribute("recid");
+        }
+
+        public static string GetFirstEditableParentRecordId()
+        {
+            ExpandAllRecords();
+            var rows = FindVisibleElements(
+                By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"));
+            var parent = rows.FirstOrDefault(row => row.GetAttribute("recid").Split(':').Length == 2);
+
+            Assert.IsNotNull(parent, "No editable Global Option Set parent row was visible.");
+            return parent.GetAttribute("recid");
+        }
+
+        public static string GetFirstEditableChildRecordId(string parentRecordId)
+        {
+            ExpandAllRecords();
+            var prefix = parentRecordId + ":";
+            var child = FindVisibleElements(
+                    By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"))
+                .FirstOrDefault(row => row.GetAttribute("recid").StartsWith(prefix, StringComparison.Ordinal));
+
+            Assert.IsNotNull(child, $"No editable child row was visible for parent '{parentRecordId}'.");
+            return child.GetAttribute("recid");
         }
 
         public static TranslationValues GetTranslations(string recordId)
@@ -218,6 +274,33 @@ namespace DataverseLabelTranslator.UiTest
             Assert.AreEqual(NormalizeValue(expected.Vietnamese), NormalizeValue(actual.Vietnamese), $"{message} Vietnamese (1066).");
         }
 
+        public static void SaveAndWaitForTranslations(
+            string parentRecordId,
+            TranslationValues expectedParent,
+            string childRecordId,
+            TranslationValues expectedChild)
+        {
+            var previousCell = FindCell(parentRecordId, "1");
+            ClickDomElement(FindToolbarButton("w2ui-save"));
+            WaitUntil(
+                "The grid did not reload after saving parent and child translations.",
+                () => IsStale(previousCell),
+                TimeSpan.FromMinutes(2));
+            WaitForVisibleElement(
+                By.CssSelector(".w2ui-grid-records tr[recid]"),
+                "Global Option Set rows were not displayed after Save.",
+                TimeSpan.FromMinutes(2));
+            ExpandAllRecords();
+            WaitUntil(
+                "Parent and child translations were not reloaded with the expected values.",
+                () =>
+                    TryGetVisibleTranslations(parentRecordId, out var actualParent) &&
+                    TranslationValuesEqual(actualParent, expectedParent) &&
+                    TryGetVisibleTranslations(childRecordId, out var actualChild) &&
+                    TranslationValuesEqual(actualChild, expectedChild),
+                TimeSpan.FromSeconds(15));
+        }
+
         private static bool TranslationValuesEqual(TranslationValues left, TranslationValues right)
         {
             return
@@ -267,7 +350,9 @@ namespace DataverseLabelTranslator.UiTest
 
         private static void ExpandAllRecords()
         {
-            if (FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0) return;
+            var visibleRows = FindVisibleElements(
+                By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-'])"));
+            if (visibleRows.Any(row => row.GetAttribute("recid").Split(':').Length >= 3)) return;
             SelectToolbarMenuItem("toggle", "Expand all records");
             WaitForVisibleElement(
                 By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"),
