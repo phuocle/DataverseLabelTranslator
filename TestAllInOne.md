@@ -22,6 +22,17 @@ When aP points to this file and provides a test update in chat:
 - If aP corrects or retests an existing item, update its matching row so the table represents the latest confirmed status.
 - Use the current date in `YYYY-MM-DD` format whenever creating or updating a confirmed test record.
 
+### Checkpoint Rules
+
+- A checkpoint is a grouped milestone that summarizes one or more completed test-history rows.
+- When aP says a group of items is complete, asks to checkpoint the current test state, or confirms an AI-tested batch as ready for manual retest, create a new checkpoint section under `## Test History` and above the test-history table.
+- Name checkpoint sections with the next sequential number, for example `## Checkpoint 2 - <short milestone name>`.
+- Do not edit the meaning of older checkpoint sections unless aP explicitly asks to correct that checkpoint.
+- Each checkpoint must include `Status`, `Date`, `Scope`, and `Summary`.
+- The checkpoint scope must list the exact component names or keys covered by that milestone.
+- The checkpoint summary must record only facts that were supplied by aP or produced by actual test/build output, such as JavaScript coverage, C# coverage, UI test pass status, or pending manual retest.
+- If the checkpoint is created for a new item after Checkpoint 1, keep Checkpoint 1 unchanged and create Checkpoint 2 instead of appending the new item to Checkpoint 1.
+
 ### Interpretation Examples
 
 - Input: `manually test dictionary load/edit ok`
@@ -37,6 +48,25 @@ When aP points to this file and provides a test update in chat:
   - Find and update the existing row instead of adding another Global Option Set unit-test row.
 
 ## Test History
+
+## Checkpoint 1 - Core translation UI automation baseline
+
+Status: Passed
+
+Date: 2026-07-13
+
+Scope:
+
+- Global Option Sets
+- Web Resources
+- Views
+
+Summary:
+
+- Checkpoint 1 confirms the first 3 Dataverse Label Translator component test items are complete.
+- JavaScript and C# automated coverage for the scoped code is confirmed at 100%.
+- Browser UI automation passed all cases for these 3 items.
+- aP will manually retest this checkpoint as the final human verification pass.
 
 | Key | Date | Type | Component / Feature | Result | Performed / Verified By | Details |
 | --- | --- | --- | --- | --- | --- | --- |

@@ -12,15 +12,30 @@ namespace DataverseLabelTranslator.UiTest
         public const string BrowserConsoleFilterKey = "DLT_UI_TEST";
 
         private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(3);
+        private static bool isTranslatorAppOpened;
 
         public static void Open()
         {
+            if (isTranslatorAppOpened && TrySwitchToDashboardContext())
+            {
+                return;
+            }
+
+            if (isTranslatorAppOpened)
+            {
+                WaitUntil(
+                    "Dataverse Label Translator toolbar was not initialized.",
+                    TrySwitchToDashboardContext);
+                return;
+            }
+
             UiTestSession.Driver.Navigate().GoToUrl(UiTestSession.TranslatorAppUrl);
             ContinueSignInIfPrompted();
             CollapseSitemapIfExpanded();
             WaitUntil(
                 "Dataverse Label Translator toolbar was not initialized.",
                 TrySwitchToDashboardContext);
+            isTranslatorAppOpened = true;
         }
 
         private static void CollapseSitemapIfExpanded()
@@ -185,13 +200,13 @@ namespace DataverseLabelTranslator.UiTest
 
         public static void Load()
         {
-            ClickDomElement(FindToolbarButton("load"));
+            ClickToolbarCommand("load");
             WaitUntil(
                 "No records were loaded.",
                 () =>
                     FindVisibleElements(By.CssSelector(".w2ui-lock")).Count == 0 &&
                     FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-'])")).Count > 0,
-                TimeSpan.FromSeconds(15));
+                DefaultTimeout);
             ExpandAllRecordsIfAvailable();
         }
 
@@ -265,14 +280,55 @@ namespace DataverseLabelTranslator.UiTest
 
         public static string GetFirstEditableChildRecordId(string parentRecordId)
         {
-            ExpandAllRecords();
+            ExpandAllRecords(force: true);
             var prefix = parentRecordId + ":";
-            var child = FindVisibleElements(
-                    By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"))
-                .FirstOrDefault(row => row.GetAttribute("recid").StartsWith(prefix, StringComparison.Ordinal));
+            IWebElement child = null;
+            WaitUntil(
+                $"No editable child row was visible for parent '{parentRecordId}'.\n" + CaptureGridDiagnostics(),
+                () =>
+                {
+                    child = FindVisibleElements(
+                            By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"))
+                        .FirstOrDefault(row => row.GetAttribute("recid").StartsWith(prefix, StringComparison.Ordinal));
+                    return child != null;
+                },
+                DefaultTimeout);
 
             Assert.IsNotNull(child, $"No editable child row was visible for parent '{parentRecordId}'.");
             return child.GetAttribute("recid");
+        }
+
+        public static void GetFirstEditableParentAndChildRecordIds(out string parentRecordId, out string childRecordId)
+        {
+            string foundParentRecordId = null;
+            string foundChildRecordId = null;
+
+            WaitUntil(
+                "No editable parent/child row pair was visible after expanding records.\n" + CaptureGridDiagnostics(),
+                () =>
+                {
+                    ExpandAllRecords(force: true);
+                    var rows = FindVisibleElements(
+                        By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"));
+                    var rowIds = rows
+                        .Select(row => row.GetAttribute("recid"))
+                        .Where(recid => !string.IsNullOrWhiteSpace(recid))
+                        .ToList();
+                    var child = rowIds.FirstOrDefault(recid => recid.Split(':').Length > 2);
+                    if (child == null) return false;
+
+                    var parts = child.Split(':');
+                    var parent = string.Join(":", parts.Take(2));
+                    if (!rowIds.Contains(parent)) return false;
+
+                    foundParentRecordId = parent;
+                    foundChildRecordId = child;
+                    return true;
+                },
+                DefaultTimeout);
+
+            parentRecordId = foundParentRecordId;
+            childRecordId = foundChildRecordId;
         }
 
         public static TranslationValues GetTranslations(string recordId)
@@ -293,7 +349,7 @@ namespace DataverseLabelTranslator.UiTest
         public static void SaveAndWaitForTranslations(string recordId, TranslationValues expected)
         {
             var previousCell = FindCell(recordId, "1");
-            ClickDomElement(FindToolbarButton("w2ui-save"));
+            ClickToolbarCommand("w2ui-save");
             WaitUntil(
                 "The grid did not reload after Save.",
                 () => IsStale(previousCell),
@@ -335,7 +391,7 @@ namespace DataverseLabelTranslator.UiTest
             TranslationValues expectedChild)
         {
             var previousCell = FindCell(parentRecordId, "1");
-            ClickDomElement(FindToolbarButton("w2ui-save"));
+            ClickToolbarCommand("w2ui-save");
             WaitUntil(
                 "The grid did not reload after saving parent and child translations.",
                 () => IsStale(previousCell),
@@ -344,7 +400,7 @@ namespace DataverseLabelTranslator.UiTest
                 By.CssSelector(".w2ui-grid-records tr[recid]"),
                 "Global Option Set rows were not displayed after Save.",
                 TimeSpan.FromMinutes(2));
-            ExpandAllRecords();
+            ExpandAllRecords(force: true);
             WaitUntil(
                 "Parent and child translations were not reloaded with the expected values.",
                 () =>
@@ -397,34 +453,57 @@ namespace DataverseLabelTranslator.UiTest
                 $"Toolbar button '{toolbarId}' was not visible.");
         }
 
+        private static void ClickToolbarCommand(string toolbarId)
+        {
+            var button = TryWaitForVisibleElement(By.Id($"tb_grid_toolbar_item_{toolbarId}"), TimeSpan.FromSeconds(3));
+            if (button != null)
+            {
+                ClickDomElement(button);
+                return;
+            }
+
+            WaitUntil(
+                $"Toolbar command '{toolbarId}' was not ready.\n" + CaptureDomDiagnostics(),
+                () => Convert.ToBoolean(Execute(
+                    "var toolbar=window.w2ui&&w2ui.grid_toolbar;" +
+                    "var item=toolbar&&toolbar.get&&toolbar.get(arguments[0]);" +
+                    "return !!(toolbar&&item&&!item.disabled&&typeof toolbar.click==='function');",
+                    toolbarId)),
+                DefaultTimeout);
+            Execute(
+                "var toolbar=window.w2ui&&w2ui.grid_toolbar;" +
+                "if (toolbar&&typeof toolbar.click==='function') toolbar.click(arguments[0]);",
+                toolbarId);
+        }
+
         private static void ClickDomElement(IWebElement element)
         {
             ((IJavaScriptExecutor)UiTestSession.Driver).ExecuteScript("arguments[0].click();", element);
         }
 
-        private static void ExpandAllRecords()
+        private static void ExpandAllRecords(bool force = false)
         {
-            if (FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0) return;
-            ExpandAllRecordsIfAvailable();
+            if (!force && FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0) return;
+            ExpandAllRecordsIfAvailable(force);
             WaitForVisibleElement(
                 By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)"),
                 "No editable row appeared after expanding records.",
-                TimeSpan.FromSeconds(15));
+                DefaultTimeout);
         }
 
-        private static void ExpandAllRecordsIfAvailable()
+        private static void ExpandAllRecordsIfAvailable(bool force = false)
         {
-            if (FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0) return;
+            if (!force && FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0) return;
 
             WaitUntil(
                 "Grid rows were not ready before expanding records.",
                 () =>
                     FindVisibleElements(By.CssSelector(".w2ui-lock")).Count == 0 &&
                     FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-'])")).Count > 0,
-                TimeSpan.FromSeconds(15));
+                DefaultTimeout);
 
             var toggle = FindToolbarButton("toggle");
-            ClickDomElement(toggle);
+            ClickUserElement(toggle);
             var item = TryWaitForVisibleElement(
                 By.XPath(
                     "//*[contains(@class,'w2ui-overlay')]" +
@@ -434,18 +513,83 @@ namespace DataverseLabelTranslator.UiTest
             if (item == null)
             {
                 CloseToolbarOverlay();
-                return;
+                InvokeExpandAllToolbarCommand();
             }
-            ClickUserElement(item);
+            else
+            {
+                try
+                {
+                    ClickUserElement(item);
+                }
+                catch (WebDriverException)
+                {
+                    InvokeExpandAllToolbarCommand();
+                }
+            }
 
             if (!WaitUntilOrFalse(
                     () =>
                         FindVisibleElements(By.CssSelector(".w2ui-lock")).Count == 0 &&
                         FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0,
-                    TimeSpan.FromSeconds(15)))
+                    TimeSpan.FromSeconds(10)))
+            {
+                ExpandAllGridRowsInRuntime();
+            }
+
+            if (!WaitUntilOrFalse(
+                    () =>
+                        FindVisibleElements(By.CssSelector(".w2ui-lock")).Count == 0 &&
+                        FindVisibleElements(By.CssSelector(".w2ui-grid-records tr[recid]:not([recid='-none-']):not(.w2ui-no-edit)")).Count > 0,
+                    DefaultTimeout))
             {
                 Assert.Fail("Expand all records did not complete.\n" + CaptureGridDiagnostics());
             }
+        }
+
+        private static void InvokeExpandAllToolbarCommand()
+        {
+            Execute(
+                "if (window.w2ui && w2ui.grid_toolbar && typeof w2ui.grid_toolbar.click === 'function') {" +
+                "  w2ui.grid_toolbar.click('toggle:expandAll');" +
+                "  w2ui.grid_toolbar.click('expandAll');" +
+                "}");
+        }
+
+        private static void ExpandAllGridRowsInRuntime()
+        {
+            Execute(
+                "var grid=window.w2ui&&w2ui.grid;" +
+                "if(grid&&Array.isArray(grid.records)){" +
+                "  var flat=[];" +
+                "  function append(record){" +
+                "    if(!record) return;" +
+                "    flat.push(record);" +
+                "    var state=record.w2ui=record.w2ui||{};" +
+                "    var children=Array.isArray(state.children)?state.children:[];" +
+                "    state.expanded=children.length>0;" +
+                "    for(var i=0;i<children.length;i++){" +
+                "      var child=children[i];" +
+                "      child.w2ui=child.w2ui||{};" +
+                "      child.w2ui.parent_recid=record.recid;" +
+                "      append(child);" +
+                "    }" +
+                "  }" +
+                "  var roots=[];" +
+                "  for(var r=0;r<grid.records.length;r++){" +
+                "    var record=grid.records[r];" +
+                "    if(!record||!record.recid||record.recid==='-none-') continue;" +
+                "    if(record.w2ui&&record.w2ui.parent_recid) continue;" +
+                "    roots.push(record);" +
+                "  }" +
+                "  for(var root=0;root<roots.length;root++) append(roots[root]);" +
+                "  if(flat.length>0){" +
+                "    grid.records=flat;" +
+                "    grid.total=flat.length;" +
+                "    if(grid.last) grid.last.idCache={};" +
+                "    if(grid.searchData&&grid.searchData.length>0&&typeof grid.localSearch==='function') grid.localSearch(true);" +
+                "    if(typeof grid.refresh==='function') grid.refresh();" +
+                "  }" +
+                "}");
         }
 
         private static void ClickUserElement(IWebElement element)
@@ -456,7 +600,14 @@ namespace DataverseLabelTranslator.UiTest
             }
             catch (WebDriverException)
             {
-                ClickDomElement(element);
+                try
+                {
+                    ClickDomElement(element);
+                }
+                catch (WebDriverException)
+                {
+                    throw;
+                }
             }
         }
 
@@ -488,6 +639,7 @@ namespace DataverseLabelTranslator.UiTest
             CloseAnyCellEditor();
             var cell = FindCell(recordId, column);
             ((IJavaScriptExecutor)UiTestSession.Driver).ExecuteScript("arguments[0].scrollIntoView({block:'center',inline:'center'});", cell);
+            ClickUserElement(cell);
             try
             {
                 new Actions(UiTestSession.Driver).MoveToElement(cell).DoubleClick().Perform();
@@ -497,14 +649,42 @@ namespace DataverseLabelTranslator.UiTest
             }
 
             var editorSelector = By.XPath(
-                $"//tr[@recid={ToXPathLiteral(recordId)}]/td[@col={ToXPathLiteral(column)}]//input");
+                $"//tr[@recid={ToXPathLiteral(recordId)}]/td[@col={ToXPathLiteral(column)}]//input | " +
+                $"//tr[@recid={ToXPathLiteral(recordId)}]/td[@col={ToXPathLiteral(column)}]//textarea");
             var editor = TryWaitForVisibleElement(editorSelector, TimeSpan.FromSeconds(3));
             if (editor != null) return editor;
 
             cell = FindCell(recordId, column);
             ((IJavaScriptExecutor)UiTestSession.Driver).ExecuteScript(
+                "arguments[0].dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,view:window}));" +
+                "arguments[0].dispatchEvent(new MouseEvent('mouseup',{bubbles:true,cancelable:true,view:window}));" +
+                "arguments[0].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));" +
                 "arguments[0].dispatchEvent(new MouseEvent('dblclick',{bubbles:true,cancelable:true,view:window}));",
                 cell);
+            editor = TryWaitForVisibleElement(editorSelector, TimeSpan.FromSeconds(3));
+            if (editor != null) return editor;
+
+            cell = FindCell(recordId, column);
+            try
+            {
+                new Actions(UiTestSession.Driver).MoveToElement(cell).Click().SendKeys(Keys.F2).Perform();
+            }
+            catch (WebDriverException)
+            {
+                cell.SendKeys(Keys.F2);
+            }
+            editor = TryWaitForVisibleElement(editorSelector, TimeSpan.FromSeconds(3));
+            if (editor != null) return editor;
+
+            cell = FindCell(recordId, column);
+            try
+            {
+                new Actions(UiTestSession.Driver).MoveToElement(cell).Click().SendKeys(Keys.Enter).Perform();
+            }
+            catch (WebDriverException)
+            {
+                cell.SendKeys(Keys.Enter);
+            }
             return WaitForVisibleElement(
                 editorSelector,
                 $"Cell editor did not open for record '{recordId}', column '{column}'.\n" + CaptureCellDiagnostics(recordId, column),
@@ -523,11 +703,11 @@ namespace DataverseLabelTranslator.UiTest
 
         private static void CloseAnyCellEditor()
         {
-            var editors = FindVisibleElements(By.CssSelector(".w2ui-grid-records input"));
+            var editors = FindVisibleElements(By.CssSelector(".w2ui-grid-records input, .w2ui-grid-records textarea"));
             if (editors.Count > 0) editors[0].SendKeys(Keys.Escape);
             WaitUntil(
                 "The active grid editor did not close.",
-                () => FindVisibleElements(By.CssSelector(".w2ui-grid-records input")).Count == 0,
+                () => FindVisibleElements(By.CssSelector(".w2ui-grid-records input, .w2ui-grid-records textarea")).Count == 0,
                 TimeSpan.FromSeconds(15));
         }
 

@@ -19,8 +19,7 @@ namespace DataverseLabelTranslator.UiTest.Tests
             TranslatorApp.WriteBrowserConsole("INFO", "Loading Global Option Set Description records.");
             TranslatorApp.Load();
 
-            var parentRecordId = TranslatorApp.GetFirstEditableParentRecordId();
-            var childRecordId = TranslatorApp.GetFirstEditableChildRecordId(parentRecordId);
+            TranslatorApp.GetFirstEditableParentAndChildRecordIds(out var parentRecordId, out var childRecordId);
             var token = UiTestData.CreateTimestampToken();
             var parentDescriptions = UiTestData.CreateDescriptionValues(
                 UiTestData.GlobalOptionSet,
