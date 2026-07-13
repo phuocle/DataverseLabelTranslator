@@ -151,15 +151,9 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     continue;
                 }
 
-                var lcid = match.lcid;
-                if (lcid == null)
-                {
-                    continue;
-                }
-
                 try
                 {
-                    var parsed = ParseWebResource(sibling, lcid);
+                    var parsed = ParseWebResource(sibling, match.lcid);
                     if (parsed != null)
                     {
                         resources.Add(parsed);
@@ -329,7 +323,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     change.contentChanges.Add(new WebResourceContentChangeInfo
                     {
                         key = property,
-                        value = label.Label ?? string.Empty
+                        value = label.Label
                     });
                 }
             }
@@ -372,7 +366,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     var change = new WebResourceChangeInfo
                     {
                         hasDescription = true,
-                        description = label.Label ?? string.Empty
+                        description = label.Label
                     };
 
                     if (existingResource != null && !string.IsNullOrWhiteSpace(existingResource.webresourceid))
@@ -524,7 +518,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         private static bool IsLocalizableResource(Entity resource, string baseLanguage)
         {
             var match = MatchLocalizedResource(resource);
-            return match != null && match.lcid == baseLanguage && (match.format == "js" || match.format == "resx");
+            return match != null && match.lcid == baseLanguage && (match.format == "json" || match.format == "resx");
         }
 
         private static LocalizedResourceMatch MatchLocalizedResource(Entity resource)
@@ -650,16 +644,17 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 return CleanGroupDisplayName(match.groupKey);
             }
 
-            if (!string.IsNullOrEmpty(match?.token))
+            if (!string.IsNullOrEmpty(name))
             {
-                var groupKey = GetResourceGroupingKey(name ?? string.Empty, displayName ?? string.Empty, match.token);
-                if (!string.IsNullOrWhiteSpace(groupKey))
-                {
-                    return CleanGroupDisplayName(groupKey);
-                }
+                return CleanGroupDisplayName(name);
             }
 
-            return CleanGroupDisplayName(!string.IsNullOrEmpty(name) ? name : !string.IsNullOrEmpty(displayName) ? displayName : fallback);
+            if (!string.IsNullOrEmpty(displayName))
+            {
+                return CleanGroupDisplayName(displayName);
+            }
+
+            return CleanGroupDisplayName(fallback);
         }
 
         private static string CleanGroupDisplayName(string value)

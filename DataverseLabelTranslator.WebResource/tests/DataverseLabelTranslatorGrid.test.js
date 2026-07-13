@@ -455,6 +455,41 @@ describe("HandleToolbarClick via captured toolbar.onClick", () => {
         });
     });
 
+    it("registers and loads Web Resources without requiring an entity", async () => {
+        const registeredType = capturedGridConfig.toolbar.items
+            .find((item) => item.id === "type")
+            .items.find((item) => item.id === "webresources");
+        expect(registeredType).toMatchObject({ text: "Web Resources", icon: "icon-file-code" });
+
+        toolbarItemsById.type.selected = "none";
+        toolbarItemsById.entitySelect.selected = "none";
+        toolbarItemsById.solutionSelect.selected = "s1";
+        toolbarItemsById.component.selected = "Description";
+        capturedGridConfig.toolbar.onClick({ target: "type:webresources" });
+
+        expect(toolbarItemsById.type.selected).toBe("webresources");
+        expect(DLT.IsUnifiedType("webresources")).toBe(true);
+        expect(capturedToolbar.enable).toHaveBeenCalledWith("component");
+
+        window.Helper.RunServerLoad.mockResolvedValueOnce({ baseLanguage: 1033, grid: { mode: "flat", rows: [] } });
+        const loadItem = capturedGridConfig.toolbar.items.find((item) => item.id === "load");
+        loadItem.onClick();
+        await vi.waitFor(() => expect(window.Helper.RunServerLoad).toHaveBeenCalled());
+
+        expect(window.DialogHelper.alert).not.toHaveBeenCalledWith(
+            "Select an entity before loading this type.",
+            expect.anything(),
+        );
+        const request = window.Helper.RunServerLoad.mock.calls.at(-1)[0];
+        expect(request.getPayload()).toEqual({
+            translatorType: "webresources",
+            solutionId: "s1",
+            entityName: "none",
+            entityId: null,
+            component: "Description",
+        });
+    });
+
     it("routes 'component:Description' to updating the component selected", () => {
         capturedToolbar.get = vi.fn((id) => {
             if (id === "component") return { selected: "DisplayText", items: toolbarItemsById.component.items };

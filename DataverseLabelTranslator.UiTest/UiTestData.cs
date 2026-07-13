@@ -5,6 +5,7 @@ namespace DataverseLabelTranslator.UiTest
     public static class UiTestData
     {
         public const string GlobalOptionSet = "GlobalOptionSet";
+        public const string WebResource = "WebResource";
         public const string ParentNode = "Parent";
         public const string ChildNode = "Child";
 
