@@ -68,8 +68,28 @@ Summary:
 - Browser UI automation passed all cases for these 3 items.
 - aP will manually retest this checkpoint as the final human verification pass.
 
+## Checkpoint 2 - Chart translation UI automation
+
+Status: Passed
+
+Date: 2026-07-14
+
+Scope:
+
+- Charts
+
+Summary:
+
+- Checkpoint 2 confirms the Chart Dataverse Label Translator component test item is complete.
+- JavaScript Chart-specific dashboard coverage is confirmed for the Chart unified type registration, entity-dependent type visibility, Display Text-only component behavior, and toolbar registration statements.
+- C# focused verification passed all 24 `ChartAdapterTests`, with `ChartAdapter.cs` achieving 100% line, branch, and method coverage.
+- The all-in-one script first built `DataverseLabelTranslator.slnx` successfully, then passed JavaScript, C# server, and browser UI automation suites.
+- Browser UI automation passed for Chart Display Text only. The Chart flow edited a child chart row in English, Japanese, and Vietnamese, saved through the visible toolbar, reloaded the grid, and verified the persisted values.
+- Chart has no Description UI test because Chart only supports Display Text.
+
 | Key | Date | Type | Component / Feature | Result | Performed / Verified By | Details |
 | --- | --- | --- | --- | --- | --- | --- |
 | GlobalOptionSet | 2026-07-13 | Unit | Global Option Sets | Passed | AI / aP | Focused JavaScript verification passed all 31 tests and covered all 5 Global Option Set-specific statements, achieving 100% scoped coverage in the unified dashboard file. Focused C# verification passed all 15 tests, with `GlobalOptionSetAdapter` achieving 100% line, branch, and method coverage. The complete JavaScript regression suite also passed all 792 tests. Browser UI automation also passed for Global Option Set Display Text and Description: Display Text edited the child row in English, Japanese, and Vietnamese; Description edited both parent and child rows in all three languages. Both flows selected the controls through the rendered DOM, saved through the visible toolbar, reloaded the grid, and verified the persisted values. |
 | WebResource | 2026-07-13 | Unit | Web Resources | Passed | AI / aP | Focused JavaScript verification passed all 793 tests and covered all 5 Web Resources-specific statements, achieving 100% scoped coverage in the unified dashboard file. Focused C# verification passed all 43 `WebResourceAdapterTests`, with `WebResourceAdapter.cs` achieving 100% line, branch, and method coverage. Browser UI automation also passed for Web Resources Display Text and Description: Display Text edited the child row in English, Japanese, and Vietnamese; Description edited the flat parent row in all three languages because Web Resources descriptions do not have child rows. Both flows selected the controls through the rendered DOM, saved through the visible toolbar, reloaded the grid, and verified the persisted values. |
 | View | 2026-07-13 | Unit | Views | Passed | AI / aP | Focused JavaScript verification added View-specific dashboard coverage for unified type registration, Description support, Load payload, Save changedRows, and publish payload behavior. The complete JavaScript regression suite passed all 796 tests, and coverage audit confirmed the View-specific statements in `DataverseLabelTranslator.js` were covered. Focused C# verification passed all 12 `ViewAdapterTests`, with `ViewAdapter.cs` achieving 100% line, branch, and method coverage. The complete C# server test project also passed all 463 tests. Browser UI automation also passed for Views Display Text and Description: both flows edited child rows in English, Japanese, and Vietnamese, saved through the visible toolbar, reloaded the grid, and verified the persisted values. |
+| Chart | 2026-07-14 | Unit | Charts | Passed | AI / aP | Focused JavaScript verification added Chart-specific dashboard coverage for unified type registration, entity-dependent type visibility, Display Text-only component behavior, and toolbar registration. The complete JavaScript regression suite passed all 797 tests, and coverage audit confirmed the Chart-specific statements in `DataverseLabelTranslator.js` were covered. Focused C# verification passed all 24 `ChartAdapterTests`, with `ChartAdapter.cs` achieving 100% line, branch, and method coverage. The all-in-one script built `DataverseLabelTranslator.slnx` successfully, then passed the JavaScript, C# server, and UI automation suites. Browser UI automation also passed for Charts Display Text: the test edited a child chart row in English, Japanese, and Vietnamese, saved through the visible toolbar, reloaded the grid, and verified the persisted values. Chart Description was intentionally not tested because Charts only support Display Text. |

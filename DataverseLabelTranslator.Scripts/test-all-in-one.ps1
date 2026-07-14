@@ -3,9 +3,10 @@
     Runs all Dataverse Label Translator test suites in sequence.
 
 .DESCRIPTION
-    1. JavaScript unit tests: npm run test:coverage.
-    2. C# server unit tests: dotnet test with coverlet JSON coverage.
-    3. UI automation tests: dotnet test with UITEST_HEADLESS=true for this run only.
+    1. Builds the repository solution before any test suite runs.
+    2. JavaScript unit tests: npm run test:coverage.
+    3. C# server unit tests: dotnet test with coverlet JSON coverage.
+    4. UI automation tests: dotnet test with UITEST_HEADLESS=true for this run only.
 
     The script is intentionally non-deploying and non-mutating except for normal
     test/build/coverage outputs produced by the underlying tools.
@@ -75,8 +76,15 @@ function Invoke-LoggedCommand {
         [scriptblock]$Command
     )
 
-    & $Command 2>&1 | ForEach-Object { Write-Host $_ }
-    return $LASTEXITCODE
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+
+    try {
+        & $Command 2>&1 | ForEach-Object { Write-Host $_ }
+        return $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
 }
 
 function Invoke-UiTestsWithHeartbeat {
@@ -90,7 +98,7 @@ function Invoke-UiTestsWithHeartbeat {
 
     Write-Host '  UI tests can take several minutes because they open Dataverse, load grids, edit cells, save, reload, and verify persisted values.' -ForegroundColor Yellow
     Write-Host '  Progress heartbeat prints every 60 seconds while MSTest is quiet.' -ForegroundColor Yellow
-    Write-Host '  Expected UI coverage: Login, GlobalOptionSet, WebResource, View.' -ForegroundColor Yellow
+    Write-Host '  Expected UI coverage: Login, GlobalOptionSet, WebResource, View, Chart.' -ForegroundColor Yellow
     Write-Host ''
 
     $startedAt = Get-Date
@@ -147,6 +155,20 @@ function Invoke-UiTestsWithHeartbeat {
         Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
     }
 }
+
+Write-Banner 'Preflight Build (solution)'
+
+$solutionPath = Join-Path $RepoRoot 'DataverseLabelTranslator.slnx'
+$buildExitCode = Invoke-LoggedCommand {
+    & dotnet build $solutionPath --configuration Debug
+}
+if ($buildExitCode -ne 0) {
+    Write-Host ''
+    Write-Host '  FAIL  Solution build' -ForegroundColor Red
+    exit $buildExitCode
+}
+
+Write-Host '  PASS  Solution build' -ForegroundColor Green
 
 Write-Banner '1/3 JavaScript Unit Tests (Vitest + coverage)'
 
