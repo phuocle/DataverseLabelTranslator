@@ -298,6 +298,40 @@ namespace DataverseLabelTranslator.UiTest
             return child.GetAttribute("recid");
         }
 
+        public static string GetEditableRecordIdBySchemaName(string schemaName)
+        {
+            string foundRecordId = null;
+
+            WaitUntil(
+                $"No editable row with schema name '{schemaName}' was visible after expanding records.\n" + CaptureGridDiagnostics(),
+                () =>
+                {
+                    ExpandAllRecords(force: true);
+                    foundRecordId = Convert.ToString(Execute(
+                        "var schemaName=String(arguments[0]||'');" +
+                        "var grid=window.w2ui&&w2ui.grid;" +
+                        "if(!grid||!Array.isArray(grid.records)) return '';" +
+                        "var stack=grid.records.slice();" +
+                        "while(stack.length){" +
+                        "  var record=stack.shift();" +
+                        "  if(!record) continue;" +
+                        "  var children=record.w2ui&&Array.isArray(record.w2ui.children)?record.w2ui.children:[];" +
+                        "  for(var i=0;i<children.length;i++) stack.push(children[i]);" +
+                        "  if(record.schemaName===schemaName&&record.isEditable!==false) return String(record.recid||'');" +
+                        "}" +
+                        "return '';",
+                        schemaName));
+                    if (string.IsNullOrWhiteSpace(foundRecordId)) return false;
+
+                    return FindVisibleElements(
+                            By.XPath($"//div[contains(@class,'w2ui-grid-records')]//tr[@recid={ToXPathLiteral(foundRecordId)} and not(contains(@class,'w2ui-no-edit'))]"))
+                        .Count > 0;
+                },
+                DefaultTimeout);
+
+            return foundRecordId;
+        }
+
         public static void GetFirstEditableParentAndChildRecordIds(out string parentRecordId, out string childRecordId)
         {
             string foundParentRecordId = null;
@@ -675,6 +709,28 @@ namespace DataverseLabelTranslator.UiTest
             }
             editor = TryWaitForVisibleElement(editorSelector, TimeSpan.FromSeconds(3));
             if (editor != null) return editor;
+
+            var openedWithGridApi = Convert.ToBoolean(Execute(
+                "var recordId=String(arguments[0]||'');" +
+                "var column=parseInt(arguments[1],10);" +
+                "var grid=window.w2ui&&w2ui.grid;" +
+                "if(!grid||!Number.isFinite(column)||!grid.columns||!grid.columns[column]) return false;" +
+                "var index=typeof grid.get==='function'?grid.get(recordId,true):-1;" +
+                "if(index==null||index<0) return false;" +
+                "if(typeof grid.focus==='function') grid.focus();" +
+                "if(typeof grid.scrollIntoView==='function') grid.scrollIntoView(index,column,true);" +
+                "if(typeof grid.selectNone==='function') grid.selectNone(true);" +
+                "if(typeof grid.select==='function') grid.select({recid:recordId,column:column});" +
+                "if(typeof grid.editField!=='function') return false;" +
+                "grid.editField(recordId,column,null,{type:'keydown',keyCode:13,preventDefault:function(){},stopPropagation:function(){}});" +
+                "return true;",
+                recordId,
+                column));
+            if (openedWithGridApi)
+            {
+                editor = TryWaitForVisibleElement(editorSelector, TimeSpan.FromSeconds(5));
+                if (editor != null) return editor;
+            }
 
             cell = FindCell(recordId, column);
             try

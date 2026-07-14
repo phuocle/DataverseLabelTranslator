@@ -9,6 +9,7 @@ namespace DataverseLabelTranslator.UiTest
         public const string WebResource = "WebResource";
         public const string Chart = "Chart";
         public const string Dashboard = "Dashboard";
+        public const string EntityMetadata = "EntityMetadata";
         public const string ParentNode = "Parent";
         public const string ChildNode = "Child";
 

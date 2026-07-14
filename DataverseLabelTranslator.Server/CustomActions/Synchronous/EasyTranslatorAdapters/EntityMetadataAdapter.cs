@@ -36,7 +36,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 : RetrieveAllEntities(serviceAdmin);
 
             // Sort by logical name before building rows
-            entities.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.LogicalName, b.LogicalName));
+            entities.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a?.LogicalName, b?.LogicalName));
 
             var rows = new List<EasyTranslatorGridRowOutput>();
 
@@ -162,7 +162,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
             foreach (var entity in all)
             {
-                if (!string.IsNullOrWhiteSpace(entity.LogicalName) &&
+                if (entity != null &&
+                    !string.IsNullOrWhiteSpace(entity.LogicalName) &&
                     logicalNames.Contains(entity.LogicalName))
                 {
                     filtered.Add(entity);
@@ -187,7 +188,9 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             var metadataById = new Dictionary<Guid, string>();
             foreach (var entity in allEntities)
             {
-                if (entity.MetadataId.HasValue && !string.IsNullOrWhiteSpace(entity.LogicalName))
+                if (entity != null &&
+                    entity.MetadataId.HasValue &&
+                    !string.IsNullOrWhiteSpace(entity.LogicalName))
                 {
                     metadataById[entity.MetadataId.Value] = entity.LogicalName;
                 }

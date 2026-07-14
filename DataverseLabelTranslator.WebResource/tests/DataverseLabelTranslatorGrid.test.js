@@ -453,6 +453,27 @@ describe("HandleToolbarClick via captured toolbar.onClick", () => {
     expect(capturedToolbar.refresh).toHaveBeenCalled();
   });
 
+  it("routes 'type:entityMeta' to Description-capable component state", () => {
+    const registeredType = capturedGridConfig.toolbar.items
+      .find((item) => item.id === "type")
+      .items.find((item) => item.id === "entityMeta");
+    expect(registeredType).toMatchObject({ text: "Entity Metadata", icon: "icon-entity" });
+
+    toolbarItemsById.component.selected = "Description";
+    capturedToolbar.get = vi.fn((id) => {
+      if (id === "type") return toolbarItemsById.type;
+      if (id === "component") return toolbarItemsById.component;
+      return toolbarItemsById[id] || null;
+    });
+
+    expect(() => capturedGridConfig.toolbar.onClick({ target: "type:entityMeta" })).not.toThrow();
+
+    expect(toolbarItemsById.type.selected).toBe("entityMeta");
+    expect(toolbarItemsById.component.selected).toBe("Description");
+    expect(capturedToolbar.enable).toHaveBeenCalledWith("component");
+    expect(capturedToolbar.refresh).toHaveBeenCalled();
+  });
+
   it("registers and loads Global Option Set without requiring an entity", async () => {
     const registeredType = capturedGridConfig.toolbar.items
       .find((item) => item.id === "type")

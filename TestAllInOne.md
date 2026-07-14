@@ -25,13 +25,16 @@ When aP points to this file and provides a test update in chat:
 ### Checkpoint Rules
 
 - A checkpoint is a grouped milestone that summarizes one or more completed test-history rows.
-- When aP says a group of items is complete, asks to checkpoint the current test state, or confirms an AI-tested batch as ready for manual retest, create a new checkpoint section under `## Test History` and above the test-history table.
-- Name checkpoint sections with the next sequential number, for example `## Checkpoint 2 - <short milestone name>`.
-- Do not edit the meaning of older checkpoint sections unless aP explicitly asks to correct that checkpoint.
+- Create, rename, or regroup a checkpoint only when aP explicitly names the checkpoint number, for example `checkpoint 3` or `check point 4`. Do not infer a new checkpoint just because one component is complete.
+- When aP names a checkpoint number, update that exact checkpoint. If it does not exist, create it under `## Test History` and above the test-history table.
+- A checkpoint scope starts at the first option/component aP identifies for that checkpoint and ends only when aP later names the next checkpoint number. For example, if aP says `checkpoint 3`, continue updating Checkpoint 3 for following completed components until aP says `checkpoint 4`.
+- When aP says the next checkpoint number, create that new checkpoint and treat the first component in that new request as the first option/component of the new checkpoint scope.
+- Do not split a checkpoint into separate per-component checkpoints unless aP explicitly asks for separate checkpoint sections.
+- Do not edit the meaning, scope, or number of older checkpoint sections unless aP explicitly asks to correct or regroup that checkpoint.
 - Each checkpoint must include `Status`, `Date`, `Scope`, and `Summary`.
 - The checkpoint scope must list the exact component names or keys covered by that milestone.
 - The checkpoint summary must record only facts that were supplied by aP or produced by actual test/build output, such as JavaScript coverage, C# coverage, UI test pass status, or pending manual retest.
-- If the checkpoint is created for a new item after Checkpoint 1, keep Checkpoint 1 unchanged and create Checkpoint 2 instead of appending the new item to Checkpoint 1.
+- Keep the test-history table below the checkpoint sections. The table remains the detailed component-by-component record, while checkpoint sections remain grouped milestone summaries.
 
 ### Interpretation Examples
 
@@ -68,7 +71,7 @@ Summary:
 - Browser UI automation passed all cases for these 3 items.
 - aP will manually retest this checkpoint as the final human verification pass.
 
-## Checkpoint 2 - Chart translation UI automation
+## Checkpoint 2 - Advanced translation UI automation
 
 Status: Passed
 
@@ -77,34 +80,17 @@ Date: 2026-07-14
 Scope:
 
 - Charts
-
-Summary:
-
-- Checkpoint 2 confirms the Chart Dataverse Label Translator component test item is complete.
-- JavaScript Chart-specific dashboard coverage is confirmed for the Chart unified type registration, entity-dependent type visibility, Display Text-only component behavior, and toolbar registration statements.
-- C# focused verification passed all 24 `ChartAdapterTests`, with `ChartAdapter.cs` achieving 100% line, branch, and method coverage.
-- The all-in-one script first built `DataverseLabelTranslator.slnx` successfully, then passed JavaScript, C# server, and browser UI automation suites.
-- Browser UI automation passed for Chart Display Text only. The Chart flow edited a child chart row in English, Japanese, and Vietnamese, saved through the visible toolbar, reloaded the grid, and verified the persisted values.
-- Chart has no Description UI test because Chart only supports Display Text.
-
-## Checkpoint 3 - Dashboard translation UI automation
-
-Status: Passed
-
-Date: 2026-07-14
-
-Scope:
-
 - Dashboards
+- Entity Metadata
 
 Summary:
 
-- Checkpoint 3 confirms the Dashboard Dataverse Label Translator component test item is complete.
-- JavaScript Dashboard-specific dashboard coverage is confirmed for the Dashboard unified type registration, entity-dependent type visibility, Display Text-only component behavior, and toolbar registration statements.
-- C# focused verification passed all 21 `DashboardAdapterTests`, with `DashboardAdapter.cs` achieving 100% line, branch, and method coverage.
+- Checkpoint 2 confirms the Chart, Dashboard, and Entity Metadata Dataverse Label Translator component test items are complete.
+- JavaScript focused verification covered the Chart, Dashboard, and Entity Metadata unified type registration, entity-dependent type visibility, component behavior, and toolbar registration statements.
+- C# focused verification passed all 24 `ChartAdapterTests`, all 21 `DashboardAdapterTests`, and all 21 `EntityMetadataAdapterTests`, with each scoped adapter achieving 100% line, branch, and method coverage.
 - The all-in-one script built `DataverseLabelTranslator.slnx` successfully, then passed JavaScript, C# server, and browser UI automation suites.
-- Browser UI automation passed for Dashboard Display Text only. The Dashboard flow loaded a flat grid with parent dashboard rows only, edited the parent row directly in English, Japanese, and Vietnamese, saved through the visible toolbar, reloaded the grid, and verified the persisted values.
-- Dashboard has no Description UI test because Dashboards only support Display Text in this workflow.
+- Browser UI automation passed for Chart Display Text only, Dashboard Display Text only, and Entity Metadata Display Text and Description.
+- Chart has no Description UI test because Charts only support Display Text. Dashboard has no Description UI test because Dashboards only support Display Text in this workflow.
 
 | Key | Date | Type | Component / Feature | Result | Performed / Verified By | Details |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -113,3 +99,4 @@ Summary:
 | View | 2026-07-13 | Unit | Views | Passed | AI / aP | Focused JavaScript verification added View-specific dashboard coverage for unified type registration, Description support, Load payload, Save changedRows, and publish payload behavior. The complete JavaScript regression suite passed all 796 tests, and coverage audit confirmed the View-specific statements in `DataverseLabelTranslator.js` were covered. Focused C# verification passed all 12 `ViewAdapterTests`, with `ViewAdapter.cs` achieving 100% line, branch, and method coverage. The complete C# server test project also passed all 463 tests. Browser UI automation also passed for Views Display Text and Description: both flows edited child rows in English, Japanese, and Vietnamese, saved through the visible toolbar, reloaded the grid, and verified the persisted values. |
 | Chart | 2026-07-14 | Unit | Charts | Passed | AI / aP | Focused JavaScript verification added Chart-specific dashboard coverage for unified type registration, entity-dependent type visibility, Display Text-only component behavior, and toolbar registration. The complete JavaScript regression suite passed all 797 tests, and coverage audit confirmed the Chart-specific statements in `DataverseLabelTranslator.js` were covered. Focused C# verification passed all 24 `ChartAdapterTests`, with `ChartAdapter.cs` achieving 100% line, branch, and method coverage. The all-in-one script built `DataverseLabelTranslator.slnx` successfully, then passed the JavaScript, C# server, and UI automation suites. Browser UI automation also passed for Charts Display Text: the test edited a child chart row in English, Japanese, and Vietnamese, saved through the visible toolbar, reloaded the grid, and verified the persisted values. Chart Description was intentionally not tested because Charts only support Display Text. |
 | Dashboard | 2026-07-14 | Unit | Dashboards | Passed | AI / aP | Focused JavaScript verification added Dashboard-specific dashboard coverage for unified type registration, entity-dependent type visibility, Display Text-only component behavior, and toolbar registration. The complete JavaScript regression suite passed all 798 tests, and coverage audit confirmed the Dashboard-specific statements in `DataverseLabelTranslator.js` were covered. Focused C# verification passed all 21 `DashboardAdapterTests`, with `DashboardAdapter.cs` achieving 100% line, branch, and method coverage. The all-in-one script built `DataverseLabelTranslator.slnx` successfully, then passed the JavaScript, C# server, and UI automation suites. Browser UI automation also passed for Dashboards Display Text: the test loaded the flat Dashboard grid with parent rows only, edited the parent row directly in English, Japanese, and Vietnamese, saved through the visible toolbar, reloaded the grid, and verified the persisted values. Dashboard Description was intentionally not tested because Dashboards only support Display Text in this workflow. |
+| EntityMetadata | 2026-07-14 | Unit | Entity Metadata | Passed | AI / aP | Focused JavaScript verification added Entity Metadata-specific dashboard coverage for unified type registration, entity-dependent type visibility, Description-capable component behavior, and toolbar registration. The complete JavaScript regression suite passed all 799 tests, and coverage audit confirmed the Entity Metadata-specific statements in `DataverseLabelTranslator.js` were covered. Focused C# verification passed all 21 `EntityMetadataAdapterTests`, with `EntityMetadataAdapter.cs` achieving 100% line, branch, and method coverage. The all-in-one script built `DataverseLabelTranslator.slnx` successfully, then passed the JavaScript, C# server, and UI automation suites. Browser UI automation also passed for Entity Metadata Display Text and Description: Display Text edited the child `Display Text` row and child `Collection Name` row in English, Japanese, and Vietnamese; Description edited the child `Description` row and child `Collection Name` row in English, Japanese, and Vietnamese. Both flows saved through the visible toolbar, reloaded the grid, and verified the persisted values. |
