@@ -227,14 +227,11 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         private static string GetDashboardBaseLabel(IOrganizationService serviceAdmin, Entity dashboard, Guid dashboardId, int baseLanguage)
         {
             var label = RetrieveDashboardLabel(serviceAdmin, dashboardId);
-            if (label?.LocalizedLabels != null)
+            foreach (var localizedLabel in label.LocalizedLabels)
             {
-                foreach (var localizedLabel in label.LocalizedLabels)
+                if (localizedLabel != null && localizedLabel.LanguageCode == baseLanguage && !string.IsNullOrEmpty(localizedLabel.Label))
                 {
-                    if (localizedLabel != null && localizedLabel.LanguageCode == baseLanguage && !string.IsNullOrEmpty(localizedLabel.Label))
-                    {
-                        return localizedLabel.Label;
-                    }
+                    return localizedLabel.Label;
                 }
             }
 

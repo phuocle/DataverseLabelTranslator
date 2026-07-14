@@ -432,6 +432,27 @@ describe("HandleToolbarClick via captured toolbar.onClick", () => {
     expect(capturedToolbar.refresh).toHaveBeenCalled();
   });
 
+  it("routes 'type:dashboards' to Display Text only component state", () => {
+    const registeredType = capturedGridConfig.toolbar.items
+      .find((item) => item.id === "type")
+      .items.find((item) => item.id === "dashboards");
+    expect(registeredType).toMatchObject({ text: "Dashboards", icon: "icon-dashboard" });
+
+    toolbarItemsById.component.selected = "Description";
+    capturedToolbar.get = vi.fn((id) => {
+      if (id === "type") return toolbarItemsById.type;
+      if (id === "component") return toolbarItemsById.component;
+      return toolbarItemsById[id] || null;
+    });
+
+    expect(() => capturedGridConfig.toolbar.onClick({ target: "type:dashboards" })).not.toThrow();
+
+    expect(toolbarItemsById.type.selected).toBe("dashboards");
+    expect(toolbarItemsById.component.selected).toBe("DisplayText");
+    expect(capturedToolbar.disable).toHaveBeenCalledWith("component");
+    expect(capturedToolbar.refresh).toHaveBeenCalled();
+  });
+
   it("registers and loads Global Option Set without requiring an entity", async () => {
     const registeredType = capturedGridConfig.toolbar.items
       .find((item) => item.id === "type")

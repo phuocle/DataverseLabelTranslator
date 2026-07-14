@@ -98,7 +98,7 @@ function Invoke-UiTestsWithHeartbeat {
 
     Write-Host '  UI tests can take several minutes because they open Dataverse, load grids, edit cells, save, reload, and verify persisted values.' -ForegroundColor Yellow
     Write-Host '  Progress heartbeat prints every 60 seconds while MSTest is quiet.' -ForegroundColor Yellow
-    Write-Host '  Expected UI coverage: Login, GlobalOptionSet, WebResource, View, Chart.' -ForegroundColor Yellow
+    Write-Host '  Expected UI coverage: Login, GlobalOptionSet, WebResource, View, Chart, Dashboard.' -ForegroundColor Yellow
     Write-Host ''
 
     $startedAt = Get-Date
