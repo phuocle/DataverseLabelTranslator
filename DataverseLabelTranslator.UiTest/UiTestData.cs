@@ -11,15 +11,17 @@ namespace DataverseLabelTranslator.UiTest
         public const string Dashboard = "Dashboard";
         public const string EntityMetadata = "EntityMetadata";
         public const string FormMetadata = "FormMetadata";
+        public const string Relationship = "Relationship";
+        public const string Sitemap = "Sitemap";
         public const string ParentNode = "Parent";
         public const string ChildNode = "Child";
 
-        private const string EnglishDisplayText = "000 UiTest English {0} {1}";
-        private const string JapaneseDisplayText = "000 UiTest 日本語 {0} {1}";
-        private const string VietnameseDisplayText = "000 UiTest Tiếng Việt {0} {1}";
-        private const string EnglishDescription = "000 UiTest Description English {0} {1} {2}";
-        private const string JapaneseDescription = "000 UiTest 説明 日本語 {0} {1} {2}";
-        private const string VietnameseDescription = "000 UiTest Mô tả Tiếng Việt {0} {1} {2}";
+        private const string EnglishDisplayText = "000 DisplayText English {0} {1}";
+        private const string JapaneseDisplayText = "000 DisplayText 日本語 {0} {1}";
+        private const string VietnameseDisplayText = "000 DisplayText Tiếng Việt {0} {1}";
+        private const string EnglishDescription = "000 Description English {0} {1} {2}";
+        private const string JapaneseDescription = "000 Description 日本語 {0} {1} {2}";
+        private const string VietnameseDescription = "000 Description Tiếng Việt {0} {1} {2}";
 
         private static readonly object SyncRoot = new object();
         private static DateTime _lastTimestamp = DateTime.MinValue;

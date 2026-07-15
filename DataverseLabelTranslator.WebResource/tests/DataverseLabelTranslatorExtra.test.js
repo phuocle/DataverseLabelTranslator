@@ -486,6 +486,7 @@ describe("DataverseLabelTranslator.IsUnifiedType", () => {
     expect(Translator.IsUnifiedType("attributes")).toBe(true);
     expect(Translator.IsUnifiedType("forms")).toBe(true);
     expect(Translator.IsUnifiedType("sitemap")).toBe(true);
+    expect(Translator.IsUnifiedType("relationships")).toBe(true);
   });
 
   it("returns false for unknown type", () => {
@@ -501,6 +502,47 @@ describe("DataverseLabelTranslator.BuildAiTranslateDataSource", () => {
     const ds = Translator.BuildAiTranslateDataSource();
     expect(ds).toBeDefined();
     expect(typeof ds).toBe("object");
+  });
+
+  it.each([
+    ["relationships", "Relationships", "DisplayText"],
+    ["sitemap", "Sitemap", "Description"]
+  ])("builds type-specific AI data source for %s", (type, typeText, component) => {
+    mockToolbar.get.mockImplementation((id) => {
+      if (id === "type") return { selected: type };
+      if (id === "type:" + type) return { text: typeText };
+      if (id === "component") return { selected: component };
+      if (id === "component:" + component)
+        return { text: component === "DisplayText" ? "Display Text" : "Description" };
+      return null;
+    });
+    Translator.SetBaseLanguage("1033");
+    mockGrid.columns = [
+      { field: "schemaName", text: "Schema Name" },
+      { field: "1033", text: "English", code: "en" },
+      { field: "1041", text: "Japanese", code: "ja" }
+    ];
+    mockGrid.records = [
+      {
+        recid: type + "-row",
+        gridKey: type + "|row",
+        schemaName: typeText + " row",
+        rowType: type + ".row",
+        1033: "English",
+        1041: ""
+      }
+    ];
+
+    const ds = Translator.BuildAiTranslateDataSource();
+
+    expect(ds.typeName).toBe(typeText);
+    expect(ds.componentText).toBe(component === "DisplayText" ? "Display Text" : "Description");
+    expect(ds.baseLcid).toBe("1033");
+    expect(ds.languages.map((language) => language.lcid)).toEqual(["1033", "1041"]);
+    expect(ds.rows[0]).toMatchObject({
+      targetRecid: type + "-row",
+      schemaName: typeText + " row"
+    });
   });
 });
 
@@ -655,6 +697,35 @@ describe("DataverseLabelTranslator.Load", () => {
     expect(mockGrid.addColumn).toHaveBeenCalledWith(expect.objectContaining({ field: "1033" }));
     expect(mockGrid.addColumn).toHaveBeenCalledWith(expect.objectContaining({ field: "1041" }));
   });
+
+  it("builds Sitemap load payload with Entity None and Description component", async () => {
+    mockHelper.GetTranslator.mockReturnValue(Translator);
+    mockToolbar.get.mockImplementation((id) => {
+      if (id === "type") return { selected: "sitemap" };
+      if (id === "type:sitemap") return { text: "Sitemap" };
+      if (id === "solutionSelect") return { selected: "sol-sitemap" };
+      if (id === "entitySelect") return { selected: "none" };
+      if (id === "component") return { selected: "Description" };
+      return null;
+    });
+
+    mockHelper.RunServerLoad.mockImplementation((options) => {
+      expect(options.getPayload()).toEqual({
+        translatorType: "sitemap",
+        solutionId: "sol-sitemap",
+        entityName: "none",
+        entityId: null,
+        component: "Description"
+      });
+      options.onLoaded({ baseLanguage: "1033", grid: { rows: [] } });
+      return Promise.resolve();
+    });
+
+    await Translator.Load();
+
+    expect(mockHelper.RunServerLoad).toHaveBeenCalled();
+    expect(Translator.GetCurrentToolbarTypeText()).toBe("Sitemap");
+  });
 });
 
 // ============================================================
@@ -724,6 +795,61 @@ describe("DataverseLabelTranslator.Save", () => {
     expect(publishPayload).toEqual({
       translatorType: "attributes",
       publishTargets: ["account"]
+    });
+  });
+
+  it("builds Relationship save payload from relationship grid rows", async () => {
+    mockHelper.GetTranslator.mockReturnValue(Translator);
+    Translator.SetBaseLanguage("1033");
+    mockToolbar.get.mockImplementation((id) => {
+      if (id === "type") return { selected: "relationships" };
+      if (id === "type:relationships") return { text: "Relationships" };
+      if (id === "solutionSelect") return { selected: "sol-rel" };
+      if (id === "entitySelect") return { selected: "none" };
+      if (id === "component") return { selected: "DisplayText" };
+      return null;
+    });
+    mockGrid.records = [
+      {
+        recid: "rel-1",
+        gridKey: "relationships|rel-id|1:N|account_contact|AssociatedMenuConfiguration|contact",
+        rowType: "relationships.row",
+        1033: "Old",
+        w2ui: { changes: { 1033: "Contacts", 1041: "連絡先", schemaName: "Ignored" } }
+      }
+    ];
+
+    let savePayload;
+    let publishPayload;
+    mockHelper.RunServerSaveFlow.mockImplementation((options) => {
+      savePayload = options.getSavePayload();
+      publishPayload = options.getPublishPayload({
+        publishTargets: [{ kind: "entity", id: "contact" }]
+      });
+      return Promise.resolve();
+    });
+
+    await Translator.Save();
+
+    expect(savePayload).toMatchObject({
+      translatorType: "relationships",
+      solutionId: "sol-rel",
+      entityName: "none",
+      entityId: null,
+      component: "DisplayText",
+      baseLanguage: "1033",
+      changedRows: [
+        {
+          gridKey: "relationships|rel-id|1:N|account_contact|AssociatedMenuConfiguration|contact",
+          recid: "rel-1",
+          rowType: "relationships.row",
+          changes: { 1033: "Contacts", 1041: "連絡先" }
+        }
+      ]
+    });
+    expect(publishPayload).toEqual({
+      translatorType: "relationships",
+      publishTargets: [{ kind: "entity", id: "contact" }]
     });
   });
 

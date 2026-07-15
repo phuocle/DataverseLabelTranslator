@@ -33,7 +33,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
             foreach (var sitemap in sitemaps)
             {
-                if (sitemap == null || string.IsNullOrWhiteSpace(sitemap.sitemapxml))
+                if (string.IsNullOrWhiteSpace(sitemap.sitemapxml))
                 {
                     continue;
                 }
@@ -480,7 +480,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 if (container == null)
                 {
                     container = new XElement(containerName);
-                    node.Add(container);
+                    InsertContainerInSchemaOrder(node, container, update.nodeType);
                     changed = true;
                 }
 
@@ -505,6 +505,64 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             return changed ? document.ToString(SaveOptions.DisableFormatting) : xml;
+        }
+
+        // Inserts a <Titles> or <Descriptions> container into a Sitemap node while
+        // preserving the element order required by the SiteMap XSD. The required
+        // order is Titles, Descriptions, then child nodes (Group for Area,
+        // SubArea for Group, nothing for SubArea). node.Add() would place the new
+        // container at the end, which causes XSD validation to fail when a child
+        // node (Group / SubArea) already exists before Titles/Descriptions.
+        private static void InsertContainerInSchemaOrder(XElement node, XElement container, string nodeType)
+        {
+            if (node == null || container == null)
+            {
+                return;
+            }
+
+            var containerName = container.Name.LocalName;
+            var siblingOrder = string.Equals(nodeType, "SubArea", StringComparison.OrdinalIgnoreCase)
+                ? new[] { "Titles", "Descriptions" }
+                : new[] { "Titles", "Descriptions", GetChildNodeName(nodeType) };
+
+            XElement insertAfter = null;
+            foreach (var name in siblingOrder)
+            {
+                if (string.Equals(name, containerName, StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+
+                var existing = node.Element(name);
+                if (existing != null)
+                {
+                    insertAfter = existing;
+                }
+            }
+
+            if (insertAfter == null)
+            {
+                node.AddFirst(container);
+            }
+            else
+            {
+                insertAfter.AddAfterSelf(container);
+            }
+        }
+
+        private static string GetChildNodeName(string nodeType)
+        {
+            if (string.Equals(nodeType, "Area", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Group";
+            }
+
+            if (string.Equals(nodeType, "Group", StringComparison.OrdinalIgnoreCase))
+            {
+                return "SubArea";
+            }
+
+            return null;
         }
 
         private static XElement FindSitemapNode(XElement root, string compositeId, string nodeType)
