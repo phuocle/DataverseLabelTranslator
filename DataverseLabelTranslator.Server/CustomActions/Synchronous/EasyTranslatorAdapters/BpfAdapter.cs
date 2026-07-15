@@ -100,13 +100,17 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                         fieldRows.Add(fieldRow);
                     }
 
+                    fieldRows.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
                     stageRow.Children = fieldRows;
                     children.Add(stageRow);
                 }
 
+                children.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
                 parent.Children = children;
                 rows.Add(parent);
             }
+
+            rows.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
 
             return new EasyTranslatorLoadOutput
             {
@@ -322,16 +326,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
         private static List<BpfStage> ParseStages(string clientData)
         {
             var stages = new List<BpfStage>();
-
-            try
-            {
-                var root = DevKitJson.Deserialize(clientData);
-                FindStageSteps(root, stages);
-            }
-            catch
-            {
-                return stages;
-            }
+            var root = DevKitJson.Deserialize(clientData);
+            FindStageSteps(root, stages);
 
             return stages;
         }

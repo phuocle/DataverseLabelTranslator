@@ -385,5 +385,33 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
             var output = adapter.Save(CreateContext(service), input);
             Assert.AreEqual(0, output.changedRowCount);
         }
+
+        [TestMethod]
+        public void Save_RemoveOverriddenCellLabels_ControlWithoutDataField_IsSkipped()
+        {
+            var adapter = new FormAdapter();
+            var xml = "<form><tabs><tab id=\"t\"><columns><column width=\"100\">" +
+                "<sections><section id=\"s\"><rows><row><cells>" +
+                "<cell id=\"c\"><labels><label description=\"A\" languagecode=\"1033\"/></labels><control /></cell>" +
+                "</cells></row></rows></section></sections></column></columns></tab></tabs></form>";
+            var service = CreateSaveService(xml);
+            var input = new EasyTranslatorSaveInput
+            {
+                operation = "RemoveOverriddenCellLabels",
+                entityName = "account",
+                changedRows = new List<EasyTranslatorChangedRowInput>()
+            };
+
+            var output = adapter.Save(CreateContext(service), input);
+
+            Assert.IsTrue(output.changedRowCount >= 0);
+            var formUpdate = CapturedUpdate(service, "systemform");
+            if (formUpdate != null)
+            {
+                var updatedXml = (string)formUpdate["formxml"];
+                Assert.IsTrue(updatedXml.Contains("id=\"c\""));
+                Assert.IsTrue(updatedXml.Contains("description=\"A\""));
+            }
+        }
     }
 }

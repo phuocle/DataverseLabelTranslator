@@ -284,6 +284,29 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
         }
 
         [TestMethod]
+        public void Save_SameWorkflowAndLabel_MergesRows()
+        {
+            var adapter = new BpfAdapter();
+            var service = CreateSaveService();
+            var input = new EasyTranslatorSaveInput
+            {
+                changedRows = new List<EasyTranslatorChangedRowInput>
+                {
+                    new EasyTranslatorChangedRowInput { gridKey = "bpf|" + _wfId.ToString("D") + "|S1|stage|account", changes = new Dictionary<string, string> { { "1033", "EN" } } },
+                    new EasyTranslatorChangedRowInput { gridKey = "bpf|" + _wfId.ToString("D") + "|S1|stage|account", changes = new Dictionary<string, string> { { "1031", "DE" } } }
+                }
+            };
+
+            var output = adapter.Save(AdapterTestHelpers.Context(service), input);
+
+            Assert.AreEqual(1, output.changedRowCount);
+            var update = CapturedUpdate(service, "workflow");
+            var xml = (string)update["xaml"];
+            Assert.IsTrue(xml.Contains("LanguageCode=\"1033\""));
+            Assert.IsTrue(xml.Contains("LanguageCode=\"1031\""));
+        }
+
+        [TestMethod]
         public void Save_RestoreOnException_WrapsErrorAndRestores()
         {
             var adapter = new BpfAdapter();

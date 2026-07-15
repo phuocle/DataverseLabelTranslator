@@ -103,11 +103,6 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 output.changedRowCount++;
             }
 
-            if (output.changedRowCount == 0)
-            {
-                return output;
-            }
-
             var updatedPackage = WriteTranslationPackage(context, package);
             ImportTranslationPackage(context, updatedPackage);
 
@@ -455,6 +450,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 };
             }
 
+            parsed.Records.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
             return parsed;
         }
 
@@ -675,13 +671,9 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             XmlElement insertBefore = null;
-            for (var i = columnIndex + 1; i < row.Cells.Count; i++)
+            for (var i = columnIndex + 1; i < row.Cells.Count && insertBefore == null; i++)
             {
-                if (row.Cells[i]?.Node != null)
-                {
-                    insertBefore = row.Cells[i].Node;
-                    break;
-                }
+                insertBefore = row.Cells[i]?.Node;
             }
 
             var cellNode = doc.CreateElement("Cell", SpreadsheetNamespace);

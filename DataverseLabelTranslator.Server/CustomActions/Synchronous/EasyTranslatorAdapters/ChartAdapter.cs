@@ -170,15 +170,9 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     Ai = new EasyTranslatorAiOutput { include = false }
                 };
 
-                var entityCharts = byEntity[entityKey];
-                entityCharts.Sort((a, b) =>
-                    StringComparer.OrdinalIgnoreCase.Compare(
-                        a.GetAttributeValue<string>("name") ?? string.Empty,
-                        b.GetAttributeValue<string>("name") ?? string.Empty));
-
                 var children = new List<EasyTranslatorGridRowOutput>();
 
-                foreach (var chart in entityCharts)
+                foreach (var chart in byEntity[entityKey])
                 {
                     var id = chart.GetAttributeValue<Guid>("savedqueryvisualizationid");
                     if (id == Guid.Empty)
@@ -207,6 +201,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
                 if (children.Count > 0)
                 {
+                    children.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
                     parentRow.Children = children;
                     rows.Add(parentRow);
                 }

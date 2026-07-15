@@ -97,6 +97,35 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
         }
 
         [TestMethod]
+        public void Load_WithDashboardMissingName_UsesLocalizedBaseLabel()
+        {
+            var adapter = new DashboardAdapter();
+            var service = Substitute.For<IOrganizationService>();
+            var dashboard = new Entity("systemform") { Id = Guid.NewGuid() };
+            dashboard["formid"] = dashboard.Id;
+            dashboard["formactivationstate"] = new OptionSetValue(1);
+            dashboard["iscustomizable"] = new BooleanManagedProperty(true);
+            dashboard["type"] = new OptionSetValue(0);
+            dashboard["objecttypecode"] = "Dashboard";
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(call =>
+            {
+                var q = (QueryExpression)call[0];
+                if (q.EntityName == "organization") return AdapterTestHelpers.Entities(AdapterTestHelpers.CreateOrganizationEntity());
+                if (q.EntityName == "systemform") return AdapterTestHelpers.Entities(dashboard);
+                return AdapterTestHelpers.Entities();
+            });
+            service.Execute(Arg.Any<OrganizationRequest>()).Returns(call =>
+            {
+                if (call[0] is RetrieveLocLabelsRequest) return AdapterTestHelpers.RetrieveLabelsResponse(AdapterTestHelpers.BuildLabel((1033, "Localized Dashboard")));
+                return new OrganizationResponse();
+            });
+
+            var output = adapter.Load(AdapterTestHelpers.Context(service), new EasyTranslatorLoadInput { solutionId = "all" });
+
+            Assert.AreEqual("Localized Dashboard", output.grid.rows[0].SchemaName);
+        }
+
+        [TestMethod]
         public void Load_SkipsInactiveNonCustomizableAndUnsupportedDashboards()
         {
             var adapter = new DashboardAdapter();
@@ -472,6 +501,7 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
             var dashboardId = Guid.NewGuid();
             var dashboard = new Entity("systemform") { Id = dashboardId };
             dashboard["name"] = "Fallback Dashboard";
+            var dashboardWithoutName = new Entity("systemform") { Id = dashboardId };
             var rowWithBaseValue = new EasyTranslatorGridRowOutput { SchemaName = "Schema" };
             rowWithBaseValue["1033"] = "Base Value";
             var rowWithNullBaseValue = new EasyTranslatorGridRowOutput { SchemaName = "Schema" };
@@ -484,6 +514,13 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
                 dashboard,
                 dashboardId,
                 1033);
+            var localizedBaseLabel = AdapterTestHelpers.InvokeStatic<string>(
+                typeof(DashboardAdapter),
+                "GetDashboardBaseLabel",
+                service,
+                dashboardWithoutName,
+                dashboardId,
+                1041);
             var rowBaseValue = AdapterTestHelpers.InvokeStatic<string>(
                 typeof(DashboardAdapter),
                 "GetRowBaseLabel",
@@ -496,6 +533,7 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
                 1033);
 
             Assert.AreEqual("Fallback Dashboard", baseLabel);
+            Assert.AreEqual("Japanese", localizedBaseLabel);
             Assert.AreEqual("Base Value", rowBaseValue);
             Assert.AreEqual("Schema", rowNullValue);
         }

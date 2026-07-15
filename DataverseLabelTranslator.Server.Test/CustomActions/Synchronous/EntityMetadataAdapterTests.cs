@@ -111,6 +111,29 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
         }
 
         [TestMethod]
+        public void Load_WithNullMetadataEntry_SortsAndSkipsNull()
+        {
+            var adapter = new EntityMetadataAdapter();
+            var service = CreateService();
+            service.Execute(Arg.Any<OrganizationRequest>()).Returns(call =>
+            {
+                if (call[0] is RetrieveAllEntitiesRequest)
+                {
+                    var resp = new RetrieveAllEntitiesResponse();
+                    resp.Results["EntityMetadata"] = new[] { MakeMetadata("account"), null, MakeMetadata("contact") };
+                    return resp;
+                }
+
+                return new OrganizationResponse();
+            });
+
+            var output = adapter.Load(AdapterTestHelpers.Context(service), new EasyTranslatorLoadInput { entityName = "none", component = "DisplayText", solutionId = "all" });
+
+            Assert.AreEqual(2, output.grid.rows.Count);
+            CollectionAssert.AreEqual(new[] { "Account (account)", "Contact (contact)" }, output.grid.rows.Select(row => row.SchemaName).ToArray());
+        }
+
+        [TestMethod]
         public void Load_DisplayText_BuildsDisplayTextAndCollectionNameChildren()
         {
             var adapter = new EntityMetadataAdapter();

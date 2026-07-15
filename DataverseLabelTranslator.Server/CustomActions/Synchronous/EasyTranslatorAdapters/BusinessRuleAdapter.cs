@@ -94,10 +94,13 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
                 if (children.Count > 0)
                 {
+                    children.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
                     parent.Children = children;
                     rows.Add(parent);
                 }
             }
+
+            rows.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
 
             return new EasyTranslatorLoadOutput
             {
@@ -386,8 +389,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             BusinessRuleStepLabel b,
             Dictionary<string, string> attributeDisplayNames)
         {
-            var aLocation = GetFieldDisplayName(a.SourceField, attributeDisplayNames).ToLowerInvariant();
-            var bLocation = GetFieldDisplayName(b.SourceField, attributeDisplayNames).ToLowerInvariant();
+            var aLocation = (a.SourceField ?? string.Empty).ToLowerInvariant();
+            var bLocation = (b.SourceField ?? string.Empty).ToLowerInvariant();
             var locationCompare = StringComparer.OrdinalIgnoreCase.Compare(aLocation, bLocation);
             if (locationCompare != 0)
             {

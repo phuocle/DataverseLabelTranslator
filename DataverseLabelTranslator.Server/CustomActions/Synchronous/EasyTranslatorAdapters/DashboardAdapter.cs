@@ -40,7 +40,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 rows.Add(BuildDashboardRow(serviceAdmin, dashboard, baseLanguage));
             }
 
-            rows.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(GetRowBaseLabel(a, baseLanguage), GetRowBaseLabel(b, baseLanguage)));
+            rows.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
 
             return new EasyTranslatorLoadOutput
             {
@@ -213,7 +213,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             {
                 Recid = "dashboard:" + id.ToString("D"),
                 GridKey = BuildGridKey(TranslatorType, id.ToString("D"), "name"),
-                SchemaName = GetDashboardBaseLabel(serviceAdmin, dashboard, id, baseLanguage),
+                SchemaName = dashboard.GetAttributeValue<string>("name") ?? GetDashboardBaseLabel(serviceAdmin, dashboard, id, baseLanguage),
                 RowType = "dashboard.row",
                 IsEditable = true,
                 IsTranslatable = true,

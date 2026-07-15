@@ -198,15 +198,9 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     Ai = new EasyTranslatorAiOutput { include = false }
                 };
 
-                var entityViews = byEntity[entityKey];
-                entityViews.Sort((a, b) =>
-                    StringComparer.OrdinalIgnoreCase.Compare(
-                        a.GetAttributeValue<string>("name") ?? string.Empty,
-                        b.GetAttributeValue<string>("name") ?? string.Empty));
-
                 var children = new List<EasyTranslatorGridRowOutput>();
 
-                foreach (var view in entityViews)
+                foreach (var view in byEntity[entityKey])
                 {
                     var id = view.GetAttributeValue<Guid>("savedqueryid");
                     if (id == Guid.Empty)
@@ -239,6 +233,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
 
                 if (children.Count > 0)
                 {
+                    children.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
                     parentRow.Children = children;
                     rows.Add(parentRow);
                 }

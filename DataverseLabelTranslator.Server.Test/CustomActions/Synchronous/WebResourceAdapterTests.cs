@@ -1219,6 +1219,12 @@ namespace DataverseLabelTranslator.Server.Test.CustomActions.Synchronous
             var xml = @"<?xml version=""1.0"" encoding=""utf-8""?><root><data name=""hello"" xml:space=""preserve""><value>Hello</value></data></root>";
             var serialized = (string)serialize.Invoke(null, new object[] { xml, new Dictionary<string, string> { ["hello"] = null, ["bye"] = null } });
             Assert.IsTrue(serialized.Contains("<value></value>") || serialized.Contains("<value />"));
+            var missingNameXml = @"<?xml version=""1.0"" encoding=""utf-8""?><root><data><value>Missing</value></data><data name=""hello""><value>Hello</value></data></root>";
+            var sortedMissingName = (string)serialize.Invoke(null, new object[] { missingNameXml, new Dictionary<string, string>() });
+            Assert.IsTrue(sortedMissingName.Contains("<data>") || sortedMissingName.Contains("<data "));
+            var bothMissingNameXml = @"<?xml version=""1.0"" encoding=""utf-8""?><root><data><value>First</value></data><data><value>Second</value></data></root>";
+            var sortedBothMissingName = (string)serialize.Invoke(null, new object[] { bothMissingNameXml, new Dictionary<string, string>() });
+            Assert.IsTrue(sortedBothMissingName.Contains("First"));
 
             var change = Activator.CreateInstance(changeType, true);
             changeType.GetProperty("webresourceid").SetValue(change, id.ToString("D"));

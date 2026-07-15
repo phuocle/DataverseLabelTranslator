@@ -165,34 +165,20 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     foreach (var cell in GetSectionCells(section))
                     {
                         var cellRow = BuildFormNodeRow(baseForm, localizedForms, cell, entityName, "forms.cell", GetNodeDisplayName(section));
-                        if (cellRow != null)
-                        {
-                            cellRows.Add(cellRow);
-                        }
+                        cellRows.Add(cellRow);
                     }
 
-                    if (sectionRow != null)
-                    {
-                        sectionRow.Children = cellRows;
-                        sectionRows.Add(sectionRow);
-                    }
-                    else
-                    {
-                        sectionRows.AddRange(cellRows);
-                    }
+                    cellRows.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
+                    sectionRow.Children = cellRows;
+                    sectionRows.Add(sectionRow);
                 }
 
-                if (tabRow != null)
-                {
-                    tabRow.Children = sectionRows;
-                    rows.Add(tabRow);
-                }
-                else
-                {
-                    rows.AddRange(sectionRows);
-                }
+                sectionRows.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
+                tabRow.Children = sectionRows;
+                rows.Add(tabRow);
             }
 
+            rows.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
             return rows;
         }
 

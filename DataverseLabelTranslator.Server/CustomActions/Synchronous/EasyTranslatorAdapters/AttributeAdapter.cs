@@ -222,18 +222,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 return false;
             }
 
-            if (sourceTypeValue is int)
-            {
-                return (int)sourceTypeValue != 0;
-            }
-
-            if (sourceTypeValue is int?)
-            {
-                var value = (int?)sourceTypeValue;
-                return value.HasValue && value.Value != 0;
-            }
-
-            return int.TryParse(Convert.ToString(sourceTypeValue), out var parsed) && parsed != 0;
+            return sourceTypeValue is int value && value != 0;
         }
 
         private static EasyTranslatorGridRowOutput BuildAttributeRow(string entityName, AttributeMetadata attribute, string component)

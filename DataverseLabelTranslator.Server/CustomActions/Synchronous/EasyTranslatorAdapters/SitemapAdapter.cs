@@ -282,6 +282,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                 }
             }
 
+            rows.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
             return rows;
         }
 
@@ -514,11 +515,6 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             var identifiers = compositeId.Split(new[] { "|" }, StringSplitOptions.None);
-            if (identifiers.Length == 0)
-            {
-                return null;
-            }
-
             foreach (var area in root.Elements("Area"))
             {
                 if (!string.Equals(GetNodeId(area), identifiers[0], StringComparison.OrdinalIgnoreCase))

@@ -65,8 +65,8 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             var commandById = BuildCommandMap(commands);
 
             commands.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(
-                GetCommandSortPathSafe(a, commandById),
-                GetCommandSortPathSafe(b, commandById)));
+                GetCommandLogicalSortPathSafe(a, commandById),
+                GetCommandLogicalSortPathSafe(b, commandById)));
 
             var rows = new List<EasyTranslatorGridRowOutput>();
 
@@ -109,6 +109,7 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     children.Add(child);
                 }
 
+                children.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.SchemaName, b.SchemaName));
                 parent.Children = children;
                 rows.Add(parent);
             }
@@ -316,7 +317,20 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             return GetLocationText(command) + " / " + string.Join(" / ", parts);
         }
 
-        private static string GetCommandSortPath(Entity command, Dictionary<Guid, Entity> commandById)
+        private static string GetCommandLogicalSortPathSafe(Entity command, Dictionary<Guid, Entity> commandById)
+        {
+            try
+            {
+                return GetCommandLogicalSortPath(command, commandById);
+            }
+            catch
+            {
+                var commandId = command?.GetAttributeValue<Guid>("appactionid") ?? Guid.Empty;
+                return commandId.ToString("D");
+            }
+        }
+
+        private static string GetCommandLogicalSortPath(Entity command, Dictionary<Guid, Entity> commandById)
         {
             var parts = new List<string>();
             var current = command;
@@ -330,14 +344,10 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
                     break;
                 }
 
-                parts.Insert(0, string.Join("~", new[]
-                {
-                    GetSortNumber(GetOptionValue(current, "location") ?? 99, 3),
-                    GetSortNumber((int)Math.Round(GetDecimalValue(current, "sequence") * 1000), 14),
-                    GetSortNumber(GetOptionValue(current, "type") ?? 99, 3),
-                    GetPrimaryCommandText(current).ToLowerInvariant(),
-                    currentId.ToString("D")
-                }));
+                parts.Insert(0, FirstNonEmpty(
+                    GetAttributeText(current, "uniquename"),
+                    GetAttributeText(current, "name"),
+                    currentId.ToString("D")).ToLowerInvariant());
 
                 var parent = current.GetAttributeValue<EntityReference>("parentappactionid");
                 current = parent != null && commandById.TryGetValue(parent.Id, out var parentCommand)
@@ -346,19 +356,6 @@ namespace DataverseLabelTranslator.Server.CustomActions.Synchronous.EasyTranslat
             }
 
             return string.Join(">", parts);
-        }
-
-        private static string GetCommandSortPathSafe(Entity command, Dictionary<Guid, Entity> commandById)
-        {
-            try
-            {
-                return GetCommandSortPath(command, commandById);
-            }
-            catch
-            {
-                var commandId = command?.GetAttributeValue<Guid>("appactionid") ?? Guid.Empty;
-                return commandId.ToString("D");
-            }
         }
 
         private static Label RetrieveLocLabel(IOrganizationService serviceAdmin, Guid commandId, string attributeName)
